@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Podcast Index API key of Sailcast (podcast search). Copy this file to
+# "podcastindex.pri" next to it and fill in the key and secret from
+# https://api.podcastindex.org (free sign-up). podcastindex.pri is private:
+# do not publish it (keep it out of the repository). Without it Sailcast
+# builds and runs, only the search says that no key is built in.
+#
+# The secret is written HEX-ENCODED: it contains characters such as # and $
+# that qmake (# = comment), make and the shell would change. Get the hex
+# value with (fish or bash, single quotes):
+#     printf '%s' 'YOUR-SECRET' | xxd -p -c 256
+# The key has only letters and digits and is written as it is.
+#
+# After creating or changing this file: Clean, qmake, Build (the compiler
+# flags change, an incremental build would keep the old object file).
+DEFINES += PODCASTINDEX_KEY=\\\"YOUR-KEY\\\"
+DEFINES += PODCASTINDEX_SECRET_HEX=\\\"YOUR-SECRET-IN-HEX\\\"

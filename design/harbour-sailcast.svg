@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 172 172" width="172" height="172">
+  <!-- Sailcast app icon (41, more plastic): headphones with the podcast
+       signal between the ear cups, in Sailwave's drop shape. Lit from the
+       top left: background with a soft light spot and a darker rim, the
+       symbol with gradients, highlights and a drop shadow. PNGs in icons/
+       are rendered from this file. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1747"/>
+      <stop offset="1" stop-color="#8c3b6b"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0.3" cy="0.22" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.22"/>
+    </radialGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ebe6f2"/>
+    </linearGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#f4f1f8"/>
+      <stop offset="1" stop-color="#dcd4e8"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd36a"/>
+      <stop offset="1" stop-color="#e8961a"/>
+    </linearGradient>
+    <radialGradient id="dot" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#fff1c4"/>
+      <stop offset="0.45" stop-color="#f6b92e"/>
+      <stop offset="1" stop-color="#d9820f"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="3.2" stdDeviation="3" flood-color="#12061f" flood-opacity="0.55"/>
+    </filter>
+    <clipPath id="shape">
+      <path d="M 86 0.6 A 85.4 85.4 0 0 1 171.4 86 A 85.4 85.4 0 0 1 86 171.4 L 10.6 171.4 A 10 10 0 0 1 0.6 161.4 L 0.6 86 A 85.4 85.4 0 0 1 86 0.6 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#shape)">
+    <rect x="0" y="0" width="172" height="172" fill="url(#bg)"/>
+    <rect x="0" y="0" width="172" height="172" fill="url(#light)"/>
+    <g transform="translate(86 86) scale(0.87) translate(-86 -86)">
+    <g transform="translate(86 86) scale(1.15) translate(-86 -89)">
+      <g filter="url(#shadow)">
+        <path d="M 40 104 L 40 90 A 46 46 0 0 1 132 90 L 132 104" fill="none" stroke="url(#white)" stroke-width="9" stroke-linecap="round"/>
+        <rect x="26" y="92" width="26" height="46" rx="11" fill="url(#cup)"/>
+        <rect x="120" y="92" width="26" height="46" rx="11" fill="url(#cup)"/>
+        <circle cx="86" cy="112" r="6.5" fill="url(#dot)"/>
+        <g fill="none" stroke="url(#amber)" stroke-width="6" stroke-linecap="round">
+          <path d="M 77.5 101.5 A 13.5 13.5 0 0 0 77.5 122.5"/>
+          <path d="M 94.5 101.5 A 13.5 13.5 0 0 1 94.5 122.5"/>
+          <path d="M 70 93 A 25 25 0 0 0 70 131"/>
+          <path d="M 102 93 A 25 25 0 0 1 102 131"/>
+        </g>
+      </g>
+      <!-- highlights: top of the band, upper left of the cups -->
+      <path d="M 44.4 66 A 48 48 0 0 1 77.7 42.7" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2" stroke-linecap="round"/>
+      <rect x="30" y="96" width="7" height="22" rx="3.5" fill="#ffffff" opacity="0.45"/>
+      <rect x="124" y="96" width="7" height="22" rx="3.5" fill="#ffffff" opacity="0.45"/>
+      <!-- shade where the cups meet the band -->
+      <rect x="26" y="126" width="26" height="12" rx="6" fill="#5b3f7a" opacity="0.09"/>
+      <rect x="120" y="126" width="26" height="12" rx="6" fill="#5b3f7a" opacity="0.09"/>
+    </g>
+    </g>
+  </g>
+</svg>

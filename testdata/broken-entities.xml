@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:psc="http://podlove.org/simple-chapters">
+<channel>
+<title>Sailcast Test &ndash; broken entities</title>
+<link>https://example.org/</link>
+<description>Feed with HTML entities that XML does not know.</description>
+<itunes:image href="https://example.org/cover.jpg"/>
+<item>
+<title>Folge 3: Gr&uuml;&szlig;e aus K&auml;rnten</title>
+<guid>ep3</guid>
+<pubDate>Mon, 05 Oct 2026 06:00:00 +0200</pubDate>
+<description>Mit&nbsp;Leerzeichen &ndash; und &bdquo;Anf&uuml;hrungszeichen&ldquo;&hellip;</description>
+<enclosure url="https://example.org/ep3.mp3" type="audio/mpeg" length="1000"/>
+<itunes:duration>45:30</itunes:duration>
+<psc:chapters version="1.2">
+<psc:chapter start="00:00:00" title="Intro"/>
+<psc:chapter start="00:05:00" title="Hauptteil"/>
+</psc:chapters>
+</item>
+<item>
+<title>Folge 2: Tom & Jerry&unbekannt;</title>
+<guid>ep2</guid>
+<pubDate>Mon, 28 Sep 2026 06:00:00 +0200</pubDate>
+<description>Steuerzeichen: hier, &#8364; bleibt, &#xFFFF; ist ung&uuml;ltig</description>
+<enclosure url="https://example.org/ep2.mp3" type="audio/mpeg" length="1000"/>
+<itunes:duration>3600</itunes:duration>
+</item>
+<item>
+<title>Folge 1</title>
+<guid>ep1</guid>
+<pubDate>Mon, 21 Sep 2026 06:00:00 +0200</pubDate>
+<description><![CDATA[CDATA bleibt unver&auml;ndert: <b>&nbsp;</b>]]></description>
+<enclosure url="https://example.org/ep1.mp3" type="audio/mpeg" length="1000"/>
+<itunes:duration>1:02:03</itunes:duration>
+</item>
+</channel>
+</rss>

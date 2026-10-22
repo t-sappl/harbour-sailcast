@@ -1,0 +1,11 @@
+# Private Podcast Index API key (see podcastindex.pri.example) - never publish
+podcastindex.pri
+# Build output
+*.o
+*.user
+Makefile
+moc_*
+qrc_*
+cli/sailcast-cli
+.qmake.stash
+RPMS/

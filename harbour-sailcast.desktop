@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[Desktop Entry]
+Type=Application
+X-Nemo-Application-Type=silica-qt5
+Icon=harbour-sailcast
+Exec=harbour-sailcast
+Name=Sailcast
+Name[de]=Sailcast
+# App grid folders are named after common categories
+Categories=AudioVideo;Audio;Player;
+
+[X-Sailjail]
+OrganizationName=harbour-sailcast
+ApplicationName=harbour-sailcast
+Permissions=Internet;Audio;Downloads;Music;Secrets
