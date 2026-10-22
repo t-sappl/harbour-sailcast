@@ -4,11 +4,6 @@ Podcast app for Sailfish OS with a native C++ core. Subscriptions and the
 listening state are synchronized with other podcast apps (e.g. AntennaPod on
 Android) through a Nextcloud with the app **GPodder Sync** or a gpodder.net
 compatible server.
-
-Sailcast is a rewrite inspired by gpodder-sailfish (gPodder 4), not a fork:
-the core is C++/Qt instead of Python, the user interface is QML/Silica. The
-layout follows Podcast Addict.
-
 <p>
 <img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
 <img src="screenshots/episode-page.png" width="19%" alt="Episode page with bookmarks and chapters">
