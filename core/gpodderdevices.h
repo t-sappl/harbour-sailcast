@@ -16,6 +16,7 @@ struct GpodderDevice
     QString caption;
     QString type;           // desktop, laptop, mobile, server, other
     int subscriptions = 0;
+    int group = -1;         // sync group on the server (index), -1 = none (83)
 };
 
 // Devices of a gpodder.net API account (51): the API keeps subscriptions
@@ -27,6 +28,11 @@ struct GpodderDevice
 //    yet (a new Sailcast device) is registered first (77): the server only
 //    groups devices it knows - before, a new device stayed without the
 //    subscriptions of the others
+//  - list() also reads GET /api/2/sync-devices/{user}.json (83), so the
+//    dialog shows which devices already share their subscriptions; a server
+//    without it (some compatible servers) just gives no groups
+//  - stopIds (83): devices taken out of their sync group
+//    ("stop-synchronize") - the devices unchecked in the dialog
 // Nextcloud GPodder Sync has no devices - only for the gpodder.net API.
 class GpodderDevices : public QObject
 {
@@ -36,7 +42,8 @@ public:
 
     void setAccount(const QString &server, const QString &user, const QString &password);
     void list();
-    void synchronize(const QStringList &deviceIds, const QString &registerFirst = QString());
+    void synchronize(const QStringList &deviceIds, const QString &registerFirst = QString(),
+                     const QStringList &stopIds = QStringList());
 
 signals:
     void listed(const QList<GpodderDevice> &devices);
@@ -47,7 +54,8 @@ signals:
 private:
     QNetworkReply *send(const QByteArray &verb, const QString &path, const QByteArray &json);
     QString errorText(QNetworkReply *reply) const;
-    void postGroup(const QStringList &deviceIds);
+    void postGroup(const QStringList &deviceIds, const QStringList &stopIds);
+    void listGroups(const QList<GpodderDevice> &devices);
 
     QNetworkAccessManager *m_network;
     QString m_server;

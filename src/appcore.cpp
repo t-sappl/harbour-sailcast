@@ -6,6 +6,7 @@
 #include "urlmask.h"
 #include "nextcloudlogin.h"
 #include "gpodderdevices.h"
+#include "webdavbackup.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -134,6 +135,36 @@ AppCore::AppCore(QObject *parent)
         }
         emit browserLoginFailed(text);
     });
+    // Database backup into the Nextcloud (83)
+    m_webdav = new WebDavBackup(this);
+    connect(m_webdav, &WebDavBackup::listed, this,
+            [this](bool ok, const QList<WebDavBackup::Entry> &entries, const QString &error) {
+        QVariantList list;
+        for (int i = 0; i < entries.size(); ++i) {
+            QVariantMap map;
+            map.insert(QStringLiteral("name"), entries.at(i).name);
+            map.insert(QStringLiteral("modified"), double(entries.at(i).modified));
+            map.insert(QStringLiteral("size"), double(entries.at(i).size));
+            list.append(map);
+        }
+        emit nextcloudBackupsListed(ok, list, UrlMask::maskText(error));
+    });
+    connect(m_webdav, &WebDavBackup::fetched, this, [this](bool ok, const QString &path, const QString &error) {
+        emit nextcloudBackupFetched(ok, path, UrlMask::maskText(error));
+    });
+    connect(m_webdav, &WebDavBackup::finished, this, [this](bool ok, const QString &error) {
+        if (ok) {
+            m_database->setSetting(QStringLiteral("backup.lastNextcloud"),
+                                   QString::number(QDateTime::currentMSecsSinceEpoch() / 1000));
+            emit settingsChanged();
+            if (m_webdavManual) {
+                emitMessage(tr("Backup saved in the Nextcloud"));
+            }
+        } else {
+            emitMessage(tr("Backup to the Nextcloud failed: %1").arg(error));
+        }
+        m_webdavManual = false;
+    });
     // gpodder.net devices (51)
     m_devices = new GpodderDevices(this);
     connect(m_devices, &GpodderDevices::listed, this, [this](const QList<GpodderDevice> &devices) {
@@ -144,6 +175,7 @@ AppCore::AppCore(QObject *parent)
             map.insert(QStringLiteral("caption"), devices.at(i).caption);
             map.insert(QStringLiteral("type"), devices.at(i).type);
             map.insert(QStringLiteral("subscriptions"), devices.at(i).subscriptions);
+            map.insert(QStringLiteral("group"), devices.at(i).group);
             list.append(map);
         }
         emit devicesListed(list);
@@ -220,6 +252,8 @@ AppCore::AppCore(QObject *parent)
         emitMessage(tr("Synchronized: %1 listening states, %2 subscription changes")
                      .arg(r.applied.applied + r.actionsUploaded)
                      .arg(r.podcastsAdded + r.podcastsRemoved + r.subscriptionsUploaded));
+        // The sync password is known now: a Nextcloud backup that is due
+        backupIfDue();
     });
     connect(m_sync, &SyncEngine::failed, this, [this](const QString &error) {
         emit syncingChanged();
@@ -279,6 +313,8 @@ AppCore::AppCore(QObject *parent)
 
     reloadQueue();
     cleanupOnStart();
+    // Not during the start itself: the backup copies the whole database
+    QTimer::singleShot(20000, this, &AppCore::backupIfDue);
 }
 
 AppCore::~AppCore()
@@ -326,7 +362,7 @@ QString AppCore::archiveRoot() const
 
 QString AppCore::version() const
 {
-    return QStringLiteral("1.0 (build 80)");
+    return QStringLiteral("1.1 (build 105)");
 }
 
 void AppCore::reloadQueue()
@@ -458,6 +494,11 @@ void AppCore::searchPodcasts(const QString &term)
     m_index->search(term);
 }
 
+int AppCore::podcastIdForUrl(const QString &url) const
+{
+    return int(m_database->findPodcast(url));
+}
+
 bool AppCore::isSubscribed(const QString &url) const
 {
     const QString normalized = FeedProbe::normalize(url);
@@ -486,6 +527,10 @@ void AppCore::onFeedChecked(const FeedProbeResult &r)
     }
     map.insert(QStringLiteral("latest"), latest);
     map.insert(QStringLiteral("discovered"), r.discovered);
+    map.insert(QStringLiteral("pageTitle"), r.pageTitle);
+    // A web page without a podcast feed (102): "no podcast on this page"
+    map.insert(QStringLiteral("noPodcast"), r.status == FeedProbeResult::NotAFeed
+               || (r.ok() && r.episodes == 0));
     map.insert(QStringLiteral("subscribed"), !r.url.isEmpty() && m_database->findPodcast(r.url) >= 0);
     QString error;
     switch (r.status) {
@@ -495,7 +540,8 @@ void AppCore::onFeedChecked(const FeedProbeResult &r)
         error = tr("The feed needs a login (HTTP %1) - after subscribing, set it on the podcast page").arg(r.httpStatus);
         break;
     case FeedProbeResult::NotAFeed:
-        error = tr("This address is not a podcast feed");
+        error = r.discovered ? tr("None of the feeds this page names loads.")
+                             : tr("This address is not a podcast feed");
         break;
     case FeedProbeResult::HttpError:
         error = r.httpStatus == 404 || r.httpStatus == 410 ? tr("Nothing found at this address (HTTP %1)").arg(r.httpStatus)
@@ -630,6 +676,8 @@ QVariantMap AppCore::episode(int episodeId) const
     map.insert(QStringLiteral("link"), e.link);
     map.insert(QStringLiteral("chapterCount"), e.chapterCount);
     map.insert(QStringLiteral("hasChaptersUrl"), !e.chaptersUrl.isEmpty());
+    map.insert(QStringLiteral("season"), e.season);
+    map.insert(QStringLiteral("episodeNumber"), e.episodeNumber);
     QString description = m_database->episodeDescription(e.id, true);
     if (description.isEmpty()) {
         description = m_database->episodeDescription(e.id, false);
@@ -679,6 +727,9 @@ QVariantMap AppCore::podcast(int podcastId) const
     map.insert(QStringLiteral("lastError"), p.lastError);
     map.insert(QStringLiteral("authUser"), p.authUser);
     map.insert(QStringLiteral("downloadedCount"), p.downloadedCount);
+    // podcast:funding (83): [{url, title}]
+    map.insert(QStringLiteral("funding"), p.funding.isEmpty()
+               ? QVariantList() : QJsonDocument::fromJson(p.funding.toUtf8()).array().toVariantList());
     // For the archive dialog: size as declared in the feed (often missing)
     qint64 bytes = 0;
     int withMedia = 0;
@@ -1274,7 +1325,7 @@ void AppCore::importGpodder(const QString &path)
     updateAll();
 }
 
-void AppCore::importDatabase(const QString &path)
+void AppCore::importDatabase(const QString &path, bool keepFolders)
 {
     if (m_updater->isBusy() || m_sync->isRunning() || m_downloads->isBusy() || m_archiver->isRunning()) {
         emitMessage(tr("Please wait until updates and downloads are finished"));
@@ -1295,9 +1346,11 @@ void AppCore::importDatabase(const QString &path)
     }
     openDatabase();
     // Folders of the other device (e.g. /tmp on the desktop) do not exist
-    // here: back to the defaults
-    m_database->setSetting(QStringLiteral("archive.dir"), QString());
-    m_database->setSetting(QStringLiteral("downloads.dir"), QString());
+    // here: back to the defaults - not for a backup of this phone (93)
+    if (!keepFolders) {
+        m_database->setSetting(QStringLiteral("archive.dir"), QString());
+        m_database->setSetting(QStringLiteral("downloads.dir"), QString());
+    }
     m_archiver->setArchiveRoot(archiveRoot());
     reloadQueue();
     emit settingsChanged();
@@ -1357,15 +1410,225 @@ QString AppCore::exportDatabase()
 {
     const QString path = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)
             + QStringLiteral("/sailcast-%1.db").arg(today());
-    // Everything from the write-ahead log into the database file first
-    QSqlQuery q(m_database->handle());
-    q.exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE)"));
-    QFile::remove(path);
-    if (!QFile::copy(databasePath(), path)) {
+    if (!copyDatabaseTo(path)) {
         emitMessage(tr("Export failed: %1").arg(path));
         return QString();
     }
     return path;
+}
+
+bool AppCore::copyDatabaseTo(const QString &path)
+{
+    // Everything from the write-ahead log into the database file first
+    QSqlQuery q(m_database->handle());
+    q.exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE)"));
+    const QString part = path + QStringLiteral(".part");
+    QFile::remove(part);
+    if (!QFile::copy(databasePath(), part)) {
+        QFile::remove(part);
+        return false;
+    }
+    QFile::remove(path);
+    return QFile::rename(part, path);
+}
+
+QString AppCore::backupDirectory() const
+{
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)
+            + QStringLiteral("/Sailcast-Backups");
+}
+
+double AppCore::lastBackup() const
+{
+    return m_database->setting(QStringLiteral("backup.last"), QStringLiteral("0")).toDouble() * 1000.0;
+}
+
+double AppCore::lastNextcloudBackup() const
+{
+    return m_database->setting(QStringLiteral("backup.lastNextcloud"), QStringLiteral("0")).toDouble() * 1000.0;
+}
+
+bool AppCore::nextcloudBackupPossible() const
+{
+    return syncConfigured()
+            && m_database->setting(QStringLiteral("sync.backend")) == QLatin1String("nextcloud")
+            && m_database->setting(QStringLiteral("backup.nextcloud"), QStringLiteral("1")) == QLatin1String("1");
+}
+
+QString AppCore::makeBackup()
+{
+    const QString dir = backupDirectory();
+    if (!QDir().mkpath(dir)) {
+        emitMessage(tr("Backup failed: %1").arg(dir));
+        return QString();
+    }
+    const QString path = dir + QStringLiteral("/sailcast-%1.db").arg(today());
+    if (!copyDatabaseTo(path)) {
+        emitMessage(tr("Backup failed: %1").arg(path));
+        return QString();
+    }
+    // The newest 5 stay (names sort by date)
+    QStringList files = QDir(dir).entryList(QStringList() << QStringLiteral("sailcast-*.db"),
+                                            QDir::Files, QDir::Name);
+    while (files.size() > 5) {
+        QFile::remove(dir + QLatin1Char('/') + files.takeFirst());
+    }
+    m_database->setSetting(QStringLiteral("backup.last"),
+                           QString::number(QDateTime::currentMSecsSinceEpoch() / 1000));
+    emit settingsChanged();
+    return path;
+}
+
+void AppCore::uploadBackup(const QString &path, const QString &password, bool manual)
+{
+    if (path.isEmpty() || !nextcloudBackupPossible()) {
+        return;
+    }
+    if (m_webdav->isRunning()) {
+        if (manual) {
+            emitMessage(tr("A Nextcloud backup is already running"));
+        }
+        return;
+    }
+    // A password from the settings is kept for the session (97): without a
+    // sync since the start (no update on start) the core had none, and the
+    // automatic Nextcloud copy waited for one
+    if (!password.isEmpty() && m_sync->password().isEmpty()) {
+        m_sync->setPassword(password);
+    }
+    const QString pw = password.isEmpty() ? m_sync->password() : password;
+    if (pw.isEmpty()) {
+        if (manual) {
+            emitMessage(tr("Nextcloud backup: the password is missing"));
+        }
+        return;
+    }
+    m_webdavManual = manual;
+    m_webdav->upload(m_database->setting(QStringLiteral("sync.server")),
+                     m_database->setting(QStringLiteral("sync.user")), pw,
+                     path, QStringLiteral("Sailcast-Backups"), 5);
+}
+
+QString AppCore::backupNow(const QString &password)
+{
+    const QString path = makeBackup();
+    // Reported here, before the Nextcloud part (97): the page's message
+    // came last and hid "the password is missing"
+    if (!path.isEmpty()) {
+        emitMessage(nextcloudBackupPossible() ? tr("Backup saved - copying it to the Nextcloud …")
+                                              : tr("Backup saved"));
+    }
+    uploadBackup(path, password, true);
+    return path;
+}
+
+QVariantList AppCore::localBackups() const
+{
+    QVariantList list;
+    const QDir dir(backupDirectory());
+    const QFileInfoList files = dir.entryInfoList(QStringList() << QStringLiteral("sailcast-*.db")
+                                                  << QStringLiteral("before-restore.db"),
+                                                  QDir::Files, QDir::Name | QDir::Reversed);
+    for (int i = 0; i < files.size(); ++i) {
+        const QFileInfo &f = files.at(i);
+        QVariantMap map;
+        map.insert(QStringLiteral("path"), f.absoluteFilePath());
+        map.insert(QStringLiteral("name"), f.fileName());
+        map.insert(QStringLiteral("modified"), double(f.lastModified().toMSecsSinceEpoch()));
+        map.insert(QStringLiteral("size"), double(f.size()));
+        map.insert(QStringLiteral("undo"), f.fileName() == QLatin1String("before-restore.db"));
+        list.append(map);
+    }
+    return list;
+}
+
+void AppCore::listNextcloudBackups(const QString &password)
+{
+    if (!password.isEmpty() && m_sync->password().isEmpty()) {
+        m_sync->setPassword(password);
+    }
+    const QString pw = password.isEmpty() ? m_sync->password() : password;
+    if (pw.isEmpty()) {
+        emit nextcloudBackupsListed(false, QVariantList(), tr("the password is missing"));
+        return;
+    }
+    m_webdav->list(m_database->setting(QStringLiteral("sync.server")),
+                   m_database->setting(QStringLiteral("sync.user")), pw, QStringLiteral("Sailcast-Backups"));
+}
+
+void AppCore::fetchNextcloudBackup(const QString &name, const QString &password)
+{
+    const QString pw = password.isEmpty() ? m_sync->password() : password;
+    if (pw.isEmpty()) {
+        emit nextcloudBackupFetched(false, QString(), tr("the password is missing"));
+        return;
+    }
+    QDir().mkpath(backupDirectory());
+    // Its own name, so it does not count among the local backups
+    const QString path = backupDirectory() + QStringLiteral("/nextcloud-download.db");
+    QFile::remove(path);
+    m_webdav->fetch(m_database->setting(QStringLiteral("sync.server")),
+                    m_database->setting(QStringLiteral("sync.user")), pw,
+                    QStringLiteral("Sailcast-Backups"), name, path);
+}
+
+bool AppCore::restoreBackup(const QString &path)
+{
+    if (!QFileInfo(path).isFile()) {
+        emitMessage(tr("Backup not found: %1").arg(path));
+        return false;
+    }
+    if (m_updater->isBusy() || m_sync->isRunning() || m_downloads->isBusy() || m_archiver->isRunning()) {
+        emitMessage(tr("Please wait until updates and downloads are finished"));
+        return false;
+    }
+    QDir().mkpath(backupDirectory());
+    const QString undo = backupDirectory() + QStringLiteral("/before-restore.db");
+    QString source = path;
+    // Restoring the undo copy itself: keep it apart first
+    if (QFileInfo(path).absoluteFilePath() == QFileInfo(undo).absoluteFilePath()) {
+        source = backupDirectory() + QStringLiteral("/restore-source.db");
+        QFile::remove(source);
+        QFile::copy(path, source);
+    }
+    if (!copyDatabaseTo(undo)) {
+        emitMessage(tr("Backup failed: %1").arg(undo));
+        return false;
+    }
+    importDatabase(source, true);
+    if (source != path) {
+        QFile::remove(source);
+    }
+    return true;
+}
+
+void AppCore::backupIfDue()
+{
+    bool ok = false;
+    const int days = m_database->setting(QStringLiteral("backup.days"), QStringLiteral("7")).toInt(&ok);
+    if (!ok || days <= 0 || podcastCount() == 0) {
+        return;
+    }
+    const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
+    // An hour of slack: a daily backup at about the same time each day
+    const qint64 interval = qint64(days) * 86400 - 3600;
+    QString path;
+    if (now - m_database->setting(QStringLiteral("backup.last"), QStringLiteral("0")).toLongLong() >= interval) {
+        path = makeBackup();
+    }
+    // The Nextcloud copy: the newest local backup, once the sync password
+    // is known (it may not be at the first check after the start)
+    if (nextcloudBackupPossible() && !m_sync->password().isEmpty()
+            && now - m_database->setting(QStringLiteral("backup.lastNextcloud"), QStringLiteral("0")).toLongLong() >= interval) {
+        if (path.isEmpty()) {
+            const QStringList files = QDir(backupDirectory()).entryList(
+                        QStringList() << QStringLiteral("sailcast-*.db"), QDir::Files, QDir::Name);
+            if (!files.isEmpty()) {
+                path = backupDirectory() + QLatin1Char('/') + files.last();
+            }
+        }
+        uploadBackup(path, QString(), false);
+    }
 }
 
 // All messages to the user without tokens from feed/media addresses (40)
@@ -1377,6 +1640,41 @@ void AppCore::emitMessage(const QString &text)
 QString AppCore::maskUrl(const QString &text) const
 {
     return UrlMask::maskText(text);
+}
+
+QVariantMap AppCore::shareLink(int episodeId, int seconds) const
+{
+    QVariantMap map;
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id) {
+        return map;
+    }
+    // Never a token: a private feed's media address would give access to
+    // the feed's content
+    QString url = e.link.trimmed();
+    if (url.isEmpty()) {
+        url = m_database->podcast(e.podcastId).link.trimmed();
+    }
+    if (url.isEmpty() && UrlMask::maskText(e.url) == e.url) {
+        url = e.url;
+    }
+    if (url.isEmpty() || UrlMask::maskText(url) != url) {
+        return map;
+    }
+    QString title = e.podcastTitle.isEmpty() ? e.title
+                                             : QStringLiteral("%1: %2").arg(e.podcastTitle, e.title);
+    if (seconds > 0) {
+        const QString clock = QStringLiteral("%1:%2:%3").arg(seconds / 3600)
+                .arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'))
+                .arg(seconds % 60, 2, 10, QLatin1Char('0'));
+        if (!url.contains(QLatin1Char('#'))) {
+            url += QStringLiteral("#t=") + clock;
+        }
+        title = tr("%1 (from %2)").arg(title, clock);
+    }
+    map.insert(QStringLiteral("url"), url);
+    map.insert(QStringLiteral("title"), title);
+    return map;
 }
 
 void AppCore::startBrowserLogin(const QString &server)
@@ -1513,6 +1811,63 @@ QVariantList AppCore::bookmarks(int episodeId) const
     return list;
 }
 
+QVariantMap AppCore::searchLocal(const QString &term) const
+{
+    QVariantMap result;
+    const QString needle = term.trimmed();
+    if (needle.length() < 2) {
+        return result;
+    }
+    // Podcasts: title or author (QString: umlauts compared correctly)
+    QVariantList podcasts;
+    const QList<PodcastRow> rows = m_database->podcasts();
+    for (int i = 0; i < rows.size() && podcasts.size() < 5; ++i) {
+        const PodcastRow &p = rows.at(i);
+        if (p.title.contains(needle, Qt::CaseInsensitive) || p.author.contains(needle, Qt::CaseInsensitive)) {
+            QVariantMap map;
+            map.insert(QStringLiteral("podcastId"), int(p.id));
+            map.insert(QStringLiteral("title"), p.title);
+            map.insert(QStringLiteral("author"), p.author);
+            map.insert(QStringLiteral("coverUrl"), p.coverUrl);
+            podcasts.append(map);
+        }
+    }
+    result.insert(QStringLiteral("podcasts"), podcasts);
+
+    // Episodes: titles over all podcasts (the same search as on the podcast
+    // page, 53 - SQLite LIKE, case-insensitive for ASCII)
+    QVariantList episodes;
+    const QList<EpisodeRow> found = m_database->episodes(-1, 20, Database::AllEpisodes, false, needle);
+    for (int i = 0; i < found.size(); ++i) {
+        const EpisodeRow &e = found.at(i);
+        QVariantMap map;
+        map.insert(QStringLiteral("episodeId"), int(e.id));
+        map.insert(QStringLiteral("title"), e.title);
+        map.insert(QStringLiteral("podcastTitle"), e.podcastTitle);
+        map.insert(QStringLiteral("imageUrl"), e.displayImageUrl);
+        map.insert(QStringLiteral("published"), double(e.published) * 1000.0);
+        map.insert(QStringLiteral("duration"), e.duration);
+        map.insert(QStringLiteral("played"), e.played);
+        map.insert(QStringLiteral("position"), e.position);
+        episodes.append(map);
+    }
+    result.insert(QStringLiteral("episodes"), episodes);
+
+    // Bookmarks: name, note or episode title
+    QVariantList bookmarks;
+    const QVariantList all = this->bookmarks(0);
+    for (int i = 0; i < all.size() && bookmarks.size() < 5; ++i) {
+        const QVariantMap b = all.at(i).toMap();
+        if (b.value(QStringLiteral("title")).toString().contains(needle, Qt::CaseInsensitive)
+                || b.value(QStringLiteral("note")).toString().contains(needle, Qt::CaseInsensitive)
+                || b.value(QStringLiteral("episodeTitle")).toString().contains(needle, Qt::CaseInsensitive)) {
+            bookmarks.append(b);
+        }
+    }
+    result.insert(QStringLiteral("bookmarks"), bookmarks);
+    return result;
+}
+
 int AppCore::addBookmark(int episodeId, int seconds)
 {
     const qint64 id = m_database->addBookmark(episodeId, seconds);
@@ -1602,9 +1957,10 @@ void AppCore::chooseDevice(const QString &deviceId, bool existing)
     emit settingsChanged();
 }
 
-void AppCore::synchronizeDevices(const QStringList &deviceIds, const QString &newDevice)
+void AppCore::synchronizeDevices(const QStringList &deviceIds, const QString &newDevice,
+                                 const QStringList &stopIds)
 {
-    m_devices->synchronize(deviceIds, newDevice.trimmed());
+    m_devices->synchronize(deviceIds, newDevice.trimmed(), stopIds);
 }
 
 QStringList AppCore::coverUrls() const

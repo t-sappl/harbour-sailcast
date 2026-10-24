@@ -22,13 +22,21 @@ compatible server.
 - **Folders** for podcasts – collapsible, in the grid and the list, kept in OPML exports
 - **Podcast search** through [Podcast Index](https://podcastindex.org) with
   details (description, categories, website), or add a feed address (checked
-  before subscribing; an address in the clipboard is filled in)
+  before subscribing; an address in the clipboard is filled in; for a website
+  without a feed the site's name is searched)
+- **Share links to Sailcast** from the browser or other apps to add a podcast
+- **Search on the phone** in your podcasts, episode titles and bookmarks
+  ("Search"); new podcasts are found on a page of their own ("Search / add
+  podcast")
 - **Playlist** with drag sorting, "Now playing" and "Continue listening"
 - **Player** on the episode page with a labelled toolbar (speed, download,
   playlist, bookmark, sleep timer): chapters (Podlove and `podcast:chapters`),
-  skip times; lock screen, cover and headset controls; in landscape the
-  player is a column on the right
-- **Bookmarks** with notes – places in an episode to come back to
+  skip times; lock screen and headset buttons (chapters, episodes or skip)
+  and a second cover button (next, skip, sleep timer or a bookmark); in
+  landscape the player is a column on the right; share an episode link
+  (optionally from the current position)
+- **Bookmarks** with name and note (entered right when setting one) – places
+  in an episode to come back to
 - **Per podcast:** own speed, skip intro and outro, left out of the automatic
   update if wanted (also per folder), login for premium feeds
 - **Downloads** with resume, only on Wi-Fi, automatic downloads of new
@@ -40,6 +48,10 @@ compatible server.
   oPodSync). Folders, bookmarks, the playlist and per-podcast settings stay on
   the phone (the sync APIs have no place for them)
 - **Import/export:** OPML, gpodder-sailfish database, Sailcast database backup
+- **Automatic backup** of the database (daily or weekly) into Downloads and,
+  with a Nextcloud sync account, into the Nextcloud; **restore** from either
+  (the state before is kept and can be restored again)
+- Season and episode numbers and `podcast:funding` links from the feed
 - Broken feeds (HTML entities, bare `&`) are repaired; private feed tokens are
   hidden in messages
 
@@ -58,21 +70,23 @@ The first sync takes over the subscriptions and listening states of the server
 
 ## Archive and cloud backup with rclone (optional)
 
-Backup to the cloud and streaming from there are left to
-[rclone](https://rclone.org) – Sailcast itself contains no cloud code.
+Backup of the archived episodes to the cloud and streaming from there are left
+to [rclone](https://rclone.org) – Sailcast itself only copies its database
+backup to the Nextcloud of the sync account.
 
 1. Set up a remote once (Google Drive, Nextcloud via WebDAV, …): `rclone config`
 2. Back up the archive: `rclone copy ~/Music/Podcasts <remote>:Podcast-Archive`
 3. Stream from the cloud: run
    `rclone serve http <remote>:Podcast-Archive --addr 127.0.0.1:8080 --read-only`
-   on the phone and set Settings → Archive → cloud archive address to
+   on the phone and set Settings → Downloads and archive → cloud archive address to
    `http://127.0.0.1:8080/`. Sailcast plays an episode from the local file, the
    original address or – if both are gone – from the cloud archive.
 
 ## Building
 
-**App:** open `harbour-sailcast.pro` in the Sailfish SDK (Qt Creator), or run
-`./build-release.sh` for release packages of all architectures.
+**App:** open `harbour-sailcast.pro` in the Sailfish SDK (Qt Creator), or build
+release packages with `sfdk build` (with `-c no-fix-version`, otherwise sfdk
+takes the version from the git tag instead of the spec).
 
 **Podcast search key:** the search needs a Podcast Index API key (free at
 [api.podcastindex.org](https://api.podcastindex.org)). Copy

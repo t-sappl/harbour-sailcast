@@ -20,6 +20,15 @@ Page {
 
     SilicaListView {
         id: list
+        // Opens at the top with the page header (66, 83): no current item
+        // (ListView keeps item 0 in view while the header grows), and the
+        // top is kept until the user moves the list
+        currentIndex: -1
+        property bool _keepTop: true
+        onMovementStarted: _keepTop = false
+        onContentHeightChanged: if (_keepTop) positionViewAtBeginning()
+        onOriginYChanged: if (_keepTop) positionViewAtBeginning()
+        Component.onCompleted: positionViewAtBeginning()
         anchors.fill: parent
         anchors.bottomMargin: appWindow.playerBarHeight
         anchors.rightMargin: appWindow.playerPanelWidth
@@ -46,12 +55,26 @@ Page {
                 onClicked: pageStack.push(Qt.resolvedUrl("ImportExportPage.qml"))
             }
             // Downloads and bookmarks: in the playlist pulley since 73
+            // Search on the device (86)
+            MenuItem {
+                visible: core.podcastCount > 0
+                text: qsTr("Search")
+                onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
+            }
+            // Separate sync entry (86) when "Sync und Update" is off
+            MenuItem {
+                visible: appWindow.separateSync
+                enabled: !core.syncing
+                text: qsTr("Synchronize")
+                onClicked: appWindow.syncOnly()
+            }
             MenuItem {
                 visible: core.podcastCount > 0 || core.syncConfigured
                 enabled: !core.updating && !core.syncing
-                // Sync (if set up) and then all feeds - see appWindow.updateEverything
+                // Sync (if set up and combined, 86) and then all feeds - see
+                // appWindow.updateFromPulley
                 text: qsTr("Update")
-                onClicked: appWindow.updateEverything()
+                onClicked: appWindow.updateFromPulley()
             }
         }
 

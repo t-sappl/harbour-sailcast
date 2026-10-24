@@ -38,6 +38,15 @@ Page {
 
     SilicaListView {
         id: list
+        // Opens at the top with the page header (66, 83): no current item
+        // (ListView keeps item 0 in view while the header grows), and the
+        // top is kept until the user moves the list
+        currentIndex: -1
+        property bool _keepTop: true
+        onMovementStarted: _keepTop = false
+        onContentHeightChanged: if (_keepTop) positionViewAtBeginning()
+        onOriginYChanged: if (_keepTop) positionViewAtBeginning()
+        Component.onCompleted: positionViewAtBeginning()
         anchors.fill: parent
         anchors.bottomMargin: appWindow.playerBarHeight
         anchors.rightMargin: appWindow.playerPanelWidth

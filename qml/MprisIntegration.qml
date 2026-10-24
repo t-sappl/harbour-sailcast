@@ -7,8 +7,10 @@ import Amber.Mpris 1.0
 // keeps working, just without these controls. No visual children here -
 // they broke the MPRIS registration in Sailwave.
 //
-// "Next": next chapter, after the last one the next playlist episode, else
-// the latest one in progress (as the cover). "Previous": chapter start /
+// "Next"/"Previous" as set in "player.remoteNext"/"player.remotePrev" (99; the cover has its
+// own setting since 87 - see
+// PlayerController.remoteNext): by default next chapter, after the last one
+// the next playlist episode, else the latest one in progress / chapter start,
 // previous chapter, without chapters the usual skip back.
 MprisPlayer {
     serviceName: "harbour-sailcast"
@@ -41,6 +43,6 @@ MprisPlayer {
     onPauseRequested: appWindow.player.pause()
     onPlayPauseRequested: appWindow.player.toggle()
     onStopRequested: appWindow.player.pause()
-    onNextRequested: appWindow.player.next()
-    onPreviousRequested: appWindow.player.previous()
+    onNextRequested: appWindow.player.remoteNext()
+    onPreviousRequested: appWindow.player.remotePrevious()
 }

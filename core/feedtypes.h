@@ -31,6 +31,15 @@ struct ParsedEpisode
     QString imageUrl;       // episode image (itunes:image), may be empty
     QString chaptersUrl;    // podcast:chapters (JSON), loaded later
     QList<ParsedChapter> chapters; // Podlove Simple Chapters in the feed
+    int season = 0;         // itunes:season / podcast:season, 0 = none (83)
+    int episodeNumber = 0;  // itunes:episode / podcast:episode, 0 = none (83)
+};
+
+// podcast:funding (83): a link to support the podcast
+struct ParsedFunding
+{
+    QString url;
+    QString title;
 };
 
 struct ParsedFeed
@@ -41,6 +50,7 @@ struct ParsedFeed
     QString author;
     QString coverUrl;
     QString newUrl;         // itunes:new-feed-url
+    QList<ParsedFunding> funding; // podcast:funding (83)
     QList<ParsedEpisode> episodes;
     bool repaired = false;  // broken XML was repaired completely (see FeedParser)
 

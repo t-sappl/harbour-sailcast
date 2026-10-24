@@ -59,7 +59,9 @@ public:
         DownloadingRole,
         DownloadProgressRole,
         QueuedRole,
-        BookmarkCountRole
+        BookmarkCountRole,
+        SeasonRole,          // (83) 0 = none
+        EpisodeNumberRole    // (83) 0 = none
     };
 
     explicit EpisodeListModel(QObject *parent = nullptr);

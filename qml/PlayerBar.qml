@@ -49,6 +49,9 @@ Rectangle {
                 // episodes the bar would only be in the way there (18)
                 && (page.objectName === "episodePage"
                     || page.objectName === "settingsPage" || page.objectName === "podcastSettingsPage" || page.objectName === "aboutPage"
+                    // Settings sub-pages (88)
+                    || page.objectName.indexOf("settings") === 0
+                    || page.objectName.indexOf("restoreBackup") === 0
                     || page.objectName === "importExportPage"
                     || page.objectName === "addPodcastDialog"
                     || page.objectName === "folderNameDialog"

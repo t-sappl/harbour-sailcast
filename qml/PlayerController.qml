@@ -25,7 +25,10 @@ import QtMultimedia 5.6
 //   only loaded on the first "play" (loading it paused in advance left the
 //   player in a state where several presses were needed).
 // - next(): next chapter; after the last one the next playlist episode,
-//   else the most recently played episode in progress (cover, lock screen).
+//   else the most recently played episode in progress. The lock screen and
+//   the headset use remoteNext()/remotePrevious(), which follow the setting
+//   "player.remotePrev"/"player.remoteNext" (99); the cover's second button coverAction()
+//   ("player.coverButton", 87).
 Item {
     id: controller
 
@@ -345,14 +348,22 @@ Item {
         }
     }
 
-    // Cover and lock screen "next": next chapter, after the last one the
-    // next episode (playlist, else the latest one in progress)
+    // In-app "next": next chapter, after the last one the next episode
+    // (playlist, else the latest one in progress)
     function next() {
         if (!hasEpisode) {
             return
         }
         if (chapterIndex + 1 < chapters.length) {
             nextChapter()
+            return
+        }
+        nextEpisode()
+    }
+
+    // Next episode: playlist, else the latest one in progress
+    function nextEpisode() {
+        if (!hasEpisode) {
             return
         }
         var id = core.nextEpisode(episodeId)
@@ -362,6 +373,75 @@ Item {
             _setQueueMode(core.isQueued(id))
             var data = core.episode(id)
             _load(id, _startFor(data), true)
+        }
+    }
+
+    // Second button of the app cover (87, setting "player.coverButton"):
+    // "next" (default: chapter, then episode - as next()), "back" (skip
+    // back), "forward" (skip forward), "sleep" (sleep timer 15 min / off -
+    // handled by the cover), "bookmark" (93: an unnamed bookmark at the
+    // current position - handled by the cover)
+    property string coverButton: core.setting("player.coverButton", "next")
+
+    function coverAction() {
+        if (!hasEpisode) {
+            return
+        }
+        if (coverButton === "back") {
+            skip(-skipBackSeconds)
+        } else if (coverButton === "forward") {
+            skip(skipForwardSeconds)
+        } else {
+            next()
+        }
+    }
+
+    // The two buttons of the lock screen and the headset (83, each on its
+    // own since 99; the app cover has its own setting since 87). Only
+    // actions that fit the arrows the system draws (101 - a bookmark or the
+    // sleep timer behind an arrow looked like a fault; they are on the cover):
+    //  "player.remotePrev": "chapter" (default: chapter start / previous
+    //    chapter, without chapters skip back), "back" (skip back)
+    //  "player.remoteNext": "chapters" (default: next chapter, then the next
+    //    episode), "episodes" (next episode), "forward" (skip forward)
+    // Taken over from "player.remoteButtons" (83-98) when not set yet;
+    // "bookmark"/"sleep" of 99-100 fall back to the defaults.
+    readonly property string _oldRemote: core.setting("player.remoteButtons", "chapters")
+    property string remotePrev: _validPrev(core.setting("player.remotePrev",
+                                                        _oldRemote === "chapters" ? "chapter" : "back"))
+    property string remoteNextAction: _validNext(core.setting("player.remoteNext",
+                                                              _oldRemote === "skip" ? "forward"
+                                                              : (_oldRemote === "episodes" ? "episodes" : "chapters")))
+
+    function _validPrev(value) {
+        return value === "back" ? "back" : "chapter"
+    }
+
+    function _validNext(value) {
+        return value === "forward" || value === "episodes" ? value : "chapters"
+    }
+
+    function remoteNext() {
+        if (!hasEpisode) {
+            return
+        }
+        if (remoteNextAction === "forward") {
+            skip(skipForwardSeconds)
+        } else if (remoteNextAction === "episodes") {
+            nextEpisode()
+        } else {
+            next()
+        }
+    }
+
+    function remotePrevious() {
+        if (!hasEpisode) {
+            return
+        }
+        if (remotePrev === "back") {
+            skip(-skipBackSeconds)
+        } else {
+            previous()
         }
     }
 

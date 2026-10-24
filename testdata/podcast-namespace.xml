@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Test feed for 83: season/episode numbers and podcast:funding
+     sailcast-cli parse-file testdata/podcast-namespace.xml -->
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Namespace Test</title>
+    <link>https://example.org/</link>
+    <description>Feed with Podcasting 2.0 tags</description>
+    <podcast:funding url="https://example.org/support">Support us</podcast:funding>
+    <podcast:funding url="https://example.org/patreon">Patreon</podcast:funding>
+    <podcast:funding url="javascript:alert(1)">ignored</podcast:funding>
+    <item>
+      <title>Season 2, episode 14 (iTunes and podcast tags)</title>
+      <guid>ns-1</guid>
+      <pubDate>Thu, 22 Oct 2026 08:00:00 +0000</pubDate>
+      <enclosure url="https://example.org/1.mp3" type="audio/mpeg" length="1000"/>
+      <itunes:season>2</itunes:season>
+      <itunes:episode>13</itunes:episode>
+      <podcast:episode>14</podcast:episode>
+    </item>
+    <item>
+      <title>Episode number only</title>
+      <guid>ns-2</guid>
+      <pubDate>Wed, 21 Oct 2026 08:00:00 +0000</pubDate>
+      <enclosure url="https://example.org/2.mp3" type="audio/mpeg" length="1000"/>
+      <itunes:episode>7</itunes:episode>
+    </item>
+    <item>
+      <title>Decimal podcast:episode keeps the iTunes number</title>
+      <guid>ns-3</guid>
+      <pubDate>Tue, 20 Oct 2026 08:00:00 +0000</pubDate>
+      <enclosure url="https://example.org/3.mp3" type="audio/mpeg" length="1000"/>
+      <itunes:episode>6</itunes:episode>
+      <podcast:episode>6.5</podcast:episode>
+    </item>
+    <item>
+      <title>No numbers</title>
+      <guid>ns-4</guid>
+      <pubDate>Mon, 19 Oct 2026 08:00:00 +0000</pubDate>
+      <enclosure url="https://example.org/4.mp3" type="audio/mpeg" length="1000"/>
+    </item>
+  </channel>
+</rss>

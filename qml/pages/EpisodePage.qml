@@ -40,10 +40,14 @@ Page {
     // Bookmarks of this episode (47)
     property var bookmarkList: core.bookmarks(episodeId)
 
+    // The bookmark is stored right away; a small panel at the bottom then
+    // offers its name and note (89) - tap beside it or swipe it down when
+    // not needed. What was typed is kept when the panel closes.
     function addBookmark() {
         var seconds = page.isCurrent ? page.player.position : page.shownPosition
-        if (core.addBookmark(page.episodeId, seconds) > 0) {
-            appWindow.showMessage(qsTr("Bookmark at %1").arg(TimeFormat.clock(seconds)))
+        var id = core.addBookmark(page.episodeId, seconds)
+        if (id > 0) {
+            bookmarkPanel.show(id, seconds)
         }
     }
     // Time stamps such as "12:34" or "1:02:03" in the show notes become
@@ -136,6 +140,16 @@ Page {
         contentHeight: column.height + (page.twoColumns ? 0 : Theme.paddingMedium + infoColumn.height) + Theme.paddingLarge
 
         PullDownMenu {
+            // (83) Share the episode link, optionally from the shown position
+            MenuItem {
+                visible: page.shownPosition > 0
+                text: qsTr("Share from %1").arg(TimeFormat.clock(page.shownPosition))
+                onClicked: appWindow.shareEpisode(page.episodeId, page.shownPosition)
+            }
+            MenuItem {
+                text: qsTr("Share")
+                onClicked: appWindow.shareEpisode(page.episodeId, 0)
+            }
             MenuItem {
                 visible: (page.episode.link || "").length > 0
                 text: qsTr("Open in browser")
@@ -195,7 +209,8 @@ Page {
                 episodeImageUrl: page.episode.episodeImageUrl || ""
                 coverUrl: page.episode.coverUrl || ""
                 fallbackText: page.episode.podcastTitle || ""
-                badgeFactor: 0.3
+                // The podcast is in the page header (96)
+                showBadge: false
 
                 SleepBadge {
                     visible: page.isCurrent && running
@@ -235,6 +250,11 @@ Page {
                 text: {
                     var e = page.episode
                     var parts = [TimeFormat.day(e.published, qsTr("today"), qsTr("yesterday"))]
+                    // Season / episode number from the feed (83)
+                    if (e.episodeNumber > 0) {
+                        parts.unshift(e.season > 0 ? qsTr("S%1 E%2").arg(e.season).arg(e.episodeNumber)
+                                                   : qsTr("#%1").arg(e.episodeNumber))
+                    }
                     if (e.duration > 0) {
                         parts.push(TimeFormat.length(e.duration, qsTr("%1 h %2 min"), qsTr("%1 min")))
                     }
@@ -603,5 +623,123 @@ Page {
 
     RemorsePopup {
         id: remorse
+    }
+
+    // Name and note of a new bookmark (89): docked at the bottom, modal - a
+    // tap beside it or a swipe down closes it; Enter goes from the name to
+    // the note and closes from there. Not a dialog page: most bookmarks are
+    // set while listening, often without any text.
+    DockedPanel {
+        id: bookmarkPanel
+        width: page.width
+        height: panelColumn.height + Theme.paddingLarge
+        dock: Dock.Bottom
+        modal: true
+        // Above the page's flickables (two columns in landscape)
+        z: 100
+
+        // Opaque background (94): the panel itself is translucent and the
+        // toolbar and play buttons showed through the fields
+        Rectangle {
+            anchors.fill: parent
+            color: Theme.highlightDimmerColor
+            Rectangle {
+                anchors.fill: parent
+                color: Theme.rgba(Theme.highlightBackgroundColor, 0.18)
+            }
+            Rectangle {
+                width: parent.width
+                height: Math.max(1, Theme.paddingSmall / 4)
+                color: Theme.rgba(Theme.highlightColor, 0.5)
+            }
+        }
+
+        property int bookmarkId: 0
+        property int seconds: 0
+        property bool saved: true
+
+        function show(id, position) {
+            bookmarkId = id
+            seconds = position
+            saved = false
+            nameField.text = ""
+            noteField.text = ""
+            open = true
+            nameField.forceActiveFocus()
+        }
+
+        function save() {
+            if (saved || bookmarkId <= 0) {
+                return
+            }
+            saved = true
+            var name = nameField.text.trim()
+            var note = noteField.text.trim()
+            if (name.length > 0 || note.length > 0) {
+                core.editBookmark(bookmarkId, name, note)
+            }
+        }
+
+        // Leaving the page with the panel open keeps what was typed
+        Connections {
+            target: page
+            onStatusChanged: {
+                if (page.status === PageStatus.Deactivating && bookmarkPanel.open) {
+                    bookmarkPanel.open = false
+                }
+            }
+        }
+        Component.onDestruction: save()
+
+        onOpenChanged: {
+            if (!open) {
+                nameField.focus = false
+                noteField.focus = false
+                save()
+            }
+        }
+
+        Column {
+            id: panelColumn
+            width: parent.width
+            y: Theme.paddingSmall
+
+            Item {
+                width: parent.width
+                height: Theme.itemSizeExtraSmall
+                Label {
+                    x: Theme.horizontalPageMargin
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "\u2605 " + qsTr("Bookmark at %1").arg(TimeFormat.clock(bookmarkPanel.seconds))
+                    color: Theme.highlightColor
+                }
+                IconButton {
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.paddingMedium
+                    anchors.verticalCenter: parent.verticalCenter
+                    icon.source: "image://theme/icon-m-close"
+                    onClicked: bookmarkPanel.open = false
+                }
+            }
+
+            TextField {
+                id: nameField
+                width: parent.width
+                placeholderText: qsTr("Name (optional)")
+                label: qsTr("Name")
+                inputMethodHints: Qt.ImhNoPredictiveText
+                EnterKey.iconSource: "image://theme/icon-m-enter-next"
+                EnterKey.onClicked: noteField.forceActiveFocus()
+            }
+
+            TextField {
+                id: noteField
+                width: parent.width
+                placeholderText: qsTr("Note (optional)")
+                label: qsTr("Note")
+                EnterKey.iconSource: "image://theme/icon-m-enter-accept"
+                EnterKey.onClicked: bookmarkPanel.open = false
+            }
+        }
     }
 }

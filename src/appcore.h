@@ -14,6 +14,7 @@ class FeedProbe;
 class PodcastIndex;
 class NextcloudLogin;
 class GpodderDevices;
+class WebDavBackup;
 struct PodcastSearchResult;
 struct FeedProbeResult;
 class QNetworkConfigurationManager;
@@ -87,6 +88,8 @@ public:
     // author, coverUrl, episodes, subscribed, error}
     Q_INVOKABLE void checkFeed(const QString &url);
     Q_INVOKABLE bool isSubscribed(const QString &url) const;
+    // Id of the podcast with this feed address (http = https), -1 = none (99)
+    Q_INVOKABLE int podcastIdForUrl(const QString &url) const;
     // Podcast search in the Podcast Index directory (key built in, see
     // podcastindex.pri.example); searchFinished() with [{title, author, url,
     // imageUrl, description, language, episodes, subscribed}] or searchFailed()
@@ -108,13 +111,16 @@ public:
     Q_INVOKABLE void startBrowserLogin(const QString &server);
     Q_INVOKABLE void cancelBrowserLogin();
     // gpodder.net API devices (51): list the account's devices
-    // (devicesListed [{id, caption, type, subscriptions}] / devicesFailed),
+    // (devicesListed [{id, caption, type, subscriptions, group}] / devicesFailed;
+    // group: index of the sync group on the server, -1 = none - 83),
     // choose one (existing = do not register it again; another device
     // starts over with a first sync) and put devices into one sync group
     Q_INVOKABLE void listDevices(const QString &server, const QString &user, const QString &password);
     Q_INVOKABLE void chooseDevice(const QString &deviceId, bool existing);
     // newDevice: a device that is not on the server yet - registered first (77)
-    Q_INVOKABLE void synchronizeDevices(const QStringList &deviceIds, const QString &newDevice = QString());
+    // stopIds (83): devices taken out of their sync group
+    Q_INVOKABLE void synchronizeDevices(const QStringList &deviceIds, const QString &newDevice = QString(),
+                                        const QStringList &stopIds = QStringList());
     bool browserLoginActive() const;
     // Sets the account ("nextcloud" / "gpodder"); another account than
     // before starts over with a first sync. Returns false if the values
@@ -205,6 +211,13 @@ public:
     // podcastTitle, imageUrl}] - of one episode by position, with 0 all
     // (newest first)
     Q_INVOKABLE QVariantList bookmarks(int episodeId = 0) const;
+    // Global search (85) on "Search / add podcast", in the own data:
+    // {podcasts: [{podcastId, title, author, coverUrl}] (title/author),
+    //  episodes: [{episodeId, title, podcastTitle, imageUrl, published,
+    //  duration, played, position}] (titles, newest first),
+    //  bookmarks: [as bookmarks()] (name, note, episode title)} -
+    // at most 5 / 20 / 5, show notes are not searched
+    Q_INVOKABLE QVariantMap searchLocal(const QString &term) const;
     Q_INVOKABLE int addBookmark(int episodeId, int seconds);
     Q_INVOKABLE void setBookmarkNote(int bookmarkId, const QString &note);
     // Name and note at once (50)
@@ -246,6 +259,12 @@ public:
     Q_INVOKABLE void setSetting(const QString &key, const QString &value);
     // Address or message with tokens hidden (UrlMask) - for display
     Q_INVOKABLE QString maskUrl(const QString &text) const;
+    // Link to share an episode (83): {url, title} - the episode's web page,
+    // else the podcast's website, else the media address if it carries no
+    // token; empty url if there is nothing that can be shared. seconds > 0
+    // adds the position as "#t=h:mm:ss" (Podlove/media fragment) and to
+    // the title.
+    Q_INVOKABLE QVariantMap shareLink(int episodeId, int seconds = 0) const;
 
     // --- Import and export ---
     // folderId (45): folder for the podcasts that the file puts in no
@@ -255,11 +274,41 @@ public:
     Q_INVOKABLE void importGpodder(const QString &path);
     // Replaces the app database with a copy (e.g. a backup, or the
     // desktop tool's database)
-    Q_INVOKABLE void importDatabase(const QString &path);
+    // keepFolders (93): a backup of this phone - its archive and download
+    // folders stay valid (a database from another device resets them)
+    Q_INVOKABLE void importDatabase(const QString &path, bool keepFolders = false);
     // Write to Downloads; return the path, empty on error (with a message)
     // folderIds (45): only these folders (0 = "Other podcasts"); empty = all
     Q_INVOKABLE QString exportOpml(const QVariantList &folderIds = QVariantList());
     Q_INVOKABLE QString exportDatabase();
+
+    // --- Automatic database backup (83) ---
+    // Setting "backup.days": 0 = off, 1 = daily, 7 = weekly (default).
+    // Copies go to Downloads/Sailcast-Backups (Sailjail allows writing
+    // there), named sailcast-YYYY-MM-DD.db; the newest 5 are kept.
+    Q_INVOKABLE QString backupDirectory() const;
+    // Backs up now; returns the path, empty on error (with a message).
+    // With a Nextcloud sync account and "backup.nextcloud" (default on) the
+    // copy also goes to the Nextcloud folder "Sailcast-Backups" (WebDAV,
+    // newest 5 kept); password: the sync password (else the one of the
+    // last sync). Manual backups report the upload with a message.
+    Q_INVOKABLE QString backupNow(const QString &password = QString());
+    // Time of the last local / Nextcloud backup (ms, 0 = never)
+    Q_INVOKABLE double lastBackup() const;
+    Q_INVOKABLE double lastNextcloudBackup() const;
+    Q_INVOKABLE bool nextcloudBackupPossible() const;
+
+    // --- Restore (93) ---
+    // Local backups, newest first: [{path, name, modified (ms), size}];
+    // the copy made before the last restore is {undo: true}
+    Q_INVOKABLE QVariantList localBackups() const;
+    // Nextcloud backups -> nextcloudBackupsListed(ok, [{name, modified, size}], error)
+    Q_INVOKABLE void listNextcloudBackups(const QString &password = QString());
+    // Downloads one into the backup folder -> nextcloudBackupFetched(ok, path, error)
+    Q_INVOKABLE void fetchNextcloudBackup(const QString &name, const QString &password = QString());
+    // Replaces the database with a backup; the current state is copied to
+    // "before-restore.db" first (offered as "before the last restore")
+    Q_INVOKABLE bool restoreBackup(const QString &path);
 
 signals:
     void updatingChanged();
@@ -285,6 +334,8 @@ signals:
     void devicesListed(const QVariantList &devices);
     void devicesFailed(const QString &error);
     void devicesSynchronized();
+    void nextcloudBackupsListed(bool ok, const QVariantList &backups, const QString &error);
+    void nextcloudBackupFetched(bool ok, const QString &path, const QString &error);
     // Bookmarks of an episode changed (47); 0 = several
     void bookmarksChanged(int episodeId);
     void browserLoginUrl(const QString &url);
@@ -305,6 +356,14 @@ private:
     void archiveStateChanged(int episodeId);
     void writeArchiveMetadata();
     void cleanupOnStart();
+    // A backup when the last one is older than "backup.days" (83); the
+    // Nextcloud copy separately (it needs the sync password - also checked
+    // after every sync)
+    void backupIfDue();
+    QString makeBackup();
+    void uploadBackup(const QString &path, const QString &password, bool manual);
+    // Database (after a WAL checkpoint) copied to path
+    bool copyDatabaseTo(const QString &path);
     void onFeedChecked(const FeedProbeResult &result);
     // After episodes became played: out of the playlist (24) and, with
     // "cleanup.days" = 0, their downloads deleted right away
@@ -320,6 +379,8 @@ private:
     PodcastIndex *m_index;
     NextcloudLogin *m_browserLogin;
     GpodderDevices *m_devices;
+    WebDavBackup *m_webdav;
+    bool m_webdavManual = false;
     QNetworkConfigurationManager *m_networkConfig = nullptr;
     QTimer *m_metadataTimer;
     QSet<qint64> m_metadataDirty;   // podcasts whose episodes.json is outdated

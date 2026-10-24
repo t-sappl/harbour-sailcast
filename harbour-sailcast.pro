@@ -4,7 +4,7 @@ TARGET = harbour-sailcast
 CONFIG += sailfishapp sailfishapp_i18n
 TRANSLATIONS += translations/harbour-sailcast-de.ts
 
-QT += network sql multimedia
+QT += network sql multimedia dbus
 
 # Sailfish Secrets for the gpodder sync password (see src/secretstore.h).
 # No own "CONFIG += link_pkgconfig": qmake loads CONFIG features in reverse
@@ -59,6 +59,8 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/SleepBadge.qml \
     qml/SleepTimer.qml \
     qml/TimeFormat.js \
+    qml/images/cover-sleep.png \
+    qml/images/cover-bookmark.png \
     qml/cover/CoverPage.qml \
     qml/pages/AddPodcastDialog.qml \
     qml/pages/ArchiveDialog.qml \
@@ -76,7 +78,16 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/PodcastsMenu.qml \
     qml/pages/PodcastsPage.qml \
     qml/pages/SearchPage.qml \
+    qml/pages/LocalSearchPage.qml \
     qml/pages/SettingsPage.qml \
+    qml/pages/SettingsGeneralPage.qml \
+    qml/pages/SettingsSyncPage.qml \
+    qml/pages/SettingsPlaybackPage.qml \
+    qml/pages/SettingsDownloadsPage.qml \
+    qml/pages/SettingsBackupPage.qml \
+    qml/pages/RestoreBackupPage.qml \
+    qml/pages/RestoreBackupDialog.qml \
+    qml/SettingsEntry.qml \
     qml/pages/FolderNameDialog.qml \
     qml/pages/FolderPickerDialog.qml \
     qml/pages/FolderSelectPage.qml \

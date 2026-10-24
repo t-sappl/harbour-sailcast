@@ -121,6 +121,11 @@ ListItem {
                     core.markUnplayed(model.episodeId)
                 }
             }
+            // (83) Opened from the window, not from this menu (25)
+            MenuItem {
+                text: qsTr("Share")
+                onClicked: appWindow.shareEpisode(model.episodeId, 0)
+            }
         }
     }
 
@@ -263,6 +268,11 @@ ListItem {
                     id: statusLabel
                     text: {
                         var parts = [TimeFormat.day(model.published, qsTr("today"), qsTr("yesterday"))]
+                        // Season / episode number from the feed (83)
+                        if (model.episodeNumber > 0) {
+                            parts.unshift(model.season > 0 ? qsTr("S%1 E%2").arg(model.season).arg(model.episodeNumber)
+                                                           : qsTr("#%1").arg(model.episodeNumber))
+                        }
                         if (model.played) {
                             parts.push(qsTr("played"))
                         } else if (item.showProgress && item.remaining > 0) {

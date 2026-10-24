@@ -92,6 +92,9 @@ Page {
         model: episodes
         onOriginYChanged: page._restoreTop()
         onContentHeightChanged: page._restoreTop()
+        // No current item (83): ListView keeps item 0 in view while the
+        // header grows, which pushed the page header out of view
+        currentIndex: -1
 
         // Entries with a countdown at the top (60): the farthest
         // pull, so a long pulley is not stopped on them by mistake
@@ -129,6 +132,12 @@ Page {
                         core.updatePodcast(page.podcastId)
                     })
                 }
+            }
+            // podcast:funding of the feed (83) - the first link
+            MenuItem {
+                visible: (page.podcast.funding || []).length > 0
+                text: qsTr("Support the podcast")
+                onClicked: Qt.openUrlExternally(page.podcast.funding[0].url)
             }
             MenuItem {
                 text: qsTr("Podcast settings")

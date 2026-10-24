@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import Sailfish.Share 1.0
+import Nemo.DBus 2.0
 import "TimeFormat.js" as TimeFormat
 import harbour.sailcast 1.0
 import "pages"
@@ -121,6 +123,110 @@ ApplicationWindow {
 
     function remorseDeleteDownload(episodeId) {
         windowRemorse.execute(qsTr("Deleting download"), function() { core.deleteDownload(episodeId) })
+    }
+
+    // Sharing an episode (83): link to its web page (AppCore::shareLink) in
+    // the format of the browser's link sharing, so mail, messages and the
+    // clipboard take it as a link. Here and not in a context menu (25).
+    ShareAction {
+        id: episodeShare
+        mimeType: "text/x-url"
+    }
+
+    function shareEpisode(episodeId, seconds) {
+        var link = core.shareLink(episodeId, seconds || 0)
+        if (!link.url) {
+            showMessage(qsTr("This episode has no address that can be shared"))
+            return
+        }
+        episodeShare.title = qsTr("Share episode")
+        episodeShare.resources = [{ "type": "text/x-url", "linkTitle": link.title, "status": link.url }]
+        episodeShare.trigger()
+    }
+
+    // --- Sailcast as a share target (84) ---
+    // .desktop: one share method "podcast" for links (text/x-url, from the
+    // browser) and text (text/plain), ExecDBus so a share also starts the app; the
+    // D-Bus name (OrganizationName.ApplicationName) is registered in main()
+    // once this QML is loaded. Own adaptors instead of ShareProvider: the
+    // browser shares a link as {type, linkTitle, status}, which
+    // ShareProvider rejects (no "name"/"data"). Whatever arrives goes into
+    // the field of "Search / add podcast": an address is checked, other
+    // text searched.
+    readonly property string dbusName: "harbour-sailcast.harbour-sailcast"
+
+    // One entry in the sharing menu (85) for links and text: the path is
+    // /share/<method of the .desktop file>
+    DBusAdaptor {
+        service: appWindow.dbusName
+        path: "/share/podcast"
+        iface: "org.sailfishos.share"
+        function share(shareConfiguration) { appWindow.receiveShare(shareConfiguration) }
+    }
+
+    // Only used to read a share configuration
+    ShareAction {
+        id: shareReader
+    }
+
+    property string _sharedText: ""
+
+    // The text of the first resource: a link ({status}), raw data ({data})
+    // or plain text; from longer text the first web address
+    function sharedTextOf(configuration) {
+        var resources = []
+        try {
+            shareReader.loadConfiguration(configuration)
+            resources = shareReader.resources
+        } catch (e) {
+            console.warn("Share: " + e)
+        }
+        if ((!resources || resources.length === 0) && configuration && configuration.resources) {
+            resources = configuration.resources
+        }
+        if (!resources || resources.length === 0) {
+            return ""
+        }
+        var r = resources[0]
+        var text = typeof r === "string" ? r : (r.status || r.data || r.linkTitle || "")
+        text = ("" + text).trim()
+        var url = text.match(/(https?|feed|podcast|pcast|itpc):\/\/[^\s"'<>]+/i)
+        if (url) {
+            // Podcast app schemes are web addresses: podcast://x -> https://x
+            // (without punctuation that ends the sentence around it)
+            return url[0].replace(/[.,;:!?)\]]+$/, "").replace(/^(feed|podcast|pcast|itpc):\/\/(https?:\/\/)?/i, function(all, scheme, inner) {
+                return inner ? inner : "https://"
+            })
+        }
+        return text.length > 200 ? text.substring(0, 200) : text
+    }
+
+    function receiveShare(configuration) {
+        var text = sharedTextOf(configuration)
+        // Without this the sharing menu keeps waiting and the app stays
+        // in the background
+        appWindow.activate()
+        if (text.length === 0) {
+            showMessage(qsTr("Nothing to add in the shared content"))
+            return
+        }
+        _sharedText = text
+        // The page stack may still be starting (app started by the share)
+        shareTimer.restart()
+    }
+
+    Timer {
+        id: shareTimer
+        interval: 600
+        onTriggered: {
+            if (pageStack.depth === 0 || pageStack.busy) {
+                restart()
+                return
+            }
+            var text = appWindow._sharedText
+            appWindow._sharedText = ""
+            pageStack.push(Qt.resolvedUrl("pages/SearchPage.qml"), { initialText: text })
+        }
     }
 
     function remorseUnsubscribe(podcastId, title) {
@@ -327,6 +433,29 @@ ApplicationWindow {
         _updateAfterSync = true
         if (!core.syncing) {
             startSync(true)
+        }
+    }
+
+    // "Sync und Update" (86, setting "sync.withUpdate", default on): one
+    // pulley entry "Aktualisieren" for both; off: "Synchronisieren" and
+    // "Aktualisieren" (feeds only) as two entries
+    property bool syncWithUpdate: core.setting("sync.withUpdate", "1") === "1"
+    readonly property bool separateSync: core.syncConfigured && !syncWithUpdate
+
+    // Pulley "Synchronisieren" (86): only the sync, no feed update after it
+    function syncOnly() {
+        _updateAfterSync = false
+        startSync(true)
+    }
+
+    // Pulley "Aktualisieren" as set: sync + feeds, or the feeds alone
+    function updateFromPulley() {
+        if (separateSync) {
+            if (!core.updating) {
+                core.updateAll()
+            }
+        } else {
+            updateEverything()
         }
     }
 

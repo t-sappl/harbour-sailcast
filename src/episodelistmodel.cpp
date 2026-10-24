@@ -243,6 +243,8 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case InProgressRole: return e.inProgress();
     case ChapterCountRole: return e.chapterCount;
     case BookmarkCountRole: return e.bookmarkCount;
+    case SeasonRole: return e.season;
+    case EpisodeNumberRole: return e.episodeNumber;
     case DownloadedRole: return e.downloaded;
     case DownloadingRole: return core ? core->isDownloading(int(e.id)) : false;
     case DownloadProgressRole: return core ? core->downloadProgress(int(e.id)) : 0.0;
@@ -269,6 +271,8 @@ QHash<int, QByteArray> EpisodeListModel::roleNames() const
     names.insert(InProgressRole, "inProgress");
     names.insert(ChapterCountRole, "chapterCount");
     names.insert(BookmarkCountRole, "bookmarkCount");
+    names.insert(SeasonRole, "season");
+    names.insert(EpisodeNumberRole, "episodeNumber");
     names.insert(DownloadedRole, "downloaded");
     names.insert(DownloadingRole, "downloading");
     names.insert(DownloadProgressRole, "downloadProgress");

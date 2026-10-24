@@ -42,7 +42,7 @@ inline QByteArray userAgent()
 {
     // Honest, specific app name (61): Podcast Index blocks generic and
     // sample user agents since its terms of service 2.0 (Oct 2026)
-    return QByteArrayLiteral("harbour-sailcast/1.0 (Sailfish OS; +https://github.com/t-sappl/harbour-sailcast)");
+    return QByteArrayLiteral("harbour-sailcast/1.1 (Sailfish OS; +https://github.com/t-sappl/harbour-sailcast)");
 }
 
 } // namespace NetworkAccess

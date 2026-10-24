@@ -80,10 +80,17 @@ void PodcastIndex::search(const QString &term, int max)
 
 void PodcastIndex::send(const QString &text, int max)
 {
-    QUrl url(QString::fromLatin1(ApiBase) + QStringLiteral("search/byterm"));
+    // An Apple Podcasts link (103): looked up by its id
+    const bool byItunesId = text.startsWith(QLatin1String("itunes:"));
+    QUrl url(QString::fromLatin1(ApiBase) + (byItunesId ? QStringLiteral("podcasts/byitunesid")
+                                                         : QStringLiteral("search/byterm")));
     QUrlQuery query;
-    query.addQueryItem(QStringLiteral("q"), text);
-    query.addQueryItem(QStringLiteral("max"), QString::number(max));
+    if (byItunesId) {
+        query.addQueryItem(QStringLiteral("id"), text.mid(7));
+    } else {
+        query.addQueryItem(QStringLiteral("q"), text);
+        query.addQueryItem(QStringLiteral("max"), QString::number(max));
+    }
     url.setQuery(query);
 
     const QByteArray date = QByteArray::number(QDateTime::currentMSecsSinceEpoch() / 1000);
@@ -152,7 +159,11 @@ void PodcastIndex::onFinished(QNetworkReply *reply, const QString &term, int max
         return;
     }
     const QJsonObject root = QJsonDocument::fromJson(body).object();
-    const QJsonArray feeds = root.value(QStringLiteral("feeds")).toArray();
+    QJsonArray feeds = root.value(QStringLiteral("feeds")).toArray();
+    // podcasts/byitunesid answers with one "feed" (an empty array if unknown)
+    if (root.value(QStringLiteral("feed")).isObject()) {
+        feeds.append(root.value(QStringLiteral("feed")));
+    }
     QList<PodcastSearchResult> results;
     for (int i = 0; i < feeds.size(); ++i) {
         const QJsonObject f = feeds.at(i).toObject();

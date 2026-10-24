@@ -190,22 +190,23 @@ QImage ArtComposer::render() const
                           size, size);
 
         if (!m_logo.isNull()) {
-            // Podcast cover as a small rounded badge with a white frame in
-            // the bottom right corner
+            // Podcast cover as a small rounded badge in the bottom right
+            // corner with a fine light edge (96, as in EpisodeArt - the
+            // thick white frame looked like a mount)
             const qreal badge = size * 0.32;
-            const qreal margin = size * 0.04;
+            const qreal margin = size * 0.03;
             const QRectF badgeRect(size - badge - margin, size - badge - margin, badge, badge);
             painter.setPen(Qt::NoPen);
-            painter.setBrush(Qt::white);
-            painter.drawRoundedRect(badgeRect, badge * 0.2, badge * 0.2);
+            painter.setBrush(QColor(255, 255, 255, 217));
+            painter.drawRoundedRect(badgeRect, badge * 0.12, badge * 0.12);
 
-            const qreal inset = badge * 0.06;
+            const qreal inset = qMax(qreal(1), qreal(badge * qreal(0.025)));
             const QRectF coverArea = badgeRect.adjusted(inset, inset, -inset, -inset);
             const QSize areaSize = coverArea.size().toSize();
             const QImage cover = m_logo.scaled(areaSize, Qt::KeepAspectRatioByExpanding,
                                                Qt::SmoothTransformation);
             QPainterPath clip;
-            clip.addRoundedRect(coverArea, badge * 0.15, badge * 0.15);
+            clip.addRoundedRect(coverArea, badge * 0.1, badge * 0.1);
             painter.save();
             painter.setClipPath(clip);
             painter.drawImage(coverArea.topLeft(), cover,

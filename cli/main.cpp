@@ -368,11 +368,16 @@ int cmdParseFile(const QString &path)
           << "Episodes:  " << feed.episodes.size() << nl
           << "Repaired:  " << (feed.repaired ? "yes" : "no") << nl
           << "Error:     " << (error.isEmpty() ? QStringLiteral("none") : error) << nl;
+    // podcast:funding (83)
+    for (int i = 0; i < feed.funding.size(); ++i) {
+        out() << "Funding:   " << feed.funding.at(i).url << "  " << feed.funding.at(i).title << nl;
+    }
     for (int i = 0; i < feed.episodes.size(); ++i) {
         const ParsedEpisode &e = feed.episodes.at(i);
         out() << "  " << formatDate(e.published) << "  "
               << formatDuration(e.duration > 0 ? e.duration : -1) << "  "
               << (e.chapters.isEmpty() ? QString() : QStringLiteral("ch:%1  ").arg(e.chapters.size()))
+              << (e.episodeNumber > 0 ? QStringLiteral("S%1E%2  ").arg(e.season).arg(e.episodeNumber) : QString())
               << e.title << nl;
         if (!e.description.isEmpty()) {
             out() << "      " << elide(e.description, 90) << nl;
@@ -1016,7 +1021,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("sailcast-cli"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.0 (build 80)"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.1 (build 105)"));
 
     const QString defaultDb = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
             + QStringLiteral("/sailcast-cli/sailcast.db");

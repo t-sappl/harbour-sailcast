@@ -79,14 +79,41 @@ void GpodderDevices::list()
                 devices.append(d);
             }
         }
-        emit listed(devices);
+        listGroups(devices);
     });
 }
 
-void GpodderDevices::synchronize(const QStringList &deviceIds, const QString &registerFirst)
+void GpodderDevices::listGroups(const QList<GpodderDevice> &devices)
+{
+    const QString user = QString::fromLatin1(QUrl::toPercentEncoding(m_user));
+    QNetworkReply *reply = send("GET", QStringLiteral("sync-devices/%1.json").arg(user), QByteArray());
+    connect(reply, &QNetworkReply::finished, this, [this, reply, devices]() {
+        reply->deleteLater();
+        QList<GpodderDevice> result = devices;
+        // {"synchronized": [["a", "b"], ...], "not-synchronized": [...]}
+        if (reply->error() == QNetworkReply::NoError) {
+            const QJsonArray groups = QJsonDocument::fromJson(reply->readAll()).object()
+                    .value(QStringLiteral("synchronized")).toArray();
+            for (int g = 0; g < groups.size(); ++g) {
+                const QJsonArray ids = groups.at(g).toArray();
+                for (int i = 0; i < ids.size(); ++i) {
+                    for (int d = 0; d < result.size(); ++d) {
+                        if (result[d].id == ids.at(i).toString()) {
+                            result[d].group = g;
+                        }
+                    }
+                }
+            }
+        }
+        emit listed(result);
+    });
+}
+
+void GpodderDevices::synchronize(const QStringList &deviceIds, const QString &registerFirst,
+                                 const QStringList &stopIds)
 {
     if (registerFirst.isEmpty()) {
-        postGroup(deviceIds);
+        postGroup(deviceIds, stopIds);
         return;
     }
     // Same request as SyncEngine::registerDevice (caption, type)
@@ -97,27 +124,36 @@ void GpodderDevices::synchronize(const QStringList &deviceIds, const QString &re
     const QString id = QString::fromLatin1(QUrl::toPercentEncoding(registerFirst));
     QNetworkReply *reply = send("POST", QStringLiteral("devices/%1/%2.json").arg(user, id),
                                 QJsonDocument(device).toJson(QJsonDocument::Compact));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, deviceIds]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, deviceIds, stopIds]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
             emit synchronizeFailed(errorText(reply));
             return;
         }
-        postGroup(deviceIds);
+        postGroup(deviceIds, stopIds);
     });
 }
 
-void GpodderDevices::postGroup(const QStringList &deviceIds)
+void GpodderDevices::postGroup(const QStringList &deviceIds, const QStringList &stopIds)
 {
     QJsonArray group;
     for (int i = 0; i < deviceIds.size(); ++i) {
         group.append(deviceIds.at(i));
     }
     QJsonArray groups;
-    groups.append(group);
+    // A group needs two devices; with one only the stops are sent
+    if (deviceIds.size() > 1) {
+        groups.append(group);
+    }
+    QJsonArray stop;
+    for (int i = 0; i < stopIds.size(); ++i) {
+        if (!deviceIds.contains(stopIds.at(i))) {
+            stop.append(stopIds.at(i));
+        }
+    }
     QJsonObject body;
     body.insert(QStringLiteral("synchronize"), groups);
-    body.insert(QStringLiteral("stop-synchronize"), QJsonArray());
+    body.insert(QStringLiteral("stop-synchronize"), stop);
     const QString user = QString::fromLatin1(QUrl::toPercentEncoding(m_user));
     QNetworkReply *reply = send("POST", QStringLiteral("sync-devices/%1.json").arg(user),
                                 QJsonDocument(body).toJson(QJsonDocument::Compact));

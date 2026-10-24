@@ -52,6 +52,8 @@ public:
     void setCredentials(const QString &key, const QString &secret);
     bool isAvailable() const { return !m_key.isEmpty() && !m_secret.isEmpty(); }
 
+    // A term "itunes:<id>" looks the podcast up by its Apple Podcasts id
+    // (podcasts/byitunesid, 103) - one result or none
     void search(const QString &term, int max = 40);
 
 signals:

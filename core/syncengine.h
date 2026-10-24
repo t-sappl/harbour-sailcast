@@ -62,6 +62,8 @@ public:
     SyncEngine(Database *database, FeedUpdater *updater, QObject *parent = nullptr);
 
     void setPassword(const QString &password) { m_password = password; }
+    // The password of the last sync (also used for the Nextcloud backup, 83)
+    QString password() const { return m_password; }
     bool isRunning() const { return m_running; }
     void start();
 

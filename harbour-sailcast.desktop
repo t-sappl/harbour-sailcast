@@ -8,8 +8,20 @@ Name=Sailcast
 Name[de]=Sailcast
 # App grid folders are named after common categories
 Categories=AudioVideo;Audio;Player;
+# Share target (84, one entry since 85): links from the browser and text
+# from other apps open "Search / add podcast" (harbour-sailcast.qml,
+# receiveShare)
+X-Share-Methods=podcast;
+
+[X-Share Method podcast]
+Description=Add podcast
+Description[de]=Podcast hinzufügen
+Capabilities=text/x-url;text/plain;
+SupportsMultipleFiles=false
 
 [X-Sailjail]
 OrganizationName=harbour-sailcast
 ApplicationName=harbour-sailcast
 Permissions=Internet;Audio;Downloads;Music;Secrets
+# Started over D-Bus when something is shared to it while closed (84)
+ExecDBus=harbour-sailcast

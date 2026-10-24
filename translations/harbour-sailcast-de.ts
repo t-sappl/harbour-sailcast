@@ -169,6 +169,14 @@
         <translation>Anmeldung fehlgeschlagen: %1</translation>
     </message>
     <message>
+        <source>Backup saved in the Nextcloud</source>
+        <translation>Sicherung in der Nextcloud gespeichert</translation>
+    </message>
+    <message>
+        <source>Backup to the Nextcloud failed: %1</source>
+        <translation>Sicherung in die Nextcloud fehlgeschlagen: %1</translation>
+    </message>
+    <message>
         <source>Devices could not be loaded: %1</source>
         <translation>Geräte konnten nicht geladen werden: %1</translation>
     </message>
@@ -225,6 +233,10 @@
     <message>
         <source>The feed needs a login (HTTP %1) - after subscribing, set it on the podcast page</source>
         <translation>Der Feed braucht eine Anmeldung (HTTP %1) – nach dem Abonnieren auf der Podcast-Seite eintragen</translation>
+    </message>
+    <message>
+        <source>None of the feeds this page names loads.</source>
+        <translation>Keiner der Feeds dieser Seite lässt sich laden.</translation>
     </message>
     <message>
         <source>This address is not a podcast feed</source>
@@ -356,6 +368,38 @@
     <message>
         <source>Export failed: %1</source>
         <translation>Export fehlgeschlagen: %1</translation>
+    </message>
+    <message>
+        <source>Backup failed: %1</source>
+        <translation>Sicherung fehlgeschlagen: %1</translation>
+    </message>
+    <message>
+        <source>A Nextcloud backup is already running</source>
+        <translation>Eine Nextcloud-Sicherung läuft bereits</translation>
+    </message>
+    <message>
+        <source>Nextcloud backup: the password is missing</source>
+        <translation>Nextcloud-Sicherung: Das Passwort fehlt</translation>
+    </message>
+    <message>
+        <source>Backup saved - copying it to the Nextcloud …</source>
+        <translation>Sicherung gespeichert – kopiere in die Nextcloud …</translation>
+    </message>
+    <message>
+        <source>Backup saved</source>
+        <translation>Sicherung gespeichert</translation>
+    </message>
+    <message>
+        <source>the password is missing</source>
+        <translation>das Passwort fehlt</translation>
+    </message>
+    <message>
+        <source>Backup not found: %1</source>
+        <translation>Sicherung nicht gefunden: %1</translation>
+    </message>
+    <message>
+        <source>%1 (from %2)</source>
+        <translation>%1 (ab %2)</translation>
     </message>
     <message>
         <source>Other podcasts</source>
@@ -581,12 +625,24 @@
         <translation>Als ungehört markieren</translation>
     </message>
     <message>
+        <source>Share</source>
+        <translation>Teilen</translation>
+    </message>
+    <message>
         <source>today</source>
         <translation>heute</translation>
     </message>
     <message>
         <source>yesterday</source>
         <translation>gestern</translation>
+    </message>
+    <message>
+        <source>S%1 E%2</source>
+        <translation>S%1 F%2</translation>
+    </message>
+    <message>
+        <source>#%1</source>
+        <translation>#%1</translation>
     </message>
     <message>
         <source>played</source>
@@ -623,12 +679,16 @@
 <context>
     <name>EpisodePage</name>
     <message>
-        <source>Bookmark at %1</source>
-        <translation>Lesezeichen bei %1</translation>
-    </message>
-    <message>
         <source>Tap the star to bookmark the current position - with a name and a note; all bookmarks: playlist pulley</source>
         <translation>Stern antippen: Lesezeichen an der aktuellen Stelle – mit Name und Notiz; alle Lesezeichen: Pulley der Playlist</translation>
+    </message>
+    <message>
+        <source>Share from %1</source>
+        <translation>Teilen ab %1</translation>
+    </message>
+    <message>
+        <source>Share</source>
+        <translation>Teilen</translation>
     </message>
     <message>
         <source>Open in browser</source>
@@ -661,6 +721,14 @@
     <message>
         <source>yesterday</source>
         <translation>gestern</translation>
+    </message>
+    <message>
+        <source>S%1 E%2</source>
+        <translation>S%1 F%2</translation>
+    </message>
+    <message>
+        <source>#%1</source>
+        <translation>#%1</translation>
     </message>
     <message>
         <source>%1 h %2 min</source>
@@ -761,6 +829,26 @@
         <source>Show notes</source>
         <translation>Shownotes</translation>
     </message>
+    <message>
+        <source>Bookmark at %1</source>
+        <translation>Lesezeichen bei %1</translation>
+    </message>
+    <message>
+        <source>Name (optional)</source>
+        <translation>Name (optional)</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation>Name</translation>
+    </message>
+    <message>
+        <source>Note (optional)</source>
+        <translation>Notiz (optional)</translation>
+    </message>
+    <message>
+        <source>Note</source>
+        <translation>Notiz</translation>
+    </message>
 </context>
 <context>
     <name>EpisodesPage</name>
@@ -783,6 +871,10 @@
     <message>
         <source>Login</source>
         <translation>Anmeldung</translation>
+    </message>
+    <message>
+        <source>Support the podcast</source>
+        <translation>Podcast unterstützen</translation>
     </message>
     <message>
         <source>Podcast settings</source>
@@ -1067,6 +1159,10 @@
         </translation>
     </message>
     <message>
+        <source>shared</source>
+        <translation>geteilt</translation>
+    </message>
+    <message>
         <source>New device</source>
         <translation>Neues Gerät</translation>
     </message>
@@ -1079,12 +1175,16 @@
         <translation>Ein neues Gerät startet ohne Abos – oben das Gerät der anderen App wählen oder unten die Abos teilen.</translation>
     </message>
     <message>
-        <source>Share subscriptions with all devices</source>
-        <translation>Abos mit allen Geräten abgleichen</translation>
+        <source>Share subscriptions</source>
+        <translation>Abos teilen</translation>
     </message>
     <message>
-        <source>Puts all devices of the account into one sync group: a podcast subscribed on one device appears on all of them.</source>
-        <translation>Fasst alle Geräte des Kontos zu einer Sync-Gruppe zusammen: Ein auf einem Gerät abonnierter Podcast erscheint auf allen.</translation>
+        <source>Puts the devices checked below into one sync group with this one: a podcast subscribed on one device appears on all of them. Unchecked devices leave the group.</source>
+        <translation>Legt die unten angehakten Geräte mit diesem in eine Sync-Gruppe: Ein auf einem Gerät abonnierter Podcast erscheint auf allen. Nicht angehakte Geräte verlassen die Gruppe.</translation>
+    </message>
+    <message>
+        <source>No other device checked - nothing is shared.</source>
+        <translation>Kein anderes Gerät angehakt – es wird nichts geteilt.</translation>
     </message>
 </context>
 <context>
@@ -1108,6 +1208,14 @@
     <message>
         <source>Import and export</source>
         <translation>Import und Export</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suchen</translation>
+    </message>
+    <message>
+        <source>Synchronize</source>
+        <translation>Synchronisieren</translation>
     </message>
     <message>
         <source>Update</source>
@@ -1253,6 +1361,65 @@
     </message>
 </context>
 <context>
+    <name>LocalSearchPage</name>
+    <message>
+        <source>My podcasts</source>
+        <translation>Meine Podcasts</translation>
+    </message>
+    <message>
+        <source>Episodes</source>
+        <translation>Folgen</translation>
+    </message>
+    <message>
+        <source>Bookmarks</source>
+        <translation>Lesezeichen</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suchen</translation>
+    </message>
+    <message>
+        <source>Podcasts, episodes and bookmarks on the device</source>
+        <translation>Podcasts, Folgen und Lesezeichen am Gerät</translation>
+    </message>
+    <message>
+        <source>Podcast, episode or bookmark</source>
+        <translation>Podcast, Folge oder Lesezeichen</translation>
+    </message>
+    <message>
+        <source>Finds your podcasts (title, author), episode titles and bookmarks (name, note). Show notes are not searched. New podcasts: &quot;Search / add podcast&quot; on the Podcasts page.</source>
+        <translation>Findet deine Podcasts (Titel, Autor), Folgentitel und Lesezeichen (Name, Notiz). Shownotes werden nicht durchsucht. Neue Podcasts: „Podcast suchen / hinzufügen“ auf der Podcasts-Seite.</translation>
+    </message>
+    <message>
+        <source>today</source>
+        <translation>heute</translation>
+    </message>
+    <message>
+        <source>yesterday</source>
+        <translation>gestern</translation>
+    </message>
+    <message>
+        <source>played</source>
+        <translation>gehört</translation>
+    </message>
+    <message>
+        <source>Bookmark</source>
+        <translation>Lesezeichen</translation>
+    </message>
+    <message>
+        <source>Search for a new podcast: &quot;%1&quot;</source>
+        <translation>Neuen Podcast suchen: „%1“</translation>
+    </message>
+    <message>
+        <source>Nothing found on the device</source>
+        <translation>Am Gerät nichts gefunden</translation>
+    </message>
+    <message>
+        <source>Search for a new podcast below</source>
+        <translation>Unten nach einem neuen Podcast suchen</translation>
+    </message>
+</context>
+<context>
     <name>MobileDataDialog</name>
     <message>
         <source>Download</source>
@@ -1318,6 +1485,10 @@
 </context>
 <context>
     <name>PlayerPanel</name>
+    <message>
+        <source>Bookmark at %1</source>
+        <translation>Lesezeichen bei %1</translation>
+    </message>
     <message numerus="yes">
         <source>%n min</source>
         <translation>
@@ -1386,6 +1557,10 @@
     <message>
         <source>Bookmarks (%1)</source>
         <translation>Lesezeichen (%1)</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suchen</translation>
     </message>
     <message>
         <source>Play playlist</source>
@@ -1601,6 +1776,10 @@
         <translation>Als Raster zeigen</translation>
     </message>
     <message>
+        <source>Synchronize</source>
+        <translation>Synchronisieren</translation>
+    </message>
+    <message>
         <source>Update</source>
         <translation>Aktualisieren</translation>
     </message>
@@ -1629,6 +1808,68 @@
     </message>
 </context>
 <context>
+    <name>RestoreBackupDialog</name>
+    <message>
+        <source>Restore</source>
+        <translation>Wiederherstellen</translation>
+    </message>
+    <message>
+        <source>Replaces everything in Sailcast on this phone with the state of the backup: subscriptions, listening state, playlist, folders, bookmarks and settings. Downloaded files stay; passwords are not part of a backup.</source>
+        <translation>Ersetzt alles in Sailcast auf diesem Telefon durch den Stand der Sicherung: Abos, Hörstand, Playlist, Ordner, Lesezeichen und Einstellungen. Heruntergeladene Dateien bleiben; Passwörter sind nicht Teil einer Sicherung.</translation>
+    </message>
+    <message>
+        <source>The current state is kept on this phone as &quot;Before the last restore&quot; - restoring that one undoes this step. The next sync brings listening states that are newer on the server.</source>
+        <translation>Der aktuelle Stand bleibt auf dem Telefon als „Vor der letzten Wiederherstellung“ – diesen wiederherzustellen macht den Schritt rückgängig. Der nächste Sync holt Hörstände, die am Server neuer sind.</translation>
+    </message>
+</context>
+<context>
+    <name>RestoreBackupPage</name>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>Before the last restore</source>
+        <translation>Vor der letzten Wiederherstellung</translation>
+    </message>
+    <message>
+        <source>Could not load the backup: %1</source>
+        <translation>Sicherung konnte nicht geladen werden: %1</translation>
+    </message>
+    <message>
+        <source>Refresh</source>
+        <translation>Aktualisieren</translation>
+    </message>
+    <message>
+        <source>Restore</source>
+        <translation>Wiederherstellen</translation>
+    </message>
+    <message>
+        <source>A backup replaces all data of Sailcast on this phone. Tap one to see what happens.</source>
+        <translation>Eine Sicherung ersetzt alle Daten von Sailcast auf diesem Telefon. Antippen zeigt, was passiert.</translation>
+    </message>
+    <message>
+        <source>On this phone</source>
+        <translation>Auf diesem Telefon</translation>
+    </message>
+    <message>
+        <source>No backups on this phone yet</source>
+        <translation>Noch keine Sicherungen auf diesem Telefon</translation>
+    </message>
+    <message>
+        <source>In the Nextcloud</source>
+        <translation>In der Nextcloud</translation>
+    </message>
+    <message>
+        <source>Could not read the backups: %1</source>
+        <translation>Sicherungen konnten nicht gelesen werden: %1</translation>
+    </message>
+    <message>
+        <source>No backups in the Nextcloud yet</source>
+        <translation>Noch keine Sicherungen in der Nextcloud</translation>
+    </message>
+</context>
+<context>
     <name>RingHint</name>
     <message>
         <source>Swipe sideways for new episodes, podcasts and the playlist</source>
@@ -1654,8 +1895,59 @@
         <translation>Titel, Thema, Autor oder Adresse</translation>
     </message>
     <message>
+        <source>Feed with login: %1</source>
+        <translation>Feed mit Anmeldung: %1</translation>
+    </message>
+    <message>
+        <source>Checking %1 …</source>
+        <translation>Prüfe %1 …</translation>
+    </message>
+    <message>
+        <source>No feed at %1</source>
+        <translation>Kein Feed unter %1</translation>
+    </message>
+    <message>
+        <source>No podcast found on this page</source>
+        <translation>Kein Podcast auf dieser Seite gefunden</translation>
+    </message>
+    <message>
+        <source>Apple Podcasts link</source>
+        <translation>Apple-Podcasts-Link</translation>
+    </message>
+    <message>
         <source>Check feed address: %1</source>
         <translation>Feed-Adresse prüfen: %1</translation>
+    </message>
+    <message>
+        <source>no feed with audio or video episodes.</source>
+        <translation>kein Feed mit Audio- oder Video-Episoden.</translation>
+    </message>
+    <message>
+        <source>Its podcast in Podcast Index below.</source>
+        <translation>Der Podcast dazu im Podcast Index unten.</translation>
+    </message>
+    <message>
+        <source>Search results for &quot;%1&quot; below - tap to check the address again</source>
+        <translation>Darunter Suchtreffer für „%1“ – tippen, um die Adresse erneut zu prüfen</translation>
+    </message>
+    <message>
+        <source>Podcast at this address</source>
+        <translation>Podcast unter dieser Adresse</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n episodes</source>
+        <translation>
+            <numerusform>%n Folge</numerusform>
+            <numerusform>%n Folgen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>subscribed</source>
+        <translation>abonniert</translation>
+    </message>
+    <message>
+        <source>tap to add</source>
+        <translation>antippen zum Hinzufügen</translation>
     </message>
     <message>
         <source>Address from the clipboard: %1</source>
@@ -1672,17 +1964,6 @@
     <message>
         <source>An address copied before (e.g. from the browser) is offered right here.</source>
         <translation>Eine vorher kopierte Adresse (z. B. aus dem Browser) wird gleich hier angeboten.</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n episodes</source>
-        <translation>
-            <numerusform>%n Folge</numerusform>
-            <numerusform>%n Folgen</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>subscribed</source>
-        <translation>abonniert</translation>
     </message>
     <message>
         <source>Search not available - enter a feed address</source>
@@ -1702,30 +1983,147 @@
     </message>
 </context>
 <context>
-    <name>SettingsPage</name>
+    <name>SettingsBackupPage</name>
+    <message>
+        <source>Backup</source>
+        <translation>Sicherung</translation>
+    </message>
+    <message>
+        <source>Back up automatically</source>
+        <translation>Automatisch sichern</translation>
+    </message>
+    <message>
+        <source>Playlist, folders, bookmarks and settings are not on the sync server - a backup keeps them.</source>
+        <translation>Playlist, Ordner, Lesezeichen und Einstellungen liegen nicht am Sync-Server – eine Sicherung bewahrt sie.</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>Aus</translation>
+    </message>
+    <message>
+        <source>Daily</source>
+        <translation>Täglich</translation>
+    </message>
+    <message>
+        <source>Weekly</source>
+        <translation>Wöchentlich</translation>
+    </message>
+    <message>
+        <source>On this phone</source>
+        <translation>Auf diesem Telefon</translation>
+    </message>
+    <message>
+        <source>Folder %1, the newest 5 are kept; checked at every start.</source>
+        <translation>Ordner %1, die neuesten 5 bleiben; geprüft bei jedem Start.</translation>
+    </message>
+    <message>
+        <source>Last backup: %1</source>
+        <translation>Letzte Sicherung: %1</translation>
+    </message>
     <message>
         <source>never</source>
         <translation>nie</translation>
     </message>
     <message>
-        <source>Server type changed - the previous account was removed</source>
-        <translation>Servertyp gewechselt – das bisherige Konto wurde entfernt</translation>
+        <source>Nextcloud</source>
+        <translation>Nextcloud</translation>
     </message>
     <message>
-        <source>Please check the server address and the user name</source>
-        <translation>Bitte Serveradresse und Benutzernamen prüfen</translation>
+        <source>Back up to Nextcloud</source>
+        <translation>In die Nextcloud sichern</translation>
     </message>
     <message>
-        <source>About Sailcast</source>
-        <translation>Über Sailcast</translation>
+        <source>Into the folder &quot;Sailcast-Backups&quot; of the sync account, the newest 5 are kept.</source>
+        <translation>In den Ordner „Sailcast-Backups“ des Sync-Kontos, die neuesten 5 bleiben.</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Einstellungen</translation>
+        <source>Back up now</source>
+        <translation>Jetzt sichern</translation>
     </message>
     <message>
-        <source>App start</source>
-        <translation>App-Start</translation>
+        <source>Restore …</source>
+        <translation>Wiederherstellen …</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsDownloadsPage</name>
+    <message>
+        <source>Downloads and archive</source>
+        <translation>Downloads und Archiv</translation>
+    </message>
+    <message>
+        <source>Downloads</source>
+        <translation>Downloads</translation>
+    </message>
+    <message>
+        <source>Only on Wi-Fi</source>
+        <translation>Nur über WLAN</translation>
+    </message>
+    <message>
+        <source>Over the mobile connection, a download started by hand asks first; automatic downloads wait.</source>
+        <translation>Über die Mobilverbindung fragt ein von Hand gestarteter Download erst nach; automatische Downloads warten.</translation>
+    </message>
+    <message>
+        <source>Download new episodes</source>
+        <translation>Neue Folgen herunterladen</translation>
+    </message>
+    <message>
+        <source>After every feed update, up to 3 new episodes per podcast are downloaded automatically.</source>
+        <translation>Nach jeder Feed-Aktualisierung werden bis zu 3 neue Folgen pro Podcast automatisch geladen.</translation>
+    </message>
+    <message>
+        <source>Delete played downloads</source>
+        <translation>Gehörte Downloads löschen</translation>
+    </message>
+    <message>
+        <source>Never</source>
+        <translation>Nie</translation>
+    </message>
+    <message>
+        <source>Right after listening</source>
+        <translation>Gleich nach dem Hören</translation>
+    </message>
+    <message numerus="yes">
+        <source>After %n days</source>
+        <translation>
+            <numerusform>Nach %n Tag</numerusform>
+            <numerusform>Nach %n Tagen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>&quot;Right after listening&quot;: as soon as an episode is played; otherwise checked at every start. Never in archived podcasts or the archive folder.</source>
+        <translation>„Gleich nach dem Hören“: sobald eine Folge gehört ist; sonst bei jedem Start geprüft. Nie bei archivierten Podcasts oder im Archivordner.</translation>
+    </message>
+    <message>
+        <source>Clean up now</source>
+        <translation>Jetzt aufräumen</translation>
+    </message>
+    <message>
+        <source>Archive</source>
+        <translation>Archiv</translation>
+    </message>
+    <message>
+        <source>Archive folder</source>
+        <translation>Archivordner</translation>
+    </message>
+    <message>
+        <source>One folder per podcast with all episodes, the feed, the cover and episodes.json. The app may only write inside Music (Sailjail). Empty: %1</source>
+        <translation>Ein Ordner pro Podcast mit allen Folgen, dem Feed, dem Cover und episodes.json. Die App darf nur innerhalb von Musik schreiben (Sailjail). Leer: %1</translation>
+    </message>
+    <message>
+        <source>Cloud archive address</source>
+        <translation>Adresse des Cloud-Archivs</translation>
+    </message>
+    <message>
+        <source>Played when an episode is neither on the phone nor available at its original address, e.g. &quot;rclone serve http&quot; of the archive copy in the cloud.</source>
+        <translation>Wird abgespielt, wenn eine Folge weder auf dem Telefon noch unter ihrer Originaladresse verfügbar ist, z. B. „rclone serve http“ der Archivkopie in der Cloud.</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsGeneralPage</name>
+    <message>
+        <source>General</source>
+        <translation>Allgemein</translation>
     </message>
     <message>
         <source>Synchronize and update on start</source>
@@ -1754,6 +2152,285 @@
     <message>
         <source>Playlist</source>
         <translation>Playlist</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsPage</name>
+    <message>
+        <source>never</source>
+        <translation>nie</translation>
+    </message>
+    <message>
+        <source>Podcasts</source>
+        <translation>Podcasts</translation>
+    </message>
+    <message>
+        <source>Playlist</source>
+        <translation>Playlist</translation>
+    </message>
+    <message>
+        <source>New episodes</source>
+        <translation>Neue Folgen</translation>
+    </message>
+    <message>
+        <source>lock screen: skip</source>
+        <translation>Sperrbildschirm: springen</translation>
+    </message>
+    <message>
+        <source>lock screen: episodes</source>
+        <translation>Sperrbildschirm: Folgen</translation>
+    </message>
+    <message>
+        <source>lock screen: chapters</source>
+        <translation>Sperrbildschirm: Kapitel</translation>
+    </message>
+    <message>
+        <source>Skip back</source>
+        <translation>Zurückspringen</translation>
+    </message>
+    <message>
+        <source>Skip forward</source>
+        <translation>Vorspringen</translation>
+    </message>
+    <message>
+        <source>Sleep timer</source>
+        <translation>Sleep-Timer</translation>
+    </message>
+    <message>
+        <source>Bookmark</source>
+        <translation>Lesezeichen</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Weiter</translation>
+    </message>
+    <message>
+        <source>never delete</source>
+        <translation>nie löschen</translation>
+    </message>
+    <message>
+        <source>delete right after listening</source>
+        <translation>gleich nach dem Hören löschen</translation>
+    </message>
+    <message numerus="yes">
+        <source>delete after %n days</source>
+        <translation>
+            <numerusform>nach %n Tag löschen</numerusform>
+            <numerusform>nach %n Tagen löschen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>About Sailcast</source>
+        <translation>Über Sailcast</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Einstellungen</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>Allgemein</translation>
+    </message>
+    <message>
+        <source>Start: %1</source>
+        <translation>Start: %1</translation>
+    </message>
+    <message>
+        <source>update on start</source>
+        <translation>Update beim Start</translation>
+    </message>
+    <message>
+        <source>no update on start</source>
+        <translation>kein Update beim Start</translation>
+    </message>
+    <message>
+        <source>Synchronization</source>
+        <translation>Synchronisierung</translation>
+    </message>
+    <message>
+        <source>no account</source>
+        <translation>kein Konto</translation>
+    </message>
+    <message>
+        <source>synchronizing …</source>
+        <translation>synchronisiere …</translation>
+    </message>
+    <message>
+        <source>last sync %1</source>
+        <translation>zuletzt %1</translation>
+    </message>
+    <message>
+        <source>Playback</source>
+        <translation>Wiedergabe</translation>
+    </message>
+    <message>
+        <source>skip %1/%2 s</source>
+        <translation>Sprung %1/%2 s</translation>
+    </message>
+    <message>
+        <source>cover: %1</source>
+        <translation>Cover: %1</translation>
+    </message>
+    <message>
+        <source>Downloads and archive</source>
+        <translation>Downloads und Archiv</translation>
+    </message>
+    <message>
+        <source>Wi-Fi only</source>
+        <translation>nur WLAN</translation>
+    </message>
+    <message>
+        <source>new episodes automatically</source>
+        <translation>neue Folgen automatisch</translation>
+    </message>
+    <message>
+        <source>Backup</source>
+        <translation>Sicherung</translation>
+    </message>
+    <message>
+        <source>off</source>
+        <translation>aus</translation>
+    </message>
+    <message>
+        <source>daily</source>
+        <translation>täglich</translation>
+    </message>
+    <message>
+        <source>weekly</source>
+        <translation>wöchentlich</translation>
+    </message>
+    <message>
+        <source>last %1</source>
+        <translation>zuletzt %1</translation>
+    </message>
+    <message>
+        <source>Import and export</source>
+        <translation>Import und Export</translation>
+    </message>
+    <message>
+        <source>OPML, databases, archive folders</source>
+        <translation>OPML, Datenbanken, Archivordner</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsPlaybackPage</name>
+    <message>
+        <source>Playback</source>
+        <translation>Wiedergabe</translation>
+    </message>
+    <message>
+        <source>After an episode outside the playlist</source>
+        <translation>Nach einer Folge außerhalb der Playlist</translation>
+    </message>
+    <message>
+        <source>Load the next playlist episode</source>
+        <translation>Nächste Playlist-Folge laden</translation>
+    </message>
+    <message>
+        <source>Play the next playlist episode</source>
+        <translation>Nächste Playlist-Folge abspielen</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Anhalten</translation>
+    </message>
+    <message>
+        <source>Episodes started on the playlist page are always followed by the next playlist episode. &quot;Load&quot; puts it into the player bar, paused - one tap continues.</source>
+        <translation>Auf der Playlist-Seite gestartete Folgen werden immer von der nächsten Playlist-Folge gefolgt. „Laden“ legt sie pausiert in die Player-Leiste – ein Tipp setzt fort.</translation>
+    </message>
+    <message>
+        <source>Rewind after a long pause</source>
+        <translation>Nach langer Pause zurückspringen</translation>
+    </message>
+    <message>
+        <source>After more than 5 minutes of pause (or a restart) playback continues a little earlier</source>
+        <translation>Nach mehr als 5 Minuten Pause (oder einem Neustart) geht es ein Stück früher weiter</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n s</source>
+        <translation>
+            <numerusform>%n s</numerusform>
+            <numerusform>%n s</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>Aus</translation>
+    </message>
+    <message>
+        <source>Skip back</source>
+        <translation>Zurückspringen</translation>
+    </message>
+    <message>
+        <source>Skip forward</source>
+        <translation>Vorspringen</translation>
+    </message>
+    <message>
+        <source>Lock screen and cover</source>
+        <translation>Sperrbildschirm und Cover</translation>
+    </message>
+    <message>
+        <source>Lock screen: left button</source>
+        <translation>Sperrbildschirm: linker Knopf</translation>
+    </message>
+    <message>
+        <source>Also applies to the headset buttons</source>
+        <translation>Gilt auch für die Headset-Tasten</translation>
+    </message>
+    <message>
+        <source>Previous chapter</source>
+        <translation>Voriges Kapitel</translation>
+    </message>
+    <message>
+        <source>Lock screen: right button</source>
+        <translation>Sperrbildschirm: rechter Knopf</translation>
+    </message>
+    <message>
+        <source>Chapter, then episode</source>
+        <translation>Kapitel, dann Folge</translation>
+    </message>
+    <message>
+        <source>Next episode</source>
+        <translation>Nächste Folge</translation>
+    </message>
+    <message>
+        <source>&quot;Previous chapter&quot;: the start of the chapter, a second press goes to the one before; without chapters it skips back.</source>
+        <translation>„Voriges Kapitel“: zum Kapitelanfang, ein zweiter Druck zum Kapitel davor; ohne Kapitel wird zurückgesprungen.</translation>
+    </message>
+    <message>
+        <source>Second button on the cover</source>
+        <translation>Zweiter Knopf am Cover</translation>
+    </message>
+    <message>
+        <source>The first one is always play/pause</source>
+        <translation>Der erste ist immer Wiedergabe/Pause</translation>
+    </message>
+    <message>
+        <source>Next: chapter, then episode</source>
+        <translation>Weiter: Kapitel, dann Folge</translation>
+    </message>
+    <message>
+        <source>Sleep timer (15 min)</source>
+        <translation>Sleep-Timer (15 Min.)</translation>
+    </message>
+    <message>
+        <source>Set a bookmark</source>
+        <translation>Lesezeichen setzen</translation>
+    </message>
+</context>
+<context>
+    <name>SettingsSyncPage</name>
+    <message>
+        <source>never</source>
+        <translation>nie</translation>
+    </message>
+    <message>
+        <source>Server type changed - the previous account was removed</source>
+        <translation>Servertyp gewechselt – das bisherige Konto wurde entfernt</translation>
+    </message>
+    <message>
+        <source>Please check the server address and the user name</source>
+        <translation>Bitte Serveradresse und Benutzernamen prüfen</translation>
     </message>
     <message>
         <source>Synchronization</source>
@@ -1828,6 +2505,10 @@
         <translation>Nextcloud: Einstellungen → Sicherheit → Neues App-Passwort erstellen. Das Passwort wird verschlüsselt mit Sailfish Secrets gespeichert. Ein anderer Server oder Benutzer beginnt neu mit einer Erst-Synchronisierung (auf dem Server geht nichts verloren).</translation>
     </message>
     <message>
+        <source>Synchronize now</source>
+        <translation>Jetzt synchronisieren</translation>
+    </message>
+    <message>
         <source>Save and synchronize</source>
         <translation>Speichern und synchronisieren</translation>
     </message>
@@ -1840,130 +2521,24 @@
         <translation>Sync-Konto wird entfernt</translation>
     </message>
     <message>
+        <source>Sync and update together</source>
+        <translation>Sync und Update zusammen</translation>
+    </message>
+    <message>
+        <source>&quot;Update&quot; in the pull-down menu first synchronizes, then updates the feeds.</source>
+        <translation>„Aktualisieren“ im Pulley synchronisiert zuerst und aktualisiert dann die Feeds.</translation>
+    </message>
+    <message>
+        <source>Two entries in the pull-down menu: &quot;Synchronize&quot; and &quot;Update&quot; (feeds only).</source>
+        <translation>Zwei Einträge im Pulley: „Synchronisieren“ und „Aktualisieren“ (nur Feeds).</translation>
+    </message>
+    <message>
         <source>Synchronizing …</source>
         <translation>Wird synchronisiert …</translation>
     </message>
     <message>
         <source>Last sync: %1</source>
         <translation>Letzte Synchronisierung: %1</translation>
-    </message>
-    <message>
-        <source>Playback</source>
-        <translation>Wiedergabe</translation>
-    </message>
-    <message>
-        <source>After an episode outside the playlist</source>
-        <translation>Nach einer Folge außerhalb der Playlist</translation>
-    </message>
-    <message>
-        <source>Load the next playlist episode</source>
-        <translation>Nächste Playlist-Folge laden</translation>
-    </message>
-    <message>
-        <source>Play the next playlist episode</source>
-        <translation>Nächste Playlist-Folge abspielen</translation>
-    </message>
-    <message>
-        <source>Stop</source>
-        <translation>Anhalten</translation>
-    </message>
-    <message>
-        <source>Episodes started on the playlist page are always followed by the next playlist episode. &quot;Load&quot; puts it into the player bar, paused - one tap continues.</source>
-        <translation>Auf der Playlist-Seite gestartete Folgen werden immer von der nächsten Playlist-Folge gefolgt. „Laden“ legt sie pausiert in die Player-Leiste – ein Tipp setzt fort.</translation>
-    </message>
-    <message>
-        <source>Rewind after a long pause</source>
-        <translation>Nach langer Pause zurückspringen</translation>
-    </message>
-    <message>
-        <source>After more than 5 minutes of pause (or a restart) playback continues a little earlier</source>
-        <translation>Nach mehr als 5 Minuten Pause (oder einem Neustart) geht es ein Stück früher weiter</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n s</source>
-        <translation>
-            <numerusform>%n s</numerusform>
-            <numerusform>%n s</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Off</source>
-        <translation>Aus</translation>
-    </message>
-    <message>
-        <source>Skip back</source>
-        <translation>Zurückspringen</translation>
-    </message>
-    <message>
-        <source>Skip forward</source>
-        <translation>Vorspringen</translation>
-    </message>
-    <message>
-        <source>Downloads</source>
-        <translation>Downloads</translation>
-    </message>
-    <message>
-        <source>Only on Wi-Fi</source>
-        <translation>Nur über WLAN</translation>
-    </message>
-    <message>
-        <source>Over the mobile connection, a download started by hand asks first; automatic downloads wait.</source>
-        <translation>Über die Mobilverbindung fragt ein von Hand gestarteter Download erst nach; automatische Downloads warten.</translation>
-    </message>
-    <message>
-        <source>Download new episodes</source>
-        <translation>Neue Folgen herunterladen</translation>
-    </message>
-    <message>
-        <source>After every feed update, up to 3 new episodes per podcast are downloaded automatically.</source>
-        <translation>Nach jeder Feed-Aktualisierung werden bis zu 3 neue Folgen pro Podcast automatisch geladen.</translation>
-    </message>
-    <message>
-        <source>Delete played downloads</source>
-        <translation>Gehörte Downloads löschen</translation>
-    </message>
-    <message>
-        <source>Never</source>
-        <translation>Nie</translation>
-    </message>
-    <message>
-        <source>Right after listening</source>
-        <translation>Gleich nach dem Hören</translation>
-    </message>
-    <message numerus="yes">
-        <source>After %n days</source>
-        <translation>
-            <numerusform>Nach %n Tag</numerusform>
-            <numerusform>Nach %n Tagen</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>&quot;Right after listening&quot;: as soon as an episode is played; otherwise checked at every start. Never in archived podcasts or the archive folder.</source>
-        <translation>„Gleich nach dem Hören“: sobald eine Folge gehört ist; sonst bei jedem Start geprüft. Nie bei archivierten Podcasts oder im Archivordner.</translation>
-    </message>
-    <message>
-        <source>Clean up now</source>
-        <translation>Jetzt aufräumen</translation>
-    </message>
-    <message>
-        <source>Archive</source>
-        <translation>Archiv</translation>
-    </message>
-    <message>
-        <source>Archive folder</source>
-        <translation>Archivordner</translation>
-    </message>
-    <message>
-        <source>One folder per podcast with all episodes, the feed, the cover and episodes.json. The app may only write inside Music (Sailjail). Empty: %1</source>
-        <translation>Ein Ordner pro Podcast mit allen Folgen, dem Feed, dem Cover und episodes.json. Die App darf nur innerhalb von Musik schreiben (Sailjail). Leer: %1</translation>
-    </message>
-    <message>
-        <source>Cloud archive address</source>
-        <translation>Adresse des Cloud-Archivs</translation>
-    </message>
-    <message>
-        <source>Played when an episode is neither on the phone nor available at its original address, e.g. &quot;rclone serve http&quot; of the archive copy in the cloud.</source>
-        <translation>Wird abgespielt, wenn eine Folge weder auf dem Telefon noch unter ihrer Originaladresse verfügbar ist, z. B. „rclone serve http“ der Archivkopie in der Cloud.</translation>
     </message>
 </context>
 <context>
@@ -1981,6 +2556,18 @@
     <message>
         <source>Deleting download</source>
         <translation>Download wird gelöscht</translation>
+    </message>
+    <message>
+        <source>This episode has no address that can be shared</source>
+        <translation>Diese Folge hat keine Adresse, die sich teilen lässt</translation>
+    </message>
+    <message>
+        <source>Share episode</source>
+        <translation>Folge teilen</translation>
+    </message>
+    <message>
+        <source>Nothing to add in the shared content</source>
+        <translation>Im geteilten Inhalt ist nichts zum Hinzufügen</translation>
     </message>
     <message>
         <source>Unsubscribing %1</source>

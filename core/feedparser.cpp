@@ -51,6 +51,18 @@ void setIfEmpty(QString &target, const QString &value)
     }
 }
 
+// Season / episode number (83): whole positive numbers only
+// (podcast:episode also allows "1.5" - such numbers are left out).
+// overwrite: replaces a number already read (podcast:* over itunes:*)
+void setNumber(int &target, const QString &text, bool overwrite)
+{
+    bool ok = false;
+    const int value = text.trimmed().toInt(&ok);
+    if (ok && value > 0 && (overwrite || target == 0)) {
+        target = value;
+    }
+}
+
 } // namespace
 
 namespace {
@@ -196,6 +208,11 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                 if (item.published <= 0) {
                     item.published = date;
                 }
+            } else if ((ns == NsItunes || ns == NsPodcast) && name == QLatin1String("season")) {
+                // podcast:* wins over itunes:* (the same value as a rule)
+                setNumber(item.season, readText(xml), ns == NsPodcast);
+            } else if ((ns == NsItunes || ns == NsPodcast) && name == QLatin1String("episode")) {
+                setNumber(item.episodeNumber, readText(xml), ns == NsPodcast);
             } else if (ns == NsItunes && name == QLatin1String("duration")) {
                 const int seconds = TimeParse::durationSeconds(readText(xml));
                 if (seconds > 0) {
@@ -218,6 +235,14 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                 channelSummary = readText(xml);
             } else if (channelChild && ns == NsItunes && name == QLatin1String("author")) {
                 feed.author = readText(xml);
+            } else if (channelChild && ns == NsPodcast && name == QLatin1String("funding")) {
+                ParsedFunding funding;
+                funding.url = attrs.value(QLatin1String("url")).toString().trimmed();
+                funding.title = readText(xml);
+                if (funding.url.startsWith(QLatin1String("http"), Qt::CaseInsensitive)
+                        && feed.funding.size() < 5) {
+                    feed.funding.append(funding);
+                }
             } else if (ns == NsItunes && name == QLatin1String("new-feed-url")) {
                 feed.newUrl = readText(xml);
             } else if (parent == QLatin1String("image") && isPlain(ns) && name == QLatin1String("url")) {

@@ -4,6 +4,9 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickView>
+#include <QDBusConnection>
+#include <QDBusError>
+#include <QDebug>
 #include <QtQml>
 
 #include "appcore.h"
@@ -44,6 +47,18 @@ int main(int argc, char *argv[])
     view->rootContext()->setContextProperty(QStringLiteral("core"), &core);
 
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-sailcast.qml")));
+
+    // Share target (84): the D-Bus name of the app (OrganizationName +
+    // "." + ApplicationName of the .desktop file's [X-Sailjail] section).
+    // Registered here, after the QML has created its adaptor
+    // (/share/podcast) - as the Sailfish.Share documentation asks, to avoid a
+    // race between the name and the objects. With ExecDBus a share also
+    // starts the app.
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    if (!bus.registerService(QStringLiteral("harbour-sailcast.harbour-sailcast"))) {
+        qWarning() << "D-Bus name not registered:" << bus.lastError().message();
+    }
+
     view->show();
 
     return app->exec();

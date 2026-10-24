@@ -7,6 +7,9 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPair>
 #include <QSet>
 #include <QSqlError>
@@ -18,7 +21,7 @@
 
 namespace {
 
-const int SchemaVersion = 7;
+const int SchemaVersion = 8;
 
 // Schema version 1. Text columns are NOT NULL with '' as default so that
 // the code never has to tell NULL and empty apart (exception: last_error,
@@ -181,6 +184,16 @@ const char *const SchemaV7[] = {
     nullptr
 };
 
+// Schema version 8 (83): season and episode number from the feed
+// (itunes:/podcast:season, itunes:/podcast:episode), the podcast's
+// podcast:funding links as JSON
+const char *const SchemaV8[] = {
+    "ALTER TABLE episodes ADD COLUMN season INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE episodes ADD COLUMN episode_number INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE podcasts ADD COLUMN funding TEXT NOT NULL DEFAULT ''",
+    nullptr
+};
+
 // Same rule as gPodder's is_finished(): within the last 10 seconds or 99 %
 bool isFinishedPosition(int position, int total)
 {
@@ -206,6 +219,22 @@ QString otherScheme(const QString &url)
     return QString();
 }
 
+// podcast:funding links as stored in podcasts.funding (83)
+QString fundingJson(const QList<ParsedFunding> &funding)
+{
+    if (funding.isEmpty()) {
+        return QString();
+    }
+    QJsonArray list;
+    for (int i = 0; i < funding.size(); ++i) {
+        QJsonObject item;
+        item.insert(QStringLiteral("url"), funding.at(i).url);
+        item.insert(QStringLiteral("title"), funding.at(i).title);
+        list.append(item);
+    }
+    return QString::fromUtf8(QJsonDocument(list).toJson(QJsonDocument::Compact));
+}
+
 // Fingerprint of everything the feed says about an episode: existing
 // episodes are only written again when it changes.
 QString metaHash(const ParsedEpisode &e)
@@ -218,6 +247,11 @@ QString metaHash(const ParsedEpisode &e)
     for (int i = 0; i < fields.size(); ++i) {
         hash.addData(fields.at(i).toUtf8());
         hash.addData("\x1f", 1);
+    }
+    // Only when present (83): episodes without them keep their hash, so the
+    // new columns do not rewrite every episode once
+    if (e.season > 0 || e.episodeNumber > 0) {
+        hash.addData(QStringLiteral("s%1e%2").arg(e.season).arg(e.episodeNumber).toUtf8());
     }
     for (int i = 0; i < e.chapters.size(); ++i) {
         const ParsedChapter &c = e.chapters.at(i);
@@ -412,7 +446,20 @@ bool Database::migrate()
             return fail(QStringLiteral("migrate v7"), db.lastError().text());
         }
     }
-    // Future steps: if (version < 8) { ... PRAGMA user_version = 8 ... }
+    if (version < 8) {
+        db.transaction();
+        for (int i = 0; SchemaV8[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV8[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 8"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v8"), db.lastError().text());
+        }
+    }
+    // Future steps: if (version < 9) { ... PRAGMA user_version = 9 ... }
     return true;
 }
 
@@ -503,7 +550,8 @@ static const char *const PodcastColumns =
         " p.paused, COALESCE(p.folder_id, 0),"
         // New episodes arrived after the podcast page was last opened (50)
         " COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.newAt'), 0)"
-        " > COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.seenAt'), 0)"
+        " > COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.seenAt'), 0),"
+        " p.funding"
         " FROM podcasts p LEFT JOIN episodes e ON e.podcast_id = p.id";
 
 static PodcastRow podcastFromQuery(const QSqlQuery &q)
@@ -529,6 +577,7 @@ static PodcastRow podcastFromQuery(const QSqlQuery &q)
     row.manualUpdate = q.value(17).toInt() != 0;
     row.folderId = q.value(18).toLongLong();
     row.freshEpisodes = q.value(19).toInt() != 0;
+    row.funding = q.value(20).toString();
     return row;
 }
 
@@ -624,7 +673,8 @@ static const char *const EpisodeColumns =
         " e.image_url, COALESCE(NULLIF(e.image_url, ''), p.cover_url), e.chapter_count, e.last_played,"
         " e.mime_type, e.link, e.chapters_url, e.file_size, e.position_updated, e.download_state,"
         " e.download_path, e.archive_file,"
-        " (SELECT COUNT(*) FROM bookmarks b WHERE b.episode_id = e.id)"
+        " (SELECT COUNT(*) FROM bookmarks b WHERE b.episode_id = e.id),"
+        " e.season, e.episode_number"
         " FROM episodes e JOIN podcasts p ON p.id = e.podcast_id";
 
 static EpisodeRow episodeFromQuery(const QSqlQuery &q)
@@ -654,6 +704,8 @@ static EpisodeRow episodeFromQuery(const QSqlQuery &q)
     row.downloadPath = q.value(21).toString();
     row.archiveFile = q.value(22).toString();
     row.bookmarkCount = q.value(23).toInt();
+    row.season = q.value(24).toInt();
+    row.episodeNumber = q.value(25).toInt();
     return row;
 }
 
@@ -677,10 +729,21 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
     } else if (filter == Queue) {
         sql += QStringLiteral(" JOIN queue q ON q.episode_id = e.id");
     }
-    // Search in the titles (53) - case-insensitive for ASCII (SQLite LIKE)
+    // Search in the titles (53) - SQLite LIKE ignores case only for ASCII,
+    // so the term is also tried in lower case, upper case and with a capital
+    // first letter (101: "öffentlich" finds "Öffentlich", "MÜNCHEN" "München")
     const QString needle = search.trimmed();
+    QStringList variants;
     if (!needle.isEmpty()) {
-        where << QStringLiteral("e.title LIKE ? ESCAPE '\\'");
+        const QString lower = needle.toLower();
+        variants << needle << lower << needle.toUpper()
+                 << (lower.left(1).toUpper() + lower.mid(1));
+        variants.removeDuplicates();
+        QStringList likes;
+        for (int i = 0; i < variants.size(); ++i) {
+            likes << QStringLiteral("e.title LIKE ? ESCAPE '\\'");
+        }
+        where << QStringLiteral("(") + likes.join(QStringLiteral(" OR ")) + QStringLiteral(")");
     }
     if (!where.isEmpty()) {
         sql += QStringLiteral(" WHERE ") + where.join(QStringLiteral(" AND "));
@@ -702,8 +765,8 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
     if (podcastId >= 0) {
         q.addBindValue(podcastId);
     }
-    if (!needle.isEmpty()) {
-        QString pattern = needle;
+    for (int i = 0; i < variants.size(); ++i) {
+        QString pattern = variants.at(i);
         pattern.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
         pattern.replace(QLatin1Char('%'), QStringLiteral("\\%"));
         pattern.replace(QLatin1Char('_'), QStringLiteral("\\_"));
@@ -840,7 +903,7 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
     meta.prepare(QStringLiteral(
             "UPDATE podcasts SET title = COALESCE(NULLIF(?, ''), title), link = ?, description = ?,"
             " author = ?, cover_url = COALESCE(NULLIF(?, ''), cover_url), etag = ?, last_modified = ?,"
-            " last_update = ?, last_error = NULL WHERE id = ?"));
+            " last_update = ?, last_error = NULL, funding = ? WHERE id = ?"));
     meta.addBindValue(sqlText(feed.title));
     meta.addBindValue(sqlText(feed.link));
     meta.addBindValue(sqlText(feed.description));
@@ -849,6 +912,7 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
     meta.addBindValue(sqlText(etag));
     meta.addBindValue(sqlText(lastModified));
     meta.addBindValue(timestamp);
+    meta.addBindValue(sqlText(fundingJson(feed.funding)));
     meta.addBindValue(podcastId);
     if (!meta.exec()) {
         fail(QStringLiteral("applyFeed podcast"), meta.lastError().text());
@@ -875,14 +939,15 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
     insert.prepare(QStringLiteral(
             "INSERT INTO episodes (podcast_id, guid, url, title, description, description_html, link,"
             " mime_type, file_size, published, duration, image_url, chapters_url, chapter_count,"
-            " meta_hash, is_new, added) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
+            " meta_hash, is_new, added, season, episode_number)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
     QSqlQuery update(db);
     update.prepare(QStringLiteral(
             "UPDATE episodes SET url = ?, title = ?, description = ?, description_html = ?, link = ?,"
             " mime_type = ?, file_size = ?, published = ?,"
             " duration = CASE WHEN ? > 0 THEN ? ELSE duration END,"
             " image_url = ?, chapters_url = ?, chapter_count = CASE WHEN ? THEN chapter_count ELSE ? END,"
-            " meta_hash = ? WHERE id = ?"));
+            " meta_hash = ?, season = ?, episode_number = ? WHERE id = ?"));
     QSqlQuery deleteChapters(db);
     deleteChapters.prepare(QStringLiteral("DELETE FROM chapters WHERE episode_id = ?"));
     QSqlQuery insertChapter(db);
@@ -925,6 +990,8 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
             update.addBindValue(keepChapters ? 1 : 0);
             update.addBindValue(e.chapters.size());
             update.addBindValue(sqlText(hash));
+            update.addBindValue(e.season);
+            update.addBindValue(e.episodeNumber);
             update.addBindValue(episodeId);
             if (!update.exec()) {
                 fail(QStringLiteral("applyFeed update"), update.lastError().text());
@@ -952,6 +1019,8 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
             insert.addBindValue(sqlText(hash));
             insert.addBindValue(isNew ? 1 : 0);
             insert.addBindValue(timestamp);
+            insert.addBindValue(e.season);
+            insert.addBindValue(e.episodeNumber);
             if (!insert.exec()) {
                 fail(QStringLiteral("applyFeed insert"), insert.lastError().text());
                 db.rollback();

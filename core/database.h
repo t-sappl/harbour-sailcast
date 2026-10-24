@@ -31,6 +31,7 @@ struct PodcastRow
     bool manualUpdate = false;  // left out of "update all" (column "paused", 44)
     qint64 folderId = 0;        // 0 = no folder (45)
     bool freshEpisodes = false; // new episodes since the podcast page was last opened (50)
+    QString funding;            // podcast:funding as JSON [{url, title}] (83), may be empty
     QString archiveFolder;      // folder name inside the archive root, empty = never archived
     int downloadedCount = 0;
     // Listening time in seconds: full length of played episodes plus the
@@ -90,6 +91,8 @@ struct EpisodeRow
     QString downloadPath;    // absolute path of the downloaded file
     QString archiveFile;     // file name inside the podcast's archive folder
     int bookmarkCount = 0;   // (50) star on the image in lists
+    int season = 0;          // (83) from the feed, 0 = none
+    int episodeNumber = 0;   // (83) from the feed, 0 = none
 
     // Seconds still to listen to; -1 if the duration is unknown
     int remaining() const

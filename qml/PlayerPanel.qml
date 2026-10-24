@@ -20,6 +20,26 @@ Rectangle {
     property bool sleepChoicesOpen: false
 
     readonly property var player: appWindow.player
+
+    // Bookmarks of the episode playing (97): the number below the star, as
+    // on the episode page
+    property int bookmarkCount: 0
+    function refreshBookmarks() {
+        bookmarkCount = player.hasEpisode ? core.bookmarks(player.episodeId).length : 0
+    }
+    Connections {
+        target: appWindow.player
+        onEpisodeIdChanged: panel.refreshBookmarks()
+    }
+    Connections {
+        target: core
+        onBookmarksChanged: {
+            if (episodeId === 0 || episodeId === panel.player.episodeId) {
+                panel.refreshBookmarks()
+            }
+        }
+    }
+    Component.onCompleted: refreshBookmarks()
     readonly property var sleepOptions: [5, 10, 15, 30, 45, 60, 90]
 
     color: barColor
@@ -68,7 +88,8 @@ Rectangle {
                     episodeImageUrl: player.episodeImageUrl
                     coverUrl: player.coverUrl
                     fallbackText: player.podcastTitle
-                    badgeFactor: 0.3
+                    // The podcast name is next to the image (96)
+                    showBadge: false
 
                     SleepBadge {
                         visible: running
@@ -178,6 +199,19 @@ Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Theme.paddingLarge
 
+                // Bookmark at the current position (95, as the star on the
+                // episode page; name and note later in the bookmark list)
+                ToolbarButton {
+                    width: Theme.itemSizeLarge
+                    iconSource: "image://theme/icon-m-favorite"
+                    label: panel.bookmarkCount > 0 ? "" + panel.bookmarkCount : ""
+                    onClicked: {
+                        var seconds = player.position
+                        if (core.addBookmark(player.episodeId, seconds) > 0) {
+                            appWindow.showMessage(qsTr("Bookmark at %1").arg(TimeFormat.clock(seconds)))
+                        }
+                    }
+                }
                 ToolbarButton {
                     width: Theme.itemSizeLarge
                     moon: true

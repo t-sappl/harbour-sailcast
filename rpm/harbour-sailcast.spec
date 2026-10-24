@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.0
+Version:    1.1
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -24,6 +24,7 @@ BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Quick)
 BuildRequires:  pkgconfig(Qt5Network)
+BuildRequires:  pkgconfig(Qt5DBus)
 BuildRequires:  pkgconfig(Qt5Sql)
 BuildRequires:  pkgconfig(Qt5Multimedia)
 BuildRequires:  pkgconfig(sailfishsecrets)
@@ -58,13 +59,26 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sat Oct 24 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.1-1
+- Sailcast in the sharing menu ("Add podcast") for links and text; search
+  on the device (podcasts, episode titles, bookmarks); website addresses
+  checked for their podcast feed, links from Spotify, YouTube and other
+  platforms search for the podcast, Apple Podcasts links by their id;
+  share an episode (optionally from the current position); configurable
+  lock screen, headset and cover buttons (sleep timer or bookmark on the
+  cover); automatic database backup into Downloads and the Nextcloud,
+  with restore; season and episode numbers, "Support the podcast";
+  gpodder.net device choice for the sync group; name and note right when
+  setting a bookmark; settings in sub-pages; setting "Sync and update
+  together".
 * Thu Oct 22 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.0-1
-- First public release: podcast search (Podcast Index), folders, playlist,
-  player with chapters, bookmarks and sleep timer, per-podcast speed and
-  intro/outro skipping, downloads, archive, lock screen controls, portrait
+- First public release (source on GitHub): podcast search (Podcast Index)
+  with a check of feed addresses, folders, playlist, player with chapters,
+  bookmarks and sleep timer, per-podcast speed and intro/outro skipping,
+  downloads, archive, lock screen, cover and headset controls, portrait
   and landscape, sync with Nextcloud GPodder Sync (browser sign-in) or a
-  gpodder.net compatible server (devices and sync group), OPML import and
-  export, English and German.
+  gpodder.net compatible server, OPML import and export, English and
+  German.
 * Fri Oct 09 2026 Thomas Sappl <thomas.sappl@gmail.com> - 0.1-1
 - Stage 4a/4b: lists (new episodes, podcasts, playlist, episodes,
   episode page) and the player (mini player, player page, chapters,

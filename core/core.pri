@@ -33,7 +33,8 @@ HEADERS += \
     $$PWD/podcastindex.h \
     $$PWD/sqltext.h \
     $$PWD/syncengine.h \
-    $$PWD/timeparse.h
+    $$PWD/timeparse.h \
+    $$PWD/webdavbackup.h
 
 SOURCES += \
     $$PWD/archiver.cpp \
@@ -50,7 +51,8 @@ SOURCES += \
     $$PWD/opml.cpp \
     $$PWD/podcastindex.cpp \
     $$PWD/syncengine.cpp \
-    $$PWD/timeparse.cpp
+    $$PWD/timeparse.cpp \
+    $$PWD/webdavbackup.cpp
 
 # Podcast Index API key (private, not in the repository) - see
 # podcastindex.pri.example in the project folder

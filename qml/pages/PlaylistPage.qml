@@ -242,6 +242,12 @@ Page {
                 text: qsTr("Bookmarks (%1)").arg(core.bookmarkCount)
                 onClicked: pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"))
             }
+            // Search on the device (86)
+            MenuItem {
+                visible: core.podcastCount > 0
+                text: qsTr("Search")
+                onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
+            }
             MenuItem {
                 visible: queue.count > 0
                 text: qsTr("Play playlist")
