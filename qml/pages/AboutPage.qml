@@ -57,7 +57,7 @@ Page {
                 wrapMode: Text.Wrap
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: Theme.fontSizeSmall
-                text: qsTr("Podcast app for Sailfish OS: subscriptions, playlist, chapters, downloads and archive, synchronized with other podcast apps through Nextcloud (GPodder Sync).")
+                text: qsTr("Podcast app for Sailfish OS: discover new podcasts – suggestions for you, trending and new shows, categories and similar podcasts – and listen before subscribing. Playlist, chapters, bookmarks, downloads and archive, synchronized with other podcast apps through Nextcloud (GPodder Sync) or gpodder.net.")
             }
 
             SectionHeader { text: qsTr("License and source code") }
@@ -91,7 +91,7 @@ Page {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
-                text: qsTr("Podcast search: Podcast Index (podcastindex.org). Behavior and formats of gPodder (Thomas Perl and contributors, ISC license) served as reference. Lock screen controls: Amber.Mpris.")
+                text: qsTr("Search and Discover: Podcast Index (podcastindex.org) and fyyd (fyyd.de); new podcasts from Hörsuppe's list \"Nullnummern\" on fyyd and Podnews' \"New Podcasts\". Behavior and formats of gPodder (Thomas Perl and contributors, ISC license) served as reference. Lock screen controls: Amber.Mpris.")
             }
         }
 

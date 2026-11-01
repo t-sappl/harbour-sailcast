@@ -8,7 +8,9 @@ import "../TimeFormat.js" as TimeFormat
 // of New episodes and Playlist): the own podcasts (title, author), episode
 // titles over all podcasts and bookmarks (name, note, episode), as sections
 // in one list (sections in a list header would grow upwards on Qt 5.6, 24).
-// Show notes are not searched. The last row leads to "Add podcast" with the
+// Show notes are not searched - since 236 optionally ("Also in descriptions",
+// setting "search.descriptions", off by default): a section "In
+// descriptions" with an excerpt per episode. The last row leads to "Add podcast" with the
 // same term (Podcast Index) - adding new podcasts is that page's job.
 Page {
     id: page
@@ -18,6 +20,8 @@ Page {
     // Own data found: {podcasts, episodes, bookmarks}
     property var localResults: ({})
     property string localTerm: ""
+    // (236) Also in the descriptions (remembered)
+    property bool inDescriptions: core.setting("search.descriptions", "0") === "1"
 
     // [{kind, data}] - "section" (data = title), "podcast", "episode",
     // "bookmark", "more" (the row to the Podcast Index search)
@@ -27,6 +31,7 @@ Page {
         var list = []
         var parts = [["podcast", local.podcasts, qsTr("My podcasts")],
                      ["episode", local.episodes, qsTr("Episodes")],
+                     ["episode", local.described, qsTr("In descriptions")],
                      ["bookmark", local.bookmarks, qsTr("Bookmarks")]]
         for (var i = 0; i < parts.length; i++) {
             var items = parts[i][1] || []
@@ -45,7 +50,7 @@ Page {
 
     function search() {
         var term = searchText.trim()
-        localResults = term.length >= 2 ? core.searchLocal(term) : ({})
+        localResults = term.length >= 2 ? core.searchLocal(term, inDescriptions) : ({})
         localTerm = term.length >= 2 ? term : ""
     }
 
@@ -83,6 +88,18 @@ Page {
             }
         }
 
+        // (236) Also search the descriptions (show notes as plain text)
+        TextSwitch {
+            text: qsTr("Also in descriptions")
+            checked: page.inDescriptions
+            automaticCheck: false
+            onClicked: {
+                page.inDescriptions = !page.inDescriptions
+                core.setSetting("search.descriptions", page.inDescriptions ? "1" : "0")
+                page.search()
+            }
+        }
+
         // How this page works - while the field is empty
         Label {
             visible: page.searchText.trim().length === 0
@@ -91,7 +108,9 @@ Page {
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.secondaryHighlightColor
-            text: qsTr("Finds your podcasts (title, author), episode titles and bookmarks (name, note). Show notes are not searched. New podcasts: \"Search / add podcast\" on the Podcasts page.")
+            text: page.inDescriptions
+                  ? qsTr("Finds your podcasts (title, author), episode titles and descriptions and bookmarks (name, note). New podcasts: \"Discover\".")
+                  : qsTr("Finds your podcasts (title, author), episode titles and bookmarks (name, note). New podcasts: \"Discover\".")
         }
     }
 
@@ -221,6 +240,18 @@ Page {
                                 }
                                 return parts.join(" · ")
                             }
+                        }
+                        // (236) Found in the description: the passage
+                        Label {
+                            visible: (rowItem.entry.excerpt || "").length > 0
+                            width: parent.width
+                            text: rowItem.entry.excerpt || ""
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 3
+                            elide: Text.ElideRight
+                            font.pixelSize: Theme.fontSizeExtraSmall
+                            font.italic: true
+                            color: episodeItem.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
                         }
                     }
                 }

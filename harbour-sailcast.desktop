@@ -12,6 +12,13 @@ Categories=AudioVideo;Audio;Player;
 # from other apps open "Search / add podcast" (harbour-sailcast.qml,
 # receiveShare)
 X-Share-Methods=podcast;
+# Links like podcast://, pcast://, itpc:// open "Search / add podcast" (113):
+# lipstick calls the D-Bus method below with the link (appWindow.openPodcastLinks).
+# feed:// is left to RSS readers.
+MimeType=x-scheme-handler/podcast;x-scheme-handler/pcast;x-scheme-handler/itpc;
+X-Maemo-Service=harbour-sailcast.harbour-sailcast
+X-Maemo-Object-Path=/ui
+X-Maemo-Method=harbour_sailcast.ui.openUrl
 
 [X-Share Method podcast]
 Description=Add podcast

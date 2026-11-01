@@ -25,6 +25,7 @@ struct SyncResult
     int podcastsAdded = 0;          // subscribed here because of the server
     int podcastsRemoved = 0;        // unsubscribed here because of the server
     int subscriptionsUploaded = 0;  // local adds/removes sent to the server
+    int urlsRewritten = 0;          // feed addresses taken over from "update_urls" (117)
     int feedsLoaded = 0;            // new podcasts whose feed was loaded
     int actionsReceived = 0;
     ApplyResult applied;            // of all pending actions, incl. older ones
@@ -86,6 +87,7 @@ private:
     void registerDevice();
     void fetchSubscriptions();
     void applySubscriptions(const QByteArray &body);
+    void applyUpdateUrls(const QByteArray &body);
     void uploadSubscriptions();
     void loadNewFeeds();
     void fetchActions();

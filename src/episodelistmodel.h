@@ -35,9 +35,16 @@ class EpisodeListModel : public RowListModel<EpisodeRow>
     // Oldest first (53, per-podcast setting for serials) and a title search
     Q_PROPERTY(bool oldestFirst READ oldestFirst WRITE setOldestFirst NOTIFY oldestFirstChanged)
     Q_PROPERTY(QString search READ search WRITE setSearch NOTIFY searchChanged)
+    // (158) Long lists of a podcast: a section per season (when the feed has
+    // two or more) or per month (this year) / year (before) - role "section"
+    Q_PROPERTY(bool sections READ sections WRITE setSections NOTIFY sectionsChanged)
+    // (158) With a limit: there are more episodes than shown
+    Q_PROPERTY(bool hasMore READ hasMore NOTIFY countChanged)
 
 public:
-    enum Filter { All, Unplayed, InProgress, Downloaded, NewEpisodes, Queue, Home, Single };
+    // (188) Recent: the episodes heard to the end or skipped in the player,
+    // newest first (setting "player.recent")
+    enum Filter { All, Unplayed, InProgress, Downloaded, NewEpisodes, Queue, Home, Single, Recent };
     Q_ENUM(Filter)
 
     enum Roles {
@@ -61,7 +68,11 @@ public:
         QueuedRole,
         BookmarkCountRole,
         SeasonRole,          // (83) 0 = none
-        EpisodeNumberRole    // (83) 0 = none
+        EpisodeNumberRole,   // (83) 0 = none
+        KeptRole,            // (120) the downloaded file is in the archive folder
+        ProvisionalRole,     // (156) its podcast is not subscribed
+        SectionRole,         // (158) see sections
+        SectionStartRole     // (161) the first row of its section
     };
 
     explicit EpisodeListModel(QObject *parent = nullptr);
@@ -79,6 +90,9 @@ public:
     void setOldestFirst(bool oldestFirst);
     QString search() const { return m_search; }
     void setSearch(const QString &search);
+    bool sections() const { return m_sections; }
+    void setSections(bool on);
+    bool hasMore() const { return m_hasMore; }
     int episodeId() const { return m_episodeId; }
     void setEpisodeId(int id);
     int excludeEpisodeId() const { return m_excludeEpisodeId; }
@@ -98,6 +112,7 @@ signals:
     void limitChanged();
     void oldestFirstChanged();
     void searchChanged();
+    void sectionsChanged();
     void episodeIdChanged();
     void excludeEpisodeIdChanged();
     void countChanged();
@@ -115,8 +130,17 @@ private:
     int m_episodeId = -1;
     int m_excludeEpisodeId = -1;
     bool m_reloadPending = false;
+    bool m_sections = false;
+    bool m_bySeason = false;    // sections by season (else by time)
+    bool m_hasMore = false;
+    int m_appliedSectionMode = -1;  // sections shown last time (0 none, 1 time, 2 season)
+    QString sectionOf(const EpisodeRow &e) const;
     // While a drag is not committed, reloads would undo the shown order
     bool m_dragging = false;
+
+public:
+    // (159) The section of an episode: its season, or month (this year) / year
+    static QString sectionLabel(const EpisodeRow &e, bool bySeason);
 };
 
 #endif // EPISODELISTMODEL_H

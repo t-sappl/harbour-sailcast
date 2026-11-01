@@ -274,7 +274,7 @@ void SyncEngine::applySubscriptions(const QByteArray &body)
 
     for (int i = 0; i < adds.size(); ++i) {
         const QString &url = adds.at(i);
-        if (containsFeed(localRemoves, url) || m_database->findPodcast(url) >= 0) {
+        if (containsFeed(localRemoves, url) || m_database->findSubscribed(url) >= 0) {
             continue;
         }
         const qint64 id = m_database->addPodcast(url, QString(), false);
@@ -289,7 +289,7 @@ void SyncEngine::applySubscriptions(const QByteArray &body)
             if (containsFeed(localAdds, url)) {
                 continue;
             }
-            const qint64 id = m_database->findPodcast(url);
+            const qint64 id = m_database->findSubscribed(url);
             if (id >= 0 && m_database->removePodcast(id, false)) {
                 ++m_result.podcastsRemoved;
             }
@@ -334,13 +334,43 @@ void SyncEngine::uploadSubscriptions()
             ? QStringLiteral("subscription_change/create")
             : QStringLiteral("subscriptions/%1/%2.json").arg(userPath(), m_device);
     post(endpoint(path), QJsonDocument(changes).toJson(QJsonDocument::Compact),
-         [this](const QByteArray &) {
+         [this](const QByteArray &body) {
         m_result.subscriptionsUploaded = m_uploadedAdds.size() + m_uploadedRemoves.size();
+        applyUpdateUrls(body);
         if (!m_firstSync) {
             m_database->removeOutboxSubscriptions(m_uploadedAdds + m_uploadedRemoves);
         }
         loadNewFeeds();
     });
+}
+
+// The answer to uploaded subscription changes may contain "update_urls":
+// pairs [old, new] of addresses the server has rewritten (gpodder.net API,
+// e.g. removed tracking parameters, 117). The subscription takes the new
+// address over - the server already knows it, nothing to upload. An empty
+// new address (the server rejected the URL) is ignored. gpoddersync answers
+// with an empty list.
+void SyncEngine::applyUpdateUrls(const QByteArray &body)
+{
+    const QJsonArray pairs = QJsonDocument::fromJson(body).object()
+            .value(QStringLiteral("update_urls")).toArray();
+    for (int i = 0; i < pairs.size(); ++i) {
+        const QJsonArray pair = pairs.at(i).toArray();
+        if (pair.size() < 2) {
+            continue;
+        }
+        const QString oldUrl = pair.at(0).toString().trimmed();
+        const QString newUrl = pair.at(1).toString().trimmed();
+        if (oldUrl.isEmpty() || newUrl.isEmpty() || oldUrl == newUrl) {
+            continue;
+        }
+        const qint64 id = m_database->findPodcast(oldUrl);
+        if (id > 0 && m_database->changeUrl(id, newUrl)) {
+            // The outbox entries keep the old address - they are removed
+            // by that address right after this
+            ++m_result.urlsRewritten;
+        }
+    }
 }
 
 void SyncEngine::loadNewFeeds()

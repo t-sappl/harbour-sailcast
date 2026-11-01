@@ -70,7 +70,7 @@ Page {
 
     function run(action, path) {
         if (action === "opml") {
-            core.importOpml(path, importFolderId)
+            core.importOpml(path, importFolderId, markOlderSwitch.checked)
         } else if (action === "gpodder") {
             core.importGpodder(path)
         } else if (action === "database") {
@@ -126,6 +126,17 @@ Page {
                 title: qsTr("OPML file")
                 description: qsTr("Adds the podcasts of a subscription list from another app")
                 onClicked: page.pick("opml", ["*.opml", "*.xml"])
+            }
+
+            // (168) Otherwise every episode of every imported podcast is
+            // unplayed - many hundreds after a move from another app. Off by
+            // default (174, Thomas)
+            TextSwitch {
+                id: markOlderSwitch
+                text: qsTr("Only the newest episode unplayed")
+                description: qsTr("After loading, all older episodes of the imported podcasts are marked as played")
+                checked: core.setting("ui.importMarkOlder", "0") === "1"
+                onCheckedChanged: core.setSetting("ui.importMarkOlder", checked ? "1" : "0")
             }
 
             ImportExportItem {

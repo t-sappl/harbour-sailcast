@@ -81,16 +81,18 @@ Page {
         delegate: EpisodeDelegate {}
 
         ViewPlaceholder {
-            enabled: episodes.count === 0
-            text: core.databaseError.length > 0 ? qsTr("Database error")
-                                                : (core.podcastCount === 0 ? qsTr("No podcasts yet")
-                                                                           : qsTr("All caught up"))
-            hintText: core.databaseError.length > 0 ? core.databaseError
-                                                    : (core.podcastCount === 0
-                                                       ? qsTr("Swipe to Podcasts and pull down to search for podcasts, or set up the sync in the settings")
-                                                       : qsTr("No unplayed episodes"))
+            // (219) Without podcasts: GetStarted below
+            enabled: episodes.count === 0 && (core.podcastCount > 0 || core.databaseError.length > 0)
+            text: core.databaseError.length > 0 ? qsTr("Database error") : qsTr("All caught up")
+            hintText: core.databaseError.length > 0 ? core.databaseError : qsTr("No unplayed episodes")
         }
 
         VerticalScrollDecorator {}
+    }
+
+    // (219) First steps as buttons (as on the Podcasts page)
+    GetStarted {
+        visible: core.podcastCount === 0 && core.databaseError.length === 0
+        anchors.verticalCenter: parent.verticalCenter
     }
 }

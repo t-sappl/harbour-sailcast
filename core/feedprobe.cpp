@@ -191,6 +191,7 @@ void FeedProbe::check(const QString &url)
     m_candidates.clear();
     m_best = FeedProbeResult();
     m_hasBest = false;
+    m_pageUrl.clear();
     const QUrl target(normalize(url));
     if (!target.isValid() || target.host().isEmpty()
             || (target.scheme() != QLatin1String("http") && target.scheme() != QLatin1String("https"))) {
@@ -276,6 +277,9 @@ void FeedProbe::onFinished(QNetworkReply *reply)
         m_result.status = FeedProbeResult::Ok;
         m_result.title = feed.title;
         m_result.author = feed.author;
+        m_result.language = feed.language;
+        m_result.categories = feed.categories;
+        m_result.link = feed.link;
         m_result.coverUrl = feed.coverUrl;
         m_result.episodes = feed.episodes.size();
         m_result.description = feed.description;
@@ -284,21 +288,31 @@ void FeedProbe::onFinished(QNetworkReply *reply)
         std::sort(sorted.begin(), sorted.end(), [](const ParsedEpisode &a, const ParsedEpisode &b) {
             return a.published > b.published;
         });
+        m_result.dates.clear();
+        for (int i = 0; i < sorted.size() && m_result.dates.size() < 30; ++i) {
+            if (sorted.at(i).published > 0) {
+                m_result.dates.append(sorted.at(i).published);
+            }
+        }
         m_result.latest.clear();
         for (int i = 0; i < sorted.size() && i < 5; ++i) {
             FeedProbeResult::Latest l;
             l.title = sorted.at(i).title;
             l.published = sorted.at(i).published;
             l.duration = sorted.at(i).duration;
+            l.guid = sorted.at(i).guid;
             m_result.latest.append(l);
         }
         if (!feed.newUrl.isEmpty()) {
             m_result.url = feed.newUrl;     // itunes:new-feed-url
         }
         if (m_discovered) {
+            matchShared(feed.episodes);
             // A website's feed (102): keep the one with the most episodes,
-            // then check the next
-            if (!m_hasBest || m_result.episodes > m_best.episodes) {
+            // then check the next - since 148 the one with the shared
+            // episode first
+            if (!m_hasBest || (m_result.hasShared && !m_best.hasShared)
+                    || (m_result.hasShared == m_best.hasShared && m_result.episodes > m_best.episodes)) {
                 m_best = m_result;
                 m_hasBest = true;
             }
@@ -315,6 +329,7 @@ void FeedProbe::onFinished(QNetworkReply *reply)
     // A website? Follow the feed it names, once
     if (!m_discovered) {
         m_candidates = discoverFeeds(data, reply->url()).mid(0, 8);
+        m_pageUrl = reply->url().toString();
         if (!m_candidates.isEmpty()) {
             m_discovered = true;
             m_result.discovered = true;
@@ -329,6 +344,45 @@ void FeedProbe::onFinished(QNetworkReply *reply)
     }
     m_result.status = FeedProbeResult::NotAFeed;
     finish();
+}
+
+QString FeedProbe::pageKey(const QString &url)
+{
+    const QUrl u(normalize(url.trimmed()));
+    if (!u.isValid() || u.host().isEmpty()) {
+        return QString();
+    }
+    QString host = u.host().toLower();
+    if (host.startsWith(QLatin1String("www."))) {
+        host = host.mid(4);
+    }
+    QString path = u.path();
+    while (path.endsWith(QLatin1Char('/'))) {
+        path.chop(1);
+    }
+    return host + path + (u.hasQuery() ? QLatin1Char('?') + u.query() : QString());
+}
+
+void FeedProbe::matchShared(const QList<ParsedEpisode> &episodes)
+{
+    m_result.hasShared = false;
+    const QString requested = pageKey(m_result.requestedUrl);
+    const QString page = pageKey(m_pageUrl);
+    // The start page of the site is no episode
+    if (requested.indexOf(QLatin1Char('/')) < 0 && page.indexOf(QLatin1Char('/')) < 0) {
+        return;
+    }
+    for (int i = 0; i < episodes.size(); ++i) {
+        const QString key = pageKey(episodes.at(i).link);
+        if (!key.isEmpty() && key.indexOf(QLatin1Char('/')) >= 0 && (key == requested || key == page)) {
+            m_result.hasShared = true;
+            m_result.shared.title = episodes.at(i).title;
+            m_result.shared.published = episodes.at(i).published;
+            m_result.shared.duration = episodes.at(i).duration;
+            m_result.shared.guid = episodes.at(i).guid;
+            return;
+        }
+    }
 }
 
 void FeedProbe::finishDiscovered()

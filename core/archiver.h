@@ -13,6 +13,7 @@ class Database;
 class DownloadManager;
 class FeedUpdater;
 class QNetworkAccessManager;
+struct PodcastRow;
 
 struct ArchiveResult
 {
@@ -71,6 +72,13 @@ public:
 
     void archive(qint64 podcastId);
 
+    // Moves the downloaded file of one episode into the podcast's archive
+    // folder (120: "Save in Music"): the folder is created (name chosen as
+    // for a full archive), the file gets its archive name, the episode
+    // keeps playing from there and is never cleaned up; episodes.json is
+    // written. Returns the new path, empty on failure (`error`).
+    QString keepEpisode(qint64 episodeId, QString *error = nullptr);
+
     // Writes episodes.json of an already archived podcast again (e.g.
     // after listening) - no network
     bool writeMetadata(qint64 podcastId, QString *error = nullptr);
@@ -84,6 +92,14 @@ public:
     // (setting "archive.url" + "<podcast folder>/<file>")
     static QList<PlaybackSource> playbackSources(Database *database, qint64 episodeId);
 
+    // (209) Where a download goes with "Downloads in Music": the podcast's
+    // archive folder, the name archiving would give it; empty if no root or
+    // the file exists already (then the normal download folder)
+    QString musicTarget(qint64 episodeId);
+    // (217) Moves a downloaded file to `target` (folder created, rename or
+    // copy + delete) and stores the new path; false if that fails
+    bool relocate(qint64 episodeId, const QString &target);
+
 signals:
     void progress(const QString &step);
     void finished(const ArchiveResult &result);
@@ -91,6 +107,7 @@ signals:
 
 private:
     void saveCover();
+    QString ensureFolderName(const PodcastRow &podcast);
     void archiveEpisodes();
     void finish();
     QString folderFor(qint64 podcastId) const;

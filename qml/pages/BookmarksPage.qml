@@ -86,8 +86,9 @@ Page {
                 // podcast, note
                 Label {
                     width: parent.width
-                    text: "★ " + (modelData.title.length > 0 ? modelData.title : qsTr("Bookmark"))
-                          + " · " + TimeFormat.clock(modelData.position)
+                    // (191) Unnamed: only the time ("★ Bookmark · …" repeated)
+                    text: "★ " + (modelData.title.length > 0 ? modelData.title + " · " : "")
+                          + TimeFormat.clock(modelData.position)
                     truncationMode: TruncationMode.Fade
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.highlightColor

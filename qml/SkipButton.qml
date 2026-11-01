@@ -22,7 +22,8 @@ BackgroundItem {
     Label {
         anchors.centerIn: parent
         text: (button.seconds < 0 ? "−" : "+") + Math.abs(button.seconds)
-        font.pixelSize: Theme.fontSizeSmall
+        // (181) Smaller circles (player bar) get the smaller text
+        font.pixelSize: button.width < Theme.itemSizeSmall ? Theme.fontSizeExtraSmall : Theme.fontSizeSmall
         font.bold: true
         color: button.down ? Theme.highlightColor : Theme.primaryColor
     }

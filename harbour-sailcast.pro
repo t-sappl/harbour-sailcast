@@ -43,8 +43,13 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     podcastindex.pri.example \
     harbour-sailcast.desktop \
     qml/harbour-sailcast.qml \
+    qml/BookmarkPanel.qml \
     qml/ChapterList.qml \
     qml/CoverImage.qml \
+    qml/DiscoverRow.qml \
+    qml/NewEpisodeRow.qml \
+    qml/StatTiles.qml \
+    qml/Chip.qml \
     qml/EpisodeArt.qml \
     qml/EpisodeDelegate.qml \
     qml/MessageBanner.qml \
@@ -78,6 +83,15 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/PodcastsMenu.qml \
     qml/pages/PodcastsPage.qml \
     qml/pages/SearchPage.qml \
+    qml/pages/InterestsPage.qml \
+    qml/pages/SimilarPage.qml \
+    qml/pages/DownloadAllDialog.qml \
+    qml/pages/MarkPlayedDialog.qml \
+    qml/pages/CategoriesPage.qml \
+    qml/pages/CategoryPage.qml \
+    qml/pages/LanguagesPage.qml \
+    qml/pages/InterestsCategoriesPage.qml \
+    qml/pages/KeywordDialog.qml \
     qml/pages/LocalSearchPage.qml \
     qml/pages/SettingsPage.qml \
     qml/pages/SettingsGeneralPage.qml \
@@ -92,11 +106,14 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/FolderPickerDialog.qml \
     qml/pages/FolderSelectPage.qml \
     qml/pages/FolderPodcastsPage.qml \
+    qml/pages/PodcastChoiceDialog.qml \
+    qml/pages/MoveDownloadsDialog.qml \
     qml/pages/FolderDeleteDialog.qml \
     qml/pages/GpodderDeviceDialog.qml \
     qml/pages/BookmarksPage.qml \
     qml/pages/BookmarkNoteDialog.qml \
     qml/FolderSection.qml \
+    qml/GetStarted.qml \
     qml/OnceHint.qml \
     qml/RingHint.qml \
     qml/FolderComboBox.qml \

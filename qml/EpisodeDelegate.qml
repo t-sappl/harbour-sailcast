@@ -121,10 +121,27 @@ ListItem {
                     core.markUnplayed(model.episodeId)
                 }
             }
+            // (156) Its podcast is not subscribed (147)
+            MenuItem {
+                visible: model.provisional === true
+                text: qsTr("Subscribe to the podcast")
+                onClicked: appWindow.subscribeWithFolder(core.podcast(model.podcastId).url || "", model.podcastTitle || "")
+            }
             // (83) Opened from the window, not from this menu (25)
             MenuItem {
                 text: qsTr("Share")
                 onClicked: appWindow.shareEpisode(model.episodeId, 0)
+            }
+            // (120) The file itself; from the window (25)
+            MenuItem {
+                visible: model.downloaded
+                text: qsTr("Share file")
+                onClicked: appWindow.shareEpisodeFile(model.episodeId)
+            }
+            MenuItem {
+                visible: model.downloaded && !model.kept
+                text: qsTr("Save in Music")
+                onClicked: core.keepEpisode(model.episodeId)
             }
         }
     }
@@ -236,7 +253,8 @@ ListItem {
             Label {
                 visible: item.showPodcastTitle
                 width: parent.width
-                text: model.podcastTitle
+                // (156) Listened to without subscribing: say so
+                text: model.provisional ? model.podcastTitle + " · " + qsTr("not subscribed") : model.podcastTitle
                 truncationMode: TruncationMode.Fade
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: item.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
@@ -280,16 +298,28 @@ ListItem {
                         } else if (model.duration > 0) {
                             parts.push(TimeFormat.length(model.duration, qsTr("%1 h %2 min"), qsTr("%1 min")))
                         }
-                        if (model.queued && !item.inPlaylist) {
-                            parts.push(qsTr("in playlist"))
-                        }
+                        // (191) "in playlist" is a symbol now (queueIcon) - the
+                        // word was cut off next to date, time and download
                         return parts.join(" · ")
                     }
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: item.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
                     truncationMode: TruncationMode.Fade
                     width: Math.min(implicitWidth, parent.width - (progressTrack.visible ? progressTrack.width + parent.spacing : 0)
-                                    - (downloadIcon.visible ? downloadIcon.width + parent.spacing : 0))
+                                    - (downloadIcon.visible ? downloadIcon.width + parent.spacing : 0)
+                                    - (queueIcon.visible ? queueIcon.width + parent.spacing : 0))
+                }
+
+                // (191) In the playlist (not on the playlist page itself)
+                Image {
+                    id: queueIcon
+                    visible: model.queued && !item.inPlaylist
+                    anchors.verticalCenter: parent.verticalCenter
+                    source: "image://theme/icon-m-media-playlists?" + Theme.secondaryHighlightColor
+                    width: Theme.iconSizeExtraSmall
+                    height: width
+                    sourceSize.width: width
+                    sourceSize.height: height
                 }
 
                 Image {
@@ -343,11 +373,11 @@ ListItem {
             }
         }
 
-        IconButton {
+        RowPlayButton {
             id: playButton
             anchors {
                 right: parent.right
-                rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium
+                rightMargin: Theme.horizontalPageMargin - playButton.inset
                 verticalCenter: parent.verticalCenter
             }
             icon.source: item.isPlaying ? "image://theme/icon-m-pause" : "image://theme/icon-m-play"

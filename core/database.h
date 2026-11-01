@@ -2,7 +2,9 @@
 #ifndef DATABASE_H
 #define DATABASE_H
 
+#include <QHash>
 #include <QList>
+#include <QPair>
 #include <QSqlDatabase>
 #include <QString>
 #include <QStringList>
@@ -17,6 +19,12 @@ struct PodcastRow
     qint64 id = 0;
     QString url;
     QString title;          // custom title if set, else the feed title
+    QString feedTitle;      // title from the feed (112)
+    QString customTitle;    // own name set by the user, empty = none (112)
+    QString language;       // from the feed, primary subtag ("de"), empty = unknown (123)
+    QStringList categories; // itunes:category, "Science" / "Science/Astronomy" (123)
+    bool provisional = false; // (147) listened to without subscribing
+    qint64 newestPublished = 0; // (158) newest episode, 0 = none
     QString link;
     QString description;
     QString author;
@@ -37,6 +45,16 @@ struct PodcastRow
     // Listening time in seconds: full length of played episodes plus the
     // position of started ones ("mark as played" counts as listened)
     qint64 listenedSeconds = 0;
+};
+
+// Episodes of a podcast really played (128, for "Für dich"): played or
+// started, with a time of playing, but not part of a mass action - 5 or
+// more episodes of the podcast with their time in the same minute ("mark
+// all as played", or a listening history taken over from another app)
+struct PlayStats
+{
+    int plays = 0;
+    qint64 lastPlayed = 0;  // Unix time of the latest of them
 };
 
 // A folder of podcasts (45); id 0 stands for "Other podcasts" (no folder)
@@ -93,6 +111,8 @@ struct EpisodeRow
     int bookmarkCount = 0;   // (50) star on the image in lists
     int season = 0;          // (83) from the feed, 0 = none
     int episodeNumber = 0;   // (83) from the feed, 0 = none
+    bool provisional = false; // (156) its podcast is not subscribed (147)
+    QString type;            // (193) itunes:episodeType "trailer" or "bonus", empty = normal
 
     // Seconds still to listen to; -1 if the duration is unknown
     int remaining() const
@@ -156,8 +176,17 @@ public:
     // Adds a podcast (returns the existing id if already subscribed), -1 on
     // error. With queueForSync and a configured sync account, the change is
     // also put into the sync outbox (not when the sync itself adds it).
+    // Since 147 a provisional podcast ("Anhören ohne Abo") is turned into a
+    // subscription here (and queued for sync); with provisional a new
+    // podcast is added hidden (never queued) - an existing one stays as it is.
     qint64 addPodcast(const QString &url, const QString &title = QString(),
-                      bool queueForSync = true);
+                      bool queueForSync = true, bool provisional = false);
+    // (147) The id if the URL is subscribed (not provisional), else -1
+    qint64 findSubscribed(const QString &url) const;
+    // (147) Provisional podcasts not touched for the given days (added and
+    // last played before), except those with an episode in the playlist or
+    // the given one (the player's)
+    QList<qint64> staleProvisional(int days, qint64 keepEpisodeId) const;
     bool removePodcast(qint64 id, bool queueForSync = true);
     QStringList podcastUrls() const;
     QList<PodcastRow> podcasts() const;
@@ -176,6 +205,11 @@ public:
     QList<EpisodeRow> episodes(qint64 podcastId, int limit = -1, EpisodeFilter filter = AllEpisodes,
                                bool oldestFirst = false, const QString &search = QString()) const;
     EpisodeRow episode(qint64 id) const;    // id 0 if not found
+    // (236) Episodes whose description (plain text) contains the term but
+    // whose title does not - newest first; second: the description
+    QList<QPair<EpisodeRow, QString>> searchDescriptions(const QString &search, int limit) const;
+    // (158) Number of different seasons (> 0) of a podcast's episodes
+    int seasonCount(qint64 podcastId) const;
     QList<ParsedChapter> chapters(qint64 episodeId) const;
     DatabaseStats stats() const;
 
@@ -191,6 +225,9 @@ public:
     // Left out of the automatic update ("update all"); updating the podcast
     // itself still works (column "paused", since schema v1, UI since 44)
     bool setManualUpdate(qint64 podcastId, bool manual);
+    // Own name of a podcast (column "custom_title", since schema v1, UI
+    // since 112); empty = the feed's title again
+    bool setCustomTitle(qint64 podcastId, const QString &title);
 
     // Received sync actions that never found their episode (e.g. episodes
     // no longer in the feed) are dropped after maxAgeDays (49); returns the
@@ -201,6 +238,8 @@ public:
     // Of one episode (by position), or with episodeId 0 all (newest first)
     QList<BookmarkRow> bookmarks(qint64 episodeId = 0) const;
     int bookmarkCount() const;
+    // (218) Downloaded episodes (download_state 2), all podcasts
+    int downloadedCount() const;
     // created: Unix time (0 = now; an archive import keeps the original)
     qint64 addBookmark(qint64 episodeId, int position, qint64 created = 0);  // id, 0 on error
     bool setBookmarkNote(qint64 bookmarkId, const QString &note);
@@ -249,11 +288,20 @@ public:
     QList<qint64> queueIds() const;
     // Marks all unplayed episodes of a podcast as played; returns the number
     int markAllPlayed(qint64 podcastId);
+    // (168) After an import: all but the newest episode as played; episodes
+    // with a position (e.g. from the sync) are left alone
+    int markAllButNewestPlayed(qint64 podcastId);
     // The unplayed episodes of the same podcast older than this one (53)
     int markOlderPlayed(qint64 episodeId);
 
     // --- Settings (key/value, e.g. the sync account) ---
     QString setting(const QString &key, const QString &defaultValue = QString()) const;
+    // All per-podcast settings "podcast.<id>.<name>" with a value: id -> value (117)
+    QHash<qint64, QString> podcastSettings(const QString &name) const;
+    // All settings whose key starts with prefix, by the rest of the key (133)
+    QHash<QString, QString> settingsWithPrefix(const QString &prefix) const;
+    // Per podcast id: episodes really played (see PlayStats)
+    QHash<qint64, PlayStats> playStats() const;
     bool setSetting(const QString &key, const QString &value);
     // Removes all settings whose key starts with prefix (per-podcast settings)
     bool removeSettings(const QString &prefix);

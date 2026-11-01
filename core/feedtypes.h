@@ -4,6 +4,7 @@
 
 #include <QList>
 #include <QString>
+#include <QStringList>
 
 // Plain data structures shared by the feed parser, the database and the
 // importers. No Qt object model, so they can be copied between threads.
@@ -33,6 +34,7 @@ struct ParsedEpisode
     QList<ParsedChapter> chapters; // Podlove Simple Chapters in the feed
     int season = 0;         // itunes:season / podcast:season, 0 = none (83)
     int episodeNumber = 0;  // itunes:episode / podcast:episode, 0 = none (83)
+    QString type;           // itunes:episodeType "trailer" or "bonus"; empty = "full" (193)
 };
 
 // podcast:funding (83): a link to support the podcast
@@ -51,6 +53,10 @@ struct ParsedFeed
     QString coverUrl;
     QString newUrl;         // itunes:new-feed-url
     QList<ParsedFunding> funding; // podcast:funding (83)
+    QString language;       // <language>, primary subtag in lower case ("de" for "de-AT") (123)
+    // itunes:category, "Category" and "Category/Subcategory" (English names
+    // of the Apple list, as in the feed), at most 10 (123)
+    QStringList categories;
     QList<ParsedEpisode> episodes;
     bool repaired = false;  // broken XML was repaired completely (see FeedParser)
 

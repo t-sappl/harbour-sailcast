@@ -13,6 +13,8 @@ BackgroundItem {
     property string label: ""
     property bool moon: false
     property bool active: false
+    // (181) Smaller symbol (player bar)
+    property real symbolScale: 1.0
 
     readonly property color tint: !enabled ? Theme.rgba(Theme.primaryColor, 0.4)
                                            : (active || highlighted ? Theme.highlightColor : Theme.primaryColor)
@@ -23,6 +25,7 @@ BackgroundItem {
     // the symbol sits in the middle
     Item {
         id: symbol
+        scale: button.symbolScale
         anchors.horizontalCenter: parent.horizontalCenter
         y: button.label.length > 0 ? caption.y - height - Theme.paddingSmall / 2
                                    : (parent.height - height) / 2

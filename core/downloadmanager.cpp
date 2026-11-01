@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "downloadmanager.h"
 
+#include <QDateTime>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QMetaObject>
@@ -367,7 +369,68 @@ void DownloadManager::done(const JobPtr &job)
     QMetaObject::invokeMethod(this, "pump", Qt::QueuedConnection);
 }
 
-CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId)
+int DownloadManager::removeStaleParts(const QString &archiveRoot, int days)
+{
+    QSet<QString> running;
+    for (QHash<qint64, JobPtr>::const_iterator it = m_active.constBegin(); it != m_active.constEnd(); ++it) {
+        if (it.value()) {
+            running.insert(QFileInfo(it.value()->target + QLatin1String(PartSuffix)).absoluteFilePath());
+        }
+    }
+    const QDateTime limit = QDateTime::currentDateTime().addDays(-days);
+    const QStringList pattern = QStringList() << (QStringLiteral("*") + QLatin1String(PartSuffix));
+    int removed = 0;
+    const auto removeIfStale = [&](const QFileInfo &info) {
+        if (!running.contains(info.absoluteFilePath()) && info.lastModified() < limit
+                && QFile::remove(info.absoluteFilePath())) {
+            ++removed;
+        }
+    };
+
+    // The app's own download folder: only Sailcast writes there (Sailjail)
+    if (!m_directory.isEmpty() && QDir(m_directory).exists()) {
+        QDirIterator it(m_directory, pattern, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            removeIfStale(QFileInfo(it.next()));
+        }
+    }
+
+    // Music is shared with other apps (their own podcast folders, maybe
+    // even the same names): only the half downloads of Sailcast's own
+    // files - in the folders of its podcasts, named as its episodes there
+    if (!archiveRoot.isEmpty() && QDir(archiveRoot).exists()) {
+        const QList<PodcastRow> podcasts = m_database->podcasts();
+        for (int p = 0; p < podcasts.size(); ++p) {
+            if (podcasts.at(p).archiveFolder.isEmpty()) {
+                continue;
+            }
+            const QDir folder(QDir(archiveRoot).absoluteFilePath(podcasts.at(p).archiveFolder));
+            if (!folder.exists()) {
+                continue;
+            }
+            const QFileInfoList parts = folder.entryInfoList(pattern, QDir::Files);
+            if (parts.isEmpty()) {
+                continue;
+            }
+            QSet<QString> own;
+            const QList<EpisodeRow> episodes = m_database->episodes(podcasts.at(p).id);
+            for (int e = 0; e < episodes.size(); ++e) {
+                const EpisodeRow &row = episodes.at(e);
+                own.insert((row.archiveFile.isEmpty() ? FileNames::forEpisode(row) : row.archiveFile)
+                           + QLatin1String(PartSuffix));
+            }
+            for (int i = 0; i < parts.size(); ++i) {
+                if (own.contains(parts.at(i).fileName())) {
+                    removeIfStale(parts.at(i));
+                }
+            }
+        }
+    }
+    return removed;
+}
+
+CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId,
+                                       const QHash<qint64, int> &podcastDays, bool all)
 {
     CleanupResult result;
     QSet<qint64> archivedPodcasts;
@@ -379,7 +442,7 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
     }
     const QString root = archiveRoot.isEmpty() ? QString()
                                                : QDir(archiveRoot).absolutePath() + QLatin1Char('/');
-    const qint64 limit = Database::now() - static_cast<qint64>(days) * 86400;
+    const qint64 now = Database::now();
 
     const QList<EpisodeRow> downloads = m_database->episodes(-1, -1, Database::Downloaded);
     for (int i = 0; i < downloads.size(); ++i) {
@@ -392,9 +455,21 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
             m_database->clearDownload(e.id);    // deleted outside the app
             continue;
         }
+        // The podcast's own choice (117), else the global one
+        const bool own = podcastDays.contains(e.podcastId);
+        int keepDays = own ? podcastDays.value(e.podcastId) : days;
+        if (all) {
+            keepDays = own && podcastDays.value(e.podcastId) < 0 ? -1 : days;
+        }
+        if (keepDays < 0) {
+            continue;
+        }
+        const qint64 limit = now - static_cast<qint64>(keepDays) * 86400;
         if (!e.played || e.lastPlayed <= 0 || e.lastPlayed > limit
                 || archivedPodcasts.contains(e.podcastId)
-                || (!root.isEmpty() && info.absoluteFilePath().startsWith(root))) {
+                // (209) In Music: only files kept or archived (named in the
+                // archive) stay; "Downloads in Music" are cleaned up
+                || (!root.isEmpty() && info.absoluteFilePath().startsWith(root) && !e.archiveFile.isEmpty())) {
             continue;
         }
         const qint64 size = info.size();

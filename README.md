@@ -6,18 +6,36 @@ Android) through a Nextcloud with the app **GPodder Sync** or a gpodder.net
 compatible server.
 <p>
 <img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
+<img src="screenshots/discover.png" width="19%" alt="Discover: For you">
+<img src="screenshots/add-podcast.png" width="19%" alt="Add podcast: listen without subscribing, statistics, similar podcasts">
+<img src="screenshots/podcast-page.png" width="19%" alt="Podcast page with groups and statistics">
+</p>
+<p>
 <img src="screenshots/episode-page.png" width="19%" alt="Episode page with bookmarks and chapters">
-<img src="screenshots/new-episodes.png" width="19%" alt="New episodes">
-<img src="screenshots/playlist.png" width="19%" alt="Playlist">
-<img src="screenshots/search.png" width="19%" alt="Add podcast">
+<img src="screenshots/player-bar.png" width="19%" alt="Playlist with the expanded player bar">
+<img src="screenshots/lock-screen.png" width="19%" alt="Lock screen with chapter and cover">
 </p>
 <p>
 <img src="screenshots/landscape.png" width="58%" alt="Landscape with the player column">
-<img src="screenshots/lock-screen.png" width="19%" alt="Lock screen controls">
 </p>
 
 ## Features
 
+- **Discover** (1.2): "For you" – suggestions from what you really listen to
+  (languages, categories, keywords, podcasts similar to your favourites),
+  each with the reason; "Trending" from Podcast Index and fyyd; "New" –
+  first episodes of new German-language podcasts (fyyd) and trailers of new
+  English-language shows (Podnews); **browse categories**;
+  **similar podcasts** for every podcast; "My interests" to steer it all
+- **Listen without subscribing** (1.2): play the latest episodes or browse
+  all of them before you subscribe; shared episode links play from the
+  shared time
+- **Podcast page** (1.2): statistics (hours listened, publishing rhythm,
+  next episode), "About this podcast", long lists grouped by season or
+  month; choose episodes to download, to mark as played or unplayed, or add
+  a whole podcast to the playlist
+- **Player bar** (1.2): next, and expanded a position bar, skip, speed,
+  bookmark, sleep timer, chapters, bookmarks with notes or what plays next
 - **New episodes, Podcasts, Playlist** as three pages to swipe between (start page selectable)
 - **Folders** for podcasts – collapsible, in the grid and the list, kept in OPML exports
 - **Podcast search** through [Podcast Index](https://podcastindex.org) with
@@ -25,7 +43,7 @@ compatible server.
   before subscribing; an address in the clipboard is filled in; for a website
   without a feed the site's name is searched)
 - **Share links to Sailcast** from the browser or other apps to add a podcast
-- **Search on the phone** in your podcasts, episode titles and bookmarks
+- **Search on the phone** in your podcasts, episode titles (optionally the descriptions) and bookmarks
   ("Search"); new podcasts are found on a page of their own ("Search / add
   podcast")
 - **Playlist** with drag sorting, "Now playing" and "Continue listening"
@@ -40,7 +58,8 @@ compatible server.
 - **Per podcast:** own speed, skip intro and outro, left out of the automatic
   update if wanted (also per folder), login for premium feeds
 - **Downloads** with resume, only on Wi-Fi, automatic downloads of new
-  episodes, clean-up of played downloads
+  episodes, clean-up of played downloads; kept in the app's folder or – for
+  all podcasts or chosen ones – in `~/Music/Podcasts/<Podcast>/`
 - **Archive** a podcast completely into `~/Music/Podcasts/<Podcast>/` (episodes,
   feed, cover, metadata) – readable without Sailcast, importable again
 - **Sync** of subscriptions and listening state (Nextcloud GPodder Sync with

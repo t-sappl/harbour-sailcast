@@ -85,7 +85,9 @@ CoverBackground {
             iconSource: player.coverButton === "back" ? "image://theme/icon-cover-previous"
                       : player.coverButton === "sleep" ? Qt.resolvedUrl("../images/cover-sleep.png")
                       : player.coverButton === "bookmark" ? Qt.resolvedUrl("../images/cover-bookmark.png")
-                      : "image://theme/icon-cover-next"
+                      // (205) The media player's symbol (as pause): the
+                      // general "next" is an arrow in a circle
+                      : "image://theme/icon-cover-next-song"
             onTriggered: {
                 if (player.coverButton === "bookmark") {
                     // (93) An unnamed bookmark at the current position;

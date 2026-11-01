@@ -23,10 +23,18 @@ Page {
     readonly property bool isCurrent: player.episodeId === episodeId
     readonly property bool isPlaying: isCurrent && player.playing
     readonly property var speeds: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0]
-    readonly property var sleepMinutes: [0, 5, 10, 15, 30, 45, 60, -1]   // -1: end of episode
+    readonly property var sleepMinutes: [0, 5, 10, 15, 30, 45, 60, -1, -2]   // -1: end of episode, -2: own duration (121)
 
     // Position and length shown by the slider: live for the current episode
     readonly property int shownPosition: isCurrent ? player.position : (episode.played ? 0 : (episode.position || 0))
+    // (200) shownPosition for the pull-down menu, frozen while it is open
+    // (no binding: it would go on changing while the menu is open)
+    property int sharePosition: 0
+    onShownPositionChanged: {
+        if (!pullMenu.active) {
+            sharePosition = shownPosition
+        }
+    }
     readonly property int shownDuration: isCurrent ? player.duration : (episode.duration || 0)
 
     // 1 -> "1,0×", 1.75 -> "1,75×" (decimal separator of the locale)
@@ -85,9 +93,10 @@ Page {
     readonly property bool showHints: _hintCount < 5
     property int _hintCount: parseInt(core.setting("hint.toolbar", "0"))
     Component.onCompleted: {
+        sharePosition = shownPosition
         core.setSetting("hint.toolbar", "" + (_hintCount + 1))
-        // How bookmarks work (66)
-        appWindow.showHint("bookmark", qsTr("Tap the star to bookmark the current position - with a name and a note; all bookmarks: playlist pulley"), page)
+        // How bookmarks work: since 220 when the bookmark panel opens the
+        // first time (BookmarkPanel)
     }
 
     // Open row of choices below the toolbar: "", "speed", "sleep"
@@ -140,15 +149,30 @@ Page {
         contentHeight: column.height + (page.twoColumns ? 0 : Theme.paddingMedium + infoColumn.height) + Theme.paddingLarge
 
         PullDownMenu {
+            id: pullMenu
             // (83) Share the episode link, optionally from the shown position
+            // (200) The position is taken before the menu opens and kept
+            // while it is open: its text changed every second while
+            // playing, and the pulley got stuck on a second pull
             MenuItem {
-                visible: page.shownPosition > 0
-                text: qsTr("Share from %1").arg(TimeFormat.clock(page.shownPosition))
-                onClicked: appWindow.shareEpisode(page.episodeId, page.shownPosition)
+                visible: page.sharePosition > 0
+                text: qsTr("Share from %1").arg(TimeFormat.clock(page.sharePosition))
+                onClicked: appWindow.shareEpisode(page.episodeId, page.sharePosition)
             }
             MenuItem {
                 text: qsTr("Share")
                 onClicked: appWindow.shareEpisode(page.episodeId, 0)
+            }
+            // (120) The downloaded file: share it, or keep it in Music
+            MenuItem {
+                visible: page.episode.downloaded === true
+                text: qsTr("Share file")
+                onClicked: appWindow.shareEpisodeFile(page.episodeId)
+            }
+            MenuItem {
+                visible: page.episode.downloaded === true && page.episode.kept !== true
+                text: qsTr("Save in Music")
+                onClicked: core.keepEpisode(page.episodeId)
             }
             MenuItem {
                 visible: (page.episode.link || "").length > 0
@@ -168,6 +192,12 @@ Page {
             MenuItem {
                 text: qsTr("Show podcast")
                 onClicked: pageStack.push(Qt.resolvedUrl("EpisodesPage.qml"), { podcastId: page.episode.podcastId })
+            }
+            // Listened to without subscribing (147): keeps the listening state
+            MenuItem {
+                visible: page.episode.provisional === true
+                text: qsTr("Subscribe to the podcast")
+                onClicked: appWindow.subscribeWithFolder(page.episode.podcastUrl || "", page.episode.podcastTitle || "")
             }
             // Started episodes offer both: finish them or start over (22)
             MenuItem {
@@ -200,6 +230,36 @@ Page {
 
             PageHeader {
                 title: page.episode.podcastTitle || ""
+                // (156) Listened to without subscribing
+                description: page.episode.provisional === true ? qsTr("not subscribed") : ""
+            }
+
+            // (199) Not subscribed: "Abonnieren ›" right on the page (until
+            // then only in the pull-down menu), below the header's "nicht
+            // abonniert". (203) Only as high as its text, right below the
+            // header (a full row centred it too far down); the touch area
+            // keeps the height of a row, reaching up over the header
+            Item {
+                visible: page.episode.provisional === true
+                width: parent.width
+                height: subscribeLabel.height
+                BackgroundItem {
+                    id: subscribeLink
+                    // Only around the words, not the whole width
+                    anchors.right: parent.right
+                    width: subscribeLabel.width + 2 * Theme.horizontalPageMargin
+                    height: Theme.itemSizeExtraSmall
+                    y: parent.height - height
+                    onClicked: appWindow.subscribeWithFolder(page.episode.podcastUrl || "", page.episode.podcastTitle || "")
+                }
+                Label {
+                    id: subscribeLabel
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.horizontalPageMargin
+                    text: qsTr("Subscribe") + " ›"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: subscribeLink.highlighted ? Theme.highlightColor : Theme.primaryColor
+                }
             }
 
             EpisodeArt {
@@ -263,12 +323,8 @@ Page {
                     } else if (e.position > 0 && e.remaining > 0) {
                         parts.push(qsTr("%1 left").arg(TimeFormat.length(e.remaining, qsTr("%1 h %2 min"), qsTr("%1 min"))))
                     }
-                    if (e.downloaded) {
-                        parts.push(qsTr("downloaded"))
-                    }
-                    if (page.queued) {
-                        parts.push(qsTr("in playlist"))
-                    }
+                    // (192) "downloaded" and "in playlist" are shown by the
+                    // toolbar just below (delete / check mark) - the line wrapped
                     return parts.join(" · ")
                 }
             }
@@ -328,7 +384,9 @@ Page {
                 ToolbarButton {
                     width: toolbar.cellWidth
                     active: page.queued
-                    iconSource: page.queued ? "image://theme/icon-m-acknowledge" : "image://theme/icon-m-add"
+                    // (194) The playlist symbol of the lists (191) - highlighted
+                    // when queued; the "+" sat in a filled disc among outlines
+                    iconSource: "image://theme/icon-m-media-playlists"
                     label: page.showHints ? qsTr("Playlist") : ""
                     onClicked: page.queued ? core.queueRemove(page.episodeId) : core.queueAdd(page.episodeId, false)
                 }
@@ -361,7 +419,9 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 Repeater {
                     model: page.choices === "speed" ? page.speeds : (page.choices === "sleep" ? page.sleepMinutes : [])
+                    // By id (145): see the tabs of SearchPage
                     BackgroundItem {
+                        id: choiceItem
                         readonly property bool current: page.choices === "speed"
                                                         ? Math.abs(modelData - page.player.rate) < 0.01
                                                         : (modelData === 0 ? !appWindow.sleepTimer.active && !page.player.stopAtEnd
@@ -373,13 +433,16 @@ Page {
                             anchors.centerIn: parent
                             text: page.choices === "speed" ? page.speedText(modelData)
                                   : (modelData === 0 ? qsTr("Off")
-                                     : (modelData < 0 ? qsTr("End of episode") : qsTr("%n min", "", modelData)))
-                            font.bold: parent.current
-                            color: parent.current || parent.highlighted ? Theme.highlightColor : Theme.primaryColor
+                                     : (modelData === -2 ? qsTr("Other …")
+                                        : (modelData < 0 ? qsTr("End of episode") : qsTr("%n min", "", modelData))))
+                            font.bold: choiceItem.current
+                            color: choiceItem.current || choiceItem.highlighted ? Theme.highlightColor : Theme.primaryColor
                         }
                         onClicked: {
                             if (page.choices === "speed") {
                                 page.player.setRate(modelData)
+                            } else if (modelData === -2) {
+                                appWindow.chooseSleepTime()
                             } else {
                                 appWindow.sleepTimer.cancel()
                                 page.player.stopAtEnd = false
@@ -427,7 +490,7 @@ Page {
                     BusyIndicator {
                         anchors.centerIn: parent
                         size: BusyIndicatorSize.Medium
-                        running: page.isPlaying && page.player.buffering
+                        running: page.isCurrent && page.player.waiting
                     }
                 }
                 SkipButton {
@@ -508,7 +571,8 @@ Page {
                         }
                         Label {
                             width: parent.width
-                            text: modelData.title.length > 0 ? modelData.title : qsTr("Bookmark")
+                            // (191) Unnamed ones numbered, as in the player bar
+                            text: modelData.title.length > 0 ? modelData.title : qsTr("Bookmark %1").arg(index + 1)
                             wrapMode: Text.Wrap
                             font.pixelSize: Theme.fontSizeSmall
                             color: bookmarkRow.highlighted ? Theme.highlightColor
@@ -625,120 +689,19 @@ Page {
         id: remorse
     }
 
-    // Name and note of a new bookmark (89): docked at the bottom, modal - a
-    // tap beside it or a swipe down closes it; Enter goes from the name to
-    // the note and closes from there. Not a dialog page: most bookmarks are
-    // set while listening, often without any text.
-    DockedPanel {
+    // Name and note of a new bookmark (89, BookmarkPanel since 171)
+    BookmarkPanel {
         id: bookmarkPanel
         width: page.width
-        height: panelColumn.height + Theme.paddingLarge
-        dock: Dock.Bottom
-        modal: true
         // Above the page's flickables (two columns in landscape)
         z: 100
-
-        // Opaque background (94): the panel itself is translucent and the
-        // toolbar and play buttons showed through the fields
-        Rectangle {
-            anchors.fill: parent
-            color: Theme.highlightDimmerColor
-            Rectangle {
-                anchors.fill: parent
-                color: Theme.rgba(Theme.highlightBackgroundColor, 0.18)
-            }
-            Rectangle {
-                width: parent.width
-                height: Math.max(1, Theme.paddingSmall / 4)
-                color: Theme.rgba(Theme.highlightColor, 0.5)
-            }
-        }
-
-        property int bookmarkId: 0
-        property int seconds: 0
-        property bool saved: true
-
-        function show(id, position) {
-            bookmarkId = id
-            seconds = position
-            saved = false
-            nameField.text = ""
-            noteField.text = ""
-            open = true
-            nameField.forceActiveFocus()
-        }
-
-        function save() {
-            if (saved || bookmarkId <= 0) {
-                return
-            }
-            saved = true
-            var name = nameField.text.trim()
-            var note = noteField.text.trim()
-            if (name.length > 0 || note.length > 0) {
-                core.editBookmark(bookmarkId, name, note)
-            }
-        }
-
-        // Leaving the page with the panel open keeps what was typed
-        Connections {
-            target: page
-            onStatusChanged: {
-                if (page.status === PageStatus.Deactivating && bookmarkPanel.open) {
-                    bookmarkPanel.open = false
-                }
-            }
-        }
-        Component.onDestruction: save()
-
-        onOpenChanged: {
-            if (!open) {
-                nameField.focus = false
-                noteField.focus = false
-                save()
-            }
-        }
-
-        Column {
-            id: panelColumn
-            width: parent.width
-            y: Theme.paddingSmall
-
-            Item {
-                width: parent.width
-                height: Theme.itemSizeExtraSmall
-                Label {
-                    x: Theme.horizontalPageMargin
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "\u2605 " + qsTr("Bookmark at %1").arg(TimeFormat.clock(bookmarkPanel.seconds))
-                    color: Theme.highlightColor
-                }
-                IconButton {
-                    anchors.right: parent.right
-                    anchors.rightMargin: Theme.paddingMedium
-                    anchors.verticalCenter: parent.verticalCenter
-                    icon.source: "image://theme/icon-m-close"
-                    onClicked: bookmarkPanel.open = false
-                }
-            }
-
-            TextField {
-                id: nameField
-                width: parent.width
-                placeholderText: qsTr("Name (optional)")
-                label: qsTr("Name")
-                inputMethodHints: Qt.ImhNoPredictiveText
-                EnterKey.iconSource: "image://theme/icon-m-enter-next"
-                EnterKey.onClicked: noteField.forceActiveFocus()
-            }
-
-            TextField {
-                id: noteField
-                width: parent.width
-                placeholderText: qsTr("Note (optional)")
-                label: qsTr("Note")
-                EnterKey.iconSource: "image://theme/icon-m-enter-accept"
-                EnterKey.onClicked: bookmarkPanel.open = false
+    }
+    // Leaving the page with the panel open keeps what was typed
+    Connections {
+        target: page
+        onStatusChanged: {
+            if (page.status === PageStatus.Deactivating && bookmarkPanel.open) {
+                bookmarkPanel.open = false
             }
         }
     }

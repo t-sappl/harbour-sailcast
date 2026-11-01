@@ -47,9 +47,26 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: ringHint.bottomMargin
         width: parent.width
-        text: qsTr("Swipe sideways for new episodes, podcasts and the playlist")
+        // (229) Discover is a ring page by default
+        text: appWindow.discoverInRing() ? qsTr("Swipe sideways for new episodes, Discover, podcasts and the playlist")
+                                         : qsTr("Swipe sideways for new episodes, podcasts and the playlist")
         opacity: ringHint._started ? 1.0 : 0.0
         visible: opacity > 0
         Behavior on opacity { FadeAnimation { duration: 400 } }
+
+        // (233) The same dark backing as the other hints (OnceHint, 230) -
+        // over a list it could not be read
+        Rectangle {
+            z: -1
+            anchors.fill: parent
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Theme.rgba(Theme.highlightDimmerColor, 0.0) }
+                GradientStop {
+                    position: Math.min(0.3, 2 * Theme.paddingLarge / Math.max(1, label.height))
+                    color: Theme.rgba(Theme.highlightDimmerColor, 0.95)
+                }
+                GradientStop { position: 1.0; color: Theme.rgba(Theme.highlightDimmerColor, 0.97) }
+            }
+        }
     }
 }

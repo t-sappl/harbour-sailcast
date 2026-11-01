@@ -7,13 +7,14 @@ import "TimeFormat.js" as TimeFormat
 // player bar: adaptive background colour from the ambience, a fine
 // highlight line on top (with the listening progress in the same colour),
 // episode image with the podcast cover as a badge, title and chapter, and
-// the buttons expand (only with chapters) / sleep timer / play. The moon
-// replaced the −30 button in 19.
+// the buttons expand / next / play (167: next instead of the moon - next
+// chapter, after the last one the next episode).
 //
 // Tap on image or text: episode page of the current episode (with the
-// player controls). Moon: sleep timer durations above the bar. Expanded:
-// the chapters of the episode - 5 visible, more by scrolling
-// inside the area; tap on a chapter jumps there.
+// player controls). Expanded (167: always possible): a row of controls
+// (skip back, speed, bookmark, sleep timer, skip forward), then tabs
+// (178) for the chapters, the bookmarks and the next playlist episodes.
+// Moon: sleep timer durations above the bar.
 //
 // Hidden on all episode pages (they have the player controls), settings,
 // import/export, dialogs and the file picker.
@@ -30,7 +31,12 @@ Rectangle {
         height: Theme.paddingLarge * 2
         gradient: Gradient {
             GradientStop { position: 0.0; color: "transparent" }
-            GradientStop { position: 1.0; color: Theme.rgba("black", 0.35) }
+            // (204) Much lighter on a light ambience: the same shadow lay
+            // as a dirty grey band over the last row
+            GradientStop {
+                position: 1.0
+                color: Theme.rgba("black", Theme.colorScheme === Theme.LightOnDark ? 0.35 : 0.1)
+            }
         }
     }
 
@@ -53,7 +59,7 @@ Rectangle {
                     || page.objectName.indexOf("settings") === 0
                     || page.objectName.indexOf("restoreBackup") === 0
                     || page.objectName === "importExportPage"
-                    || page.objectName === "addPodcastDialog"
+                    // (154) not "Add podcast": ▶ plays there without subscribing
                     || page.objectName === "folderNameDialog"
                     || page.objectName === "folderPickerDialog"
                     || page.objectName === "folderSelectPage"
@@ -151,19 +157,78 @@ Rectangle {
         return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
     }
 
-    // Expanded state (kept when switching pages). The expanded area shows
-    // the chapters - without chapters the bar cannot be expanded.
+    // Expanded state (kept when switching pages)
     property bool expanded: false
     readonly property bool hasChapters: player.chapters.length > 0
-    onHasChaptersChanged: {
-        if (!hasChapters) {
-            expanded = false
+
+    // (167) Bookmarks of the current episode and the next playlist
+    // episodes for the expanded area
+    property var bookmarkList: []
+    property var upNextList: []
+    property bool speedChoicesOpen: false
+    // (178) Tabs of the expanded area
+    property string chosenTab: ""
+    readonly property var tabs: {
+        var list = []
+        if (player.chapters.length > 0) list.push({ key: "chapters", text: qsTr("Chapters") })
+        if (bookmarkList.length > 0) list.push({ key: "bookmarks", text: qsTr("Bookmarks") })
+        list.push({ key: "next", text: qsTr("Up next") })
+        return list
+    }
+    readonly property string currentTab: {
+        for (var i = 0; i < tabs.length; i++) {
+            if (tabs[i].key === chosenTab) return chosenTab
         }
+        return tabs[0].key
+    }
+    readonly property var speeds: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0]
+    function refreshBookmarks() {
+        bookmarkList = player.hasEpisode ? core.bookmarks(player.episodeId) : []
+    }
+    function refreshUpNext() {
+        var list = player.hasEpisode ? core.upNext(player.episodeId, 10) : []
+        // (207) After a trailer from "Neu": its show's first episode comes
+        // first - it plays next, not the playlist
+        if (player.followUpId > 0) {
+            var follow = core.episode(player.followUpId)
+            if (follow.episodeId) {
+                follow.followUp = true
+                list = [follow].concat(list)
+            }
+        }
+        upNextList = list
+    }
+    function speedText(value) {
+        var decimals = Math.round(value * 100) % 10 === 0 ? 1 : 2
+        return Number(value).toLocaleString(Qt.locale(), "f", decimals) + "×"
+    }
+    Connections {
+        target: player
+        onEpisodeIdChanged: {
+            playerBar.chosenTab = ""
+            playerBar.refreshBookmarks()
+            playerBar.refreshUpNext()
+        }
+        onFollowUpIdChanged: playerBar.refreshUpNext()
+    }
+    Connections {
+        target: core
+        onBookmarksChanged: playerBar.refreshBookmarks()
+        onQueueChanged: playerBar.refreshUpNext()
+    }
+    Component.onCompleted: {
+        refreshBookmarks()
+        refreshUpNext()
     }
 
     // Sleep timer: the moon button opens a row of durations above the bar
     property bool sleepSelectorOpen: false
     property int lastSleepMinutes: parseInt(core.setting("player.sleepMinutes", "30"))
+    // An own duration from the time picker (121) is stored by the window
+    Connections {
+        target: appWindow.sleepTimer
+        onActiveChanged: playerBar.lastSleepMinutes = parseInt(core.setting("player.sleepMinutes", "30"))
+    }
 
     readonly property real sleepRowHeight: Theme.itemSizeSmall
     readonly property var sleepOptions: [5, 10, 15, 30, 45, 60, 90]
@@ -223,7 +288,7 @@ Rectangle {
         Behavior on opacity { FadeAnimation { duration: 150 } }
 
         // The durations, "end of episode" and the unit / stop cell
-        readonly property real cellWidth: (width - 2 * Theme.horizontalPageMargin) / (playerBar.sleepOptions.length + 2)
+        readonly property real cellWidth: (width - 2 * Theme.horizontalPageMargin) / (playerBar.sleepOptions.length + 3)
 
         Row {
             x: Theme.horizontalPageMargin
@@ -284,6 +349,28 @@ Rectangle {
                 }
             }
 
+            // Own duration (121)
+            BackgroundItem {
+                id: otherOption
+                width: sleepRow.cellWidth
+                height: parent.height
+                readonly property bool current: appWindow.sleepTimer.active
+                                                && playerBar.sleepOptions.indexOf(playerBar.lastSleepMinutes) < 0
+
+                Label {
+                    anchors.centerIn: parent
+                    text: "…"
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.bold: otherOption.current
+                    color: (otherOption.current || otherOption.highlighted) ? Theme.highlightColor : Theme.primaryColor
+                }
+
+                onClicked: {
+                    playerBar.sleepSelectorOpen = false
+                    appWindow.chooseSleepTime()
+                }
+            }
+
             // Last cell: unit label, or a stop button while a timer runs
             Item {
                 width: sleepRow.cellWidth
@@ -325,8 +412,8 @@ Rectangle {
             spacing: Theme.paddingMedium
 
             BackgroundItem {
-                width: parent.width - sleepButton.width - parent.spacing
-                       - (expandIcon.visible ? expandIcon.width + parent.spacing : 0)
+                width: parent.width - nextButton.width - parent.spacing
+                       - expandIcon.width - parent.spacing
                        - playButton.width - parent.spacing
                 height: parent.height
                 anchors.verticalCenter: parent.verticalCenter
@@ -363,94 +450,66 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         clip: true
 
+                        // (195) The title stands still (faded at the end);
+                        // the second line scrolls instead (184-194: the
+                        // title scrolled - Thomas had the second line in
+                        // mind)
                         Label {
-                            text: player.title
                             width: parent.width
+                            text: player.title
                             truncationMode: TruncationMode.Fade
                             color: Theme.primaryColor
                             font.pixelSize: Theme.fontSizeSmall
                             font.bold: true
                         }
 
-                        Label {
+                        // Time left stays put (a ticking number would run
+                        // along); chapter or podcast after it scrolls
+                        Row {
+                            id: infoRow
                             width: parent.width
-                            truncationMode: TruncationMode.Fade
-                            text: {
-                                var info = player.chapterTitle.length > 0 ? player.chapterTitle : player.podcastTitle
-                                if (player.duration > 0) {
-                                    info = "−" + TimeFormat.clock(player.duration - player.position) + " · " + info
-                                }
-                                return info
+                            Label {
+                                id: timeLeft
+                                visible: player.duration > 0
+                                text: "−" + TimeFormat.clock(player.duration - player.position) + " · "
+                                color: Theme.secondaryColor
+                                font.pixelSize: Theme.fontSizeTiny
                             }
-                            color: Theme.secondaryColor
-                            font.pixelSize: Theme.fontSizeTiny
+                            ScrollingLabel {
+                                width: infoRow.width - (timeLeft.visible ? timeLeft.width : 0)
+                                text: player.chapterTitle.length > 0 ? player.chapterTitle : player.podcastTitle
+                                color: Theme.secondaryColor
+                                fontSize: Theme.fontSizeTiny
+                                active: playerBar.wanted
+                                fadeColor: playerBar.color
+                            }
                         }
                     }
                 }
             }
 
-            // Only episodes with chapters have something to expand (18)
+            // Always (167; until then only with chapters)
             IconButton {
                 id: expandIcon
-                visible: playerBar.hasChapters
                 anchors.verticalCenter: parent.verticalCenter
                 icon.source: playerBar.expanded ? "image://theme/icon-m-down" : "image://theme/icon-m-up"
                 icon.color: playerBar.expanded ? Theme.highlightColor : Theme.secondaryColor
-                onClicked: playerBar.expanded = !playerBar.expanded
+                onClicked: {
+                    playerBar.expanded = !playerBar.expanded
+                    if (!playerBar.expanded) {
+                        playerBar.speedChoicesOpen = false
+                    }
+                }
             }
 
-            // Sleep timer button: a moon, highlighted while a timer runs.
-            // Drawn from two circles (like the SleepBadge). Always in the
-            // compact bar, where −30 was until 18 - so the sleep timer is
-            // there for episodes without chapters too (19)
-            MouseArea {
-                id: sleepButton
-                width: Theme.itemSizeSmall
-                height: Theme.itemSizeSmall
+            // (167) Next chapter, after the last one the next episode (as
+            // the cover); the sleep timer moved to the expanded area
+            IconButton {
+                id: nextButton
                 anchors.verticalCenter: parent.verticalCenter
-                // In the last minute of the sleep timer (fading out) the
-                // button offers "+5" instead (53)
-                onClicked: {
-                    if (appWindow.sleepTimer.ending) {
-                        appWindow.sleepTimer.extend(5)
-                    } else {
-                        playerBar.sleepSelectorOpen = !playerBar.sleepSelectorOpen
-                    }
-                }
-
-                Label {
-                    visible: appWindow.sleepTimer.ending
-                    anchors.centerIn: parent
-                    text: "+5"
-                    font.bold: true
-                    color: sleepButton.pressed ? Theme.primaryColor : Theme.highlightColor
-                }
-
-                readonly property color moonColor: (pressed || playerBar.sleepSelectorOpen
-                                                    || appWindow.sleepTimer.active || player.stopAtEnd)
-                                                   ? Theme.highlightColor : Theme.primaryColor
-
-                Item {
-                    visible: !appWindow.sleepTimer.ending
-                    anchors.centerIn: parent
-                    width: Math.round(Theme.iconSizeSmall * 0.85)
-                    height: width
-                    clip: true
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: width / 2
-                        color: sleepButton.moonColor
-                    }
-                    Rectangle {
-                        width: parent.width
-                        height: parent.height
-                        radius: width / 2
-                        color: playerBar.color
-                        x: parent.width * 0.38
-                        y: -parent.height * 0.22
-                    }
-                }
+                icon.source: "image://theme/icon-m-next"
+                icon.color: Theme.primaryColor
+                onClicked: player.next()
             }
 
             IconButton {
@@ -463,13 +522,14 @@ Rectangle {
                 BusyIndicator {
                     anchors.centerIn: parent
                     size: BusyIndicatorSize.Medium
-                    running: player.buffering && player.playing
+                    // (232) Only while the position really stands
+                    running: player.waiting
                 }
             }
         }
     }
 
-    // --- Expandable area: the chapters ---
+    // --- Expandable area: controls, chapters, bookmarks, up next ---
     Item {
         id: expandedContent
         width: parent.width
@@ -493,28 +553,342 @@ Rectangle {
                 horizontalAlignment: Qt.AlignHCenter
             }
 
-            SectionHeader {
-                text: qsTr("Chapters")
-            }
-
-            ChapterList {
+            // (172) Position bar as on the episode page: drag the knob to
+            // seek (the line on top of the bar only shows the progress)
+            SeekBar {
                 width: parent.width
-                visible: player.chapters.length > 0
-                visibleRows: 5
-                expanded: playerBar.expanded
+                // (179) One line: times beside the bar
+                compact: true
+                position: player.position
+                duration: player.duration
+                onSeekRequested: player.seek(seconds)
             }
 
-            Label {
+            // (167) Controls: skip back · speed · bookmark · sleep timer ·
+            // skip forward
+            Row {
+                id: controls
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                height: Theme.itemSizeSmall
-                visible: player.chapters.length === 0
-                verticalAlignment: Text.AlignVCenter
-                text: qsTr("No chapters in this episode")
-                color: Theme.secondaryHighlightColor
-                font.pixelSize: Theme.fontSizeSmall
-                truncationMode: TruncationMode.Fade
+                readonly property real cellWidth: width / 5
+                // (181) Smaller than on the episode page: the bar's own buttons
+                // above set the size
+
+                Item {
+                    width: controls.cellWidth
+                    height: Theme.itemSizeSmall
+                    SkipButton {
+                        anchors.centerIn: parent
+                        width: Theme.itemSizeExtraSmall
+                        seconds: -player.skipBackSeconds
+                        onClicked: player.skip(seconds)
+                    }
+                }
+                ToolbarButton {
+                    width: controls.cellWidth
+                    symbolScale: 0.8
+                    height: Theme.itemSizeSmall
+                    active: playerBar.speedChoicesOpen
+                    text: playerBar.speedText(player.rate)
+                    onClicked: playerBar.speedChoicesOpen = !playerBar.speedChoicesOpen
+                }
+                ToolbarButton {
+                    width: controls.cellWidth
+                    symbolScale: 0.8
+                    height: Theme.itemSizeSmall
+                    iconSource: "image://theme/icon-m-favorite"
+                    onClicked: {
+                        // (170/171) Then name and note in the docked panel,
+                        // as on the episode page
+                        appWindow.addBookmarkNow()
+                    }
+                }
+                ToolbarButton {
+                    width: controls.cellWidth
+                    symbolScale: 0.8
+                    height: Theme.itemSizeSmall
+                    visible: !appWindow.sleepTimer.ending
+                    moon: true
+                    active: playerBar.sleepSelectorOpen || appWindow.sleepTimer.active || player.stopAtEnd
+                    onClicked: playerBar.sleepSelectorOpen = !playerBar.sleepSelectorOpen
+                }
+                // In the last minute of the sleep timer: "+5" (53)
+                ToolbarButton {
+                    width: controls.cellWidth
+                    symbolScale: 0.8
+                    height: Theme.itemSizeSmall
+                    visible: appWindow.sleepTimer.ending
+                    text: "+5"
+                    active: true
+                    onClicked: appWindow.sleepTimer.extend(5)
+                }
+                Item {
+                    width: controls.cellWidth
+                    height: Theme.itemSizeSmall
+                    SkipButton {
+                        anchors.centerIn: parent
+                        width: Theme.itemSizeExtraSmall
+                        seconds: player.skipForwardSeconds
+                        onClicked: player.skip(seconds)
+                    }
+                }
             }
+
+            // Speed choices
+            Flow {
+                visible: playerBar.speedChoicesOpen
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                Repeater {
+                    model: playerBar.speedChoicesOpen ? playerBar.speeds : []
+                    BackgroundItem {
+                        id: speedItem
+                        readonly property bool current: Math.abs(modelData - player.rate) < 0.01
+                        width: speedLabel.implicitWidth + 2 * Theme.paddingLarge
+                        height: Theme.itemSizeExtraSmall
+                        Label {
+                            id: speedLabel
+                            anchors.centerIn: parent
+                            text: playerBar.speedText(modelData)
+                            font.bold: speedItem.current
+                            color: speedItem.current || speedItem.highlighted ? Theme.highlightColor : Theme.primaryColor
+                        }
+                        onClicked: {
+                            player.setRate(modelData)
+                            playerBar.speedChoicesOpen = false
+                        }
+                    }
+                }
+            }
+
+            // (178) Chapters, bookmarks and the next playlist episodes as
+            // tabs over one area of fixed height (before: one below the
+            // other, "Up next" only without chapters and bookmarks). Tabs
+            // without content are left out; the first one with content is
+            // chosen, a choice holds until the next episode.
+            Row {
+                id: barTabs
+                width: parent.width
+                Repeater {
+                    model: playerBar.tabs
+                    // By id (145)
+                    BackgroundItem {
+                        id: barTabItem
+                        width: barTabs.width / Math.max(1, playerBar.tabs.length)
+                        height: Theme.itemSizeExtraSmall
+                        readonly property bool current: playerBar.currentTab === modelData.key
+                        onClicked: playerBar.chosenTab = modelData.key
+                        Label {
+                            anchors.centerIn: parent
+                            width: parent.width - 2 * Theme.paddingSmall
+                            horizontalAlignment: Text.AlignHCenter
+                            truncationMode: TruncationMode.Fade
+                            text: modelData.text
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: barTabItem.current || barTabItem.highlighted ? Theme.highlightColor : Theme.secondaryColor
+                        }
+                        Rectangle {
+                            anchors.bottom: parent.bottom
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width - 2 * Theme.paddingLarge
+                            height: Theme.paddingSmall / 2
+                            color: Theme.highlightColor
+                            visible: barTabItem.current
+                        }
+                    }
+                }
+            }
+
+            Item {
+                id: tabArea
+                width: parent.width
+                height: 5 * Theme.itemSizeSmall
+
+                ChapterList {
+                    width: parent.width
+                    visible: playerBar.currentTab === "chapters"
+                    visibleRows: 5
+                    expanded: playerBar.expanded && visible
+                }
+
+                // (167) Bookmarks of the episode; tap jumps there
+                SilicaListView {
+                    id: bookmarkView
+                    anchors.fill: parent
+                    visible: playerBar.currentTab === "bookmarks"
+                    clip: true
+                    interactive: contentHeight > height
+                    model: playerBar.bookmarkList
+                    // (182) A ListItem with the menu of the episode page (183:
+                    // without "Open episode" - the cover opens it)
+                    delegate: ListItem {
+                        id: bookmarkRow
+                        width: bookmarkView.width
+                        // (173) The note below the name, as on the bookmarks page
+                        readonly property bool hasNote: (modelData.note || "").length > 0
+                        contentHeight: hasNote ? Math.max(Theme.itemSizeMedium, bookmarkText.height + 2 * Theme.paddingSmall)
+                                               : Theme.itemSizeSmall
+                        onClicked: player.seek(modelData.position)
+                        menu: Component {
+                            ContextMenu {
+                                MenuItem {
+                                    text: qsTr("Rename / note")
+                                    onClicked: appWindow.editBookmark(modelData)
+                                }
+                                MenuItem {
+                                    text: qsTr("Delete bookmark")
+                                    onClicked: appWindow.remorseDeleteBookmark(modelData.bookmarkId)
+                                }
+                            }
+                        }
+                        Label {
+                            id: bookmarkTime
+                            x: Theme.horizontalPageMargin
+                            // (177) On the line of the name, not centred on name
+                            // and note (179: by y - anchors only reach
+                            // siblings, the name is inside the Column)
+                            y: bookmarkText.y + bookmarkName.baselineOffset - baselineOffset
+                            width: Theme.itemSizeMedium
+                            text: TimeFormat.clock(modelData.position)
+                            font.pixelSize: Theme.fontSizeExtraSmall
+                            color: bookmarkRow.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
+                        }
+                        Column {
+                            id: bookmarkText
+                            anchors {
+                                left: bookmarkTime.right
+                                leftMargin: Theme.paddingMedium
+                                right: parent.right
+                                rightMargin: Theme.horizontalPageMargin
+                                verticalCenter: parent.verticalCenter
+                            }
+                            Label {
+                                id: bookmarkName
+                                width: parent.width
+                                // (170) Numbered: not "Bookmark" under "Bookmarks"
+                                text: (modelData.title || "").length > 0 ? modelData.title
+                                                                         : qsTr("Bookmark %1").arg(index + 1)
+                                truncationMode: TruncationMode.Fade
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: bookmarkRow.highlighted ? Theme.highlightColor : Theme.primaryColor
+                            }
+                            Label {
+                                visible: bookmarkRow.hasNote
+                                width: parent.width
+                                text: modelData.note || ""
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 2
+                                elide: Text.ElideRight
+                                font.pixelSize: Theme.fontSizeExtraSmall
+                                color: Theme.secondaryHighlightColor
+                            }
+                        }
+                    }
+                    VerticalScrollDecorator {}
+                }
+
+                // (167) The next playlist episodes in the order they will
+                // play; tap plays one
+                SilicaListView {
+                    id: upNextView
+                    anchors.fill: parent
+                    visible: playerBar.currentTab === "next"
+                    clip: true
+                    interactive: contentHeight > height
+                    model: playerBar.upNextList
+                    footer: BackgroundItem {
+                        width: upNextView.width
+                        height: Theme.itemSizeExtraSmall
+                        visible: playerBar.upNextList.length > 0
+                        onClicked: {
+                            playerBar.expanded = false
+                            appWindow.showPlaylist()
+                        }
+                        Label {
+                            anchors.right: parent.right
+                            anchors.rightMargin: Theme.horizontalPageMargin
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Full playlist") + " \u203a"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                        }
+                    }
+                    // (183) Menu: play next, remove; reordering on the
+                    // playlist page (footer)
+                    delegate: ListItem {
+                        id: nextRow
+                        width: upNextView.width
+                        contentHeight: Theme.itemSizeSmall
+                        onClicked: player.playOrToggle(modelData.episodeId, modelData.followUp !== true)
+                        // (207) The trailer's follow-up is not in the playlist
+                        menu: modelData.followUp === true ? null : queueMenu
+                        Component {
+                            id: queueMenu
+                            ContextMenu {
+                                MenuItem {
+                                    visible: index > (playerBar.upNextList.length > 0
+                                                      && playerBar.upNextList[0].followUp === true ? 1 : 0)
+                                    text: qsTr("Play next")
+                                    onClicked: core.queueAdd(modelData.episodeId, true)
+                                }
+                                MenuItem {
+                                    text: qsTr("Remove from playlist")
+                                    onClicked: core.queueRemove(modelData.episodeId)
+                                }
+                            }
+                        }
+                        EpisodeArt {
+                            id: nextArt
+                            x: Theme.horizontalPageMargin
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Theme.iconSizeMedium
+                            height: Theme.iconSizeMedium
+                            episodeImageUrl: modelData.episodeImageUrl || ""
+                            coverUrl: modelData.coverUrl || ""
+                            fallbackText: modelData.podcastTitle || ""
+                            badgeFactor: 0.46
+                        }
+                        Column {
+                            anchors {
+                                left: nextArt.right
+                                leftMargin: Theme.paddingMedium
+                                right: parent.right
+                                rightMargin: Theme.horizontalPageMargin
+                                verticalCenter: parent.verticalCenter
+                            }
+                            Label {
+                                width: parent.width
+                                text: modelData.title
+                                truncationMode: TruncationMode.Fade
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: nextRow.highlighted ? Theme.highlightColor : Theme.primaryColor
+                            }
+                            Label {
+                                width: parent.width
+                                text: modelData.followUp === true
+                                      ? qsTr("After the trailer · %1").arg(modelData.podcastTitle)
+                                      : modelData.podcastTitle
+                                truncationMode: TruncationMode.Fade
+                                font.pixelSize: Theme.fontSizeTiny
+                                color: nextRow.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
+                            }
+                        }
+                    }
+                    VerticalScrollDecorator {}
+                }
+                Label {
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
+                    height: Theme.itemSizeSmall
+                    visible: playerBar.currentTab === "next" && playerBar.upNextList.length === 0
+                    verticalAlignment: Text.AlignVCenter
+                    text: qsTr("The playlist is empty")
+                    color: Theme.secondaryHighlightColor
+                    font.pixelSize: Theme.fontSizeSmall
+                    truncationMode: TruncationMode.Fade
+                }
+            }
+            Item { width: 1; height: Theme.paddingMedium }
         }
     }
 }

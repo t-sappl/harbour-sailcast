@@ -9,11 +9,15 @@ import "TimeFormat.js" as TimeFormat
 // to the next page - no longer seeks by accident. Tapping the bar does
 // nothing either. While dragging, the target time is shown above the knob;
 // the seek happens on release.
+// (179) compact: one line for the player bar - elapsed time, bar, remaining
+// time side by side, a smaller knob that stays inside the bar; while
+// dragging the elapsed time shows the target (no label above the knob).
 Item {
     id: bar
 
     property int position: 0     // seconds
     property int duration: 0     // seconds
+    property bool compact: false
 
     signal seekRequested(int seconds)
 
@@ -29,14 +33,46 @@ Item {
     }
     readonly property real _ratio: duration > 0 ? Math.max(0, Math.min(1, _value / duration)) : 0
 
-    height: Theme.itemSizeMedium
+    height: compact ? Theme.itemSizeExtraSmall : Theme.itemSizeMedium
+
+    // (179) Compact: the times beside the bar, with a fixed width (the
+    // widest form for this length) so the bar does not jump while playing
+    Label {
+        id: widthProbe
+        visible: false
+        text: bar.duration >= 3600 ? "−0:00:00" : "−00:00"
+        font.pixelSize: Theme.fontSizeExtraSmall
+        font.bold: true
+    }
+    Label {
+        visible: bar.compact
+        x: Theme.horizontalPageMargin
+        width: widthProbe.implicitWidth
+        anchors.verticalCenter: parent.verticalCenter
+        text: TimeFormat.clock(bar._value)
+        font.pixelSize: Theme.fontSizeExtraSmall
+        font.bold: bar.dragging
+        color: bar.dragging ? Theme.highlightColor : Theme.secondaryHighlightColor
+    }
+    Label {
+        visible: bar.compact && bar.duration > 0
+        anchors.right: parent.right
+        anchors.rightMargin: Theme.horizontalPageMargin
+        anchors.verticalCenter: parent.verticalCenter
+        width: widthProbe.implicitWidth
+        horizontalAlignment: Text.AlignRight
+        text: "−" + TimeFormat.clock(bar.duration - bar._value)
+        font.pixelSize: Theme.fontSizeExtraSmall
+        color: Theme.secondaryHighlightColor
+    }
 
     Item {
         id: track
-        x: Theme.horizontalPageMargin
-        width: parent.width - 2 * Theme.horizontalPageMargin
+        readonly property real labelSpace: bar.compact ? widthProbe.implicitWidth + Theme.paddingMedium : 0
+        x: Theme.horizontalPageMargin + labelSpace
+        width: parent.width - 2 * Theme.horizontalPageMargin - 2 * labelSpace
         height: parent.height
-        readonly property real centerY: Theme.paddingLarge + Theme.paddingSmall
+        readonly property real centerY: bar.compact ? height / 2 : Theme.paddingLarge + Theme.paddingSmall
 
         Rectangle {
             id: groove
@@ -58,11 +94,14 @@ Item {
         // Knob
         Rectangle {
             id: knob
-            readonly property real size: bar.dragging ? Theme.paddingLarge * 1.6 : Theme.paddingLarge
+            readonly property real size: bar.compact
+                                         ? (bar.dragging ? Theme.paddingLarge * 1.3 : Theme.paddingMedium * 1.4)
+                                         : (bar.dragging ? Theme.paddingLarge * 1.6 : Theme.paddingLarge)
             width: size
             height: size
             radius: size / 2
-            x: track.width * bar._ratio - width / 2
+            // Compact: always inside the bar (not half over its ends)
+            x: bar.compact ? (track.width - width) * bar._ratio : track.width * bar._ratio - width / 2
             y: track.centerY - height / 2
             color: Theme.highlightColor
             visible: bar.duration > 0
@@ -71,7 +110,7 @@ Item {
 
         // Target time while dragging
         Label {
-            visible: bar.dragging
+            visible: bar.dragging && !bar.compact
             anchors.bottom: knob.top
             anchors.bottomMargin: Theme.paddingSmall
             x: Math.max(0, Math.min(track.width - width, knob.x + knob.width / 2 - width / 2))
@@ -82,17 +121,20 @@ Item {
         }
 
         Label {
+            visible: !bar.compact
             anchors.left: parent.left
             anchors.bottom: parent.bottom
             text: TimeFormat.clock(bar._value)
             font.pixelSize: Theme.fontSizeExtraSmall
-            color: Theme.secondaryHighlightColor
+            // (180) Highlighted while dragging, as in the compact form
+            font.bold: bar.dragging
+            color: bar.dragging ? Theme.highlightColor : Theme.secondaryHighlightColor
         }
 
         Label {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            visible: bar.duration > 0
+            visible: bar.duration > 0 && !bar.compact
             text: "−" + TimeFormat.clock(bar.duration - bar._value)
             font.pixelSize: Theme.fontSizeExtraSmall
             color: Theme.secondaryHighlightColor

@@ -144,6 +144,47 @@ ApplicationWindow {
         episodeShare.trigger()
     }
 
+    // Sleep timer with an own duration (121): hours and minutes in the
+    // time picker, started at once; remembered as the last duration
+    function chooseSleepTime() {
+        var last = parseInt(core.setting("player.sleepMinutes", "30"))
+        if (isNaN(last) || last <= 0) {
+            last = 30
+        }
+        var dialog = pageStack.push("Sailfish.Silica.TimePickerDialog", {
+                                        hourMode: DateTime.TwentyFourHours,
+                                        hour: Math.floor(last / 60),
+                                        minute: last % 60
+                                    })
+        dialog.accepted.connect(function() {
+            var minutes = dialog.hour * 60 + dialog.minute
+            if (minutes <= 0) {
+                return
+            }
+            core.setSetting("player.sleepMinutes", "" + minutes)
+            appWindow.player.stopAtEnd = false
+            appWindow.sleepTimer.start(minutes)
+            showMessage(qsTr("Sleep timer: %n min", "", minutes))
+        })
+    }
+
+    // Sharing the downloaded file (120), e.g. by mail or Bluetooth
+    ShareAction {
+        id: fileShare
+    }
+
+    function shareEpisodeFile(episodeId) {
+        var path = core.downloadPath(episodeId)
+        if (path.length === 0) {
+            showMessage(qsTr("The episode is not downloaded"))
+            return
+        }
+        fileShare.title = qsTr("Share file")
+        fileShare.mimeType = core.mimeType(episodeId)
+        fileShare.resources = [path]
+        fileShare.trigger()
+    }
+
     // --- Sailcast as a share target (84) ---
     // .desktop: one share method "podcast" for links (text/x-url, from the
     // browser) and text (text/plain), ExecDBus so a share also starts the app; the
@@ -162,6 +203,55 @@ ApplicationWindow {
         path: "/share/podcast"
         iface: "org.sailfishos.share"
         function share(shareConfiguration) { appWindow.receiveShare(shareConfiguration) }
+    }
+
+    // Links like podcast://, pcast://, itpc:// (113): the .desktop file names
+    // this method (X-Maemo-Service/-Object-Path/-Method), lipstick calls it
+    // with the link when one is tapped - with ExecDBus also when the app is
+    // closed. The interface name has no "-" (not allowed in D-Bus interface
+    // names, unlike bus names).
+    DBusAdaptor {
+        service: appWindow.dbusName
+        path: "/ui"
+        iface: "harbour_sailcast.ui"
+        function openUrl(urls) { appWindow.openPodcastLinks(urls) }
+    }
+
+    // podcast://host/feed -> https://host/feed; pcast://https://host/feed
+    // and podcast:https://host/feed -> https://host/feed
+    function podcastLinkAddress(link) {
+        var text = ("" + link).trim()
+        var m = text.match(/^(podcast|pcast|itpc|feed):(\/\/)?(.*)$/i)
+        if (!m) {
+            return text
+        }
+        var rest = m[3]
+        // An inner scheme, also as the system hands it over: the link
+        // "pcast://https://host/feed" arrives as "pcast://https//host/feed"
+        // (the inner "https:" read as host and an empty port, 114)
+        var inner = rest.match(/^(https?)(:\/*|\/\/+)(.*)$/i)
+        if (inner) {
+            return inner[1].toLowerCase() + "://" + inner[3]
+        }
+        return "https://" + rest
+    }
+
+    function openPodcastLinks(urls) {
+        appWindow.activate()
+        var list = []
+        if (typeof urls === "string") {
+            list = [urls]
+        } else if (urls && urls.length > 0) {
+            list = urls
+        }
+        // No link: a plain start (from the icon, should lipstick use this
+        // method for it) - nothing to open
+        if (list.length === 0 || ("" + list[0]).length === 0) {
+            return
+        }
+        _sharedText = podcastLinkAddress(list[0])
+        // Same path as a shared link: "Search / add podcast" checks it
+        shareTimer.restart()
     }
 
     // Only used to read a share configuration
@@ -194,9 +284,7 @@ ApplicationWindow {
         if (url) {
             // Podcast app schemes are web addresses: podcast://x -> https://x
             // (without punctuation that ends the sentence around it)
-            return url[0].replace(/[.,;:!?)\]]+$/, "").replace(/^(feed|podcast|pcast|itpc):\/\/(https?:\/\/)?/i, function(all, scheme, inner) {
-                return inner ? inner : "https://"
-            })
+            return podcastLinkAddress(url[0].replace(/[.,;:!?)\]]+$/, ""))
         }
         return text.length > 200 ? text.substring(0, 200) : text
     }
@@ -259,6 +347,23 @@ ApplicationWindow {
         windowRemorse.execute(qsTr("Marking all in %1 as played").arg(name), function() { core.markFolderPlayed(folderId) })
     }
 
+    // (159) A group of a long podcast list
+    function remorseMarkSectionPlayed(podcastId, section) {
+        windowRemorse.execute(qsTr("Marking %1 as played").arg(section),
+                              function() { core.markSectionPlayed(podcastId, section) })
+    }
+
+    // (159) Without Wi-Fi (setting "only on Wi-Fi") asked first, as single
+    // downloads
+    function requestSectionDownload(podcastId, section) {
+        if (core.downloadAllowed()) {
+            core.downloadSection(podcastId, section)
+            return
+        }
+        var dialog = pageStack.push(Qt.resolvedUrl("pages/MobileDataDialog.qml"))
+        dialog.accepted.connect(function() { core.downloadSection(podcastId, section) })
+    }
+
     function remorseMarkOlderPlayed(episodeId) {
         windowRemorse.execute(qsTr("Marking older episodes as played"), function() { core.markOlderPlayed(episodeId) })
     }
@@ -272,6 +377,19 @@ ApplicationWindow {
                                       timeText: TimeFormat.clock(bookmark.position || 0) })
         var id = bookmark.bookmarkId
         dialog.accepted.connect(function() { core.editBookmark(id, dialog.bookmarkTitle, dialog.note) })
+    }
+
+    // (171) A bookmark at the current position, then its name and note in
+    // the docked panel (player bar, landscape player column)
+    function addBookmarkNow() {
+        if (!player.hasEpisode) {
+            return
+        }
+        var seconds = player.position
+        var id = core.addBookmark(player.episodeId, seconds)
+        if (id > 0) {
+            windowBookmarkPanel.show(id, seconds)
+        }
     }
 
     function remorseDeleteBookmark(bookmarkId) {
@@ -307,6 +425,19 @@ ApplicationWindow {
         var dialog = pageStack.push(Qt.resolvedUrl("pages/FolderPickerDialog.qml"),
                                     { folderId: podcast.folderId || 0, podcastTitle: podcast.title || "" })
         dialog.accepted.connect(function() { core.setPodcastFolder(podcastId, dialog.folderId) })
+    }
+
+    // (170) Subscribing a podcast listened to without a subscription: with
+    // folders, choose one first (as in "Add podcast")
+    function subscribeWithFolder(url, title) {
+        if (core.folders().length === 0) {
+            core.subscribe(url, 0)
+            return
+        }
+        var dialog = pageStack.push(Qt.resolvedUrl("pages/FolderPickerDialog.qml"),
+                                    { folderId: 0, podcastTitle: title || "",
+                                      headerTitle: qsTr("Subscribe"), acceptLabel: qsTr("Subscribe") })
+        dialog.accepted.connect(function() { core.subscribe(url, dialog.folderId) })
     }
 
     function askDeleteFolder(folderId, name, podcastCount) {
@@ -513,18 +644,50 @@ ApplicationWindow {
     property Page ringHomePage: HomePage { ringMember: true }
     property Page ringPodcastsPage: PodcastsPage { ringMember: true }
     property Page ringPlaylistPage: PlaylistPage { ringMember: true }
+    // Discover as a 4th ring page (setting "ui.discoverRing", default off,
+    // since 229 on;
+    // 139 between Playlist and New episodes, since 140 between New episodes
+    // and Podcasts - next to the subscriptions): built when first needed; it
+    // loads its lists when first shown
+    property Page ringDiscoverPage: null
+
+    Component {
+        id: discoverRingComponent
+        SearchPage { ringMember: true }
+    }
+
+    // (237) The same as a binding (pulley entries follow the setting at once)
+    property int _settingsRevision: 0
+    Connections {
+        target: core
+        onSettingsChanged: appWindow._settingsRevision++
+    }
+    readonly property bool discoverRingOn: _settingsRevision >= 0 && core.setting("ui.discoverRing", "1") === "1"
+
+    function discoverInRing() {
+        return core.setting("ui.discoverRing", "1") === "1"
+    }
+
+    function discoverRingPage() {
+        if (!ringDiscoverPage) {
+            ringDiscoverPage = discoverRingComponent.createObject(appWindow)
+        }
+        return ringDiscoverPage
+    }
 
     function nextRingPage(page) {
-        if (page === ringHomePage) return ringPodcastsPage
+        if (page === ringHomePage) return discoverInRing() ? discoverRingPage() : ringPodcastsPage
         if (page === ringPodcastsPage) return ringPlaylistPage
         if (page === ringPlaylistPage) return ringHomePage
+        if (ringDiscoverPage && page === ringDiscoverPage) return ringPodcastsPage
         return null
     }
 
     function prevRingPage(page) {
         if (page === ringHomePage) return ringPlaylistPage
-        if (page === ringPodcastsPage) return ringHomePage
+        if (page === ringPodcastsPage) return discoverInRing() ? discoverRingPage() : ringHomePage
         if (page === ringPlaylistPage) return ringPodcastsPage
+        if (ringDiscoverPage && page === ringDiscoverPage) return ringHomePage
         return null
     }
 
@@ -579,6 +742,18 @@ ApplicationWindow {
         }
     }
 
+    // (183) Straight to the playlist page (player bar "Edit playlist"):
+    // the ring rebuilt below it as _applyRingNavigation does
+    function showPlaylist() {
+        if (pageStack.currentPage === ringPlaylistPage || pageStack.busy) {
+            return
+        }
+        pageStack.clear()
+        pageStack.push(prevRingPage(ringPlaylistPage), {}, PageStackAction.Immediate)
+        pageStack.push(ringPlaylistPage, {}, PageStackAction.Immediate)
+        ringPageActivated(ringPlaylistPage)
+    }
+
     // Start page (setting "ui.startPage", 43): home, podcasts or playlist
     function _startPage() {
         var name = core.setting("ui.startPage", "home")
@@ -621,8 +796,9 @@ ApplicationWindow {
     // source: the item asking (66) - the hint waits until its page is the
     // current one (the three ring pages are all built at the start, so the
     // folder hint appeared on the start page and the playlist one never)
-    function showHint(key, text, source) {
-        onceHint.show(key, text, pageOf(source))
+    // atTop (220): at the top of the screen instead of above the player bar
+    function showHint(key, text, source, atTop) {
+        onceHint.show(key, text, pageOf(source), atTop)
     }
 
     function pageOf(item) {
@@ -646,14 +822,38 @@ ApplicationWindow {
     // Swipe hint on the first start, on the first ring page; ends after its
     // runs or on any page change - and never comes back
 
+    // (233) 4 s after the start (1 s until 231 - the first swipe took the
+    // user to Discover while still reading; 232 waited for podcasts, then
+    // nobody learnt about the ring). The other hints wait until it ran -
+    // "Discover is one of the swipe pages" needs it first.
     Timer {
         id: ringHintTimer
-        interval: 1000
+        // (234) 3 s
+        interval: 3000
         onTriggered: {
-            if (core.setting("hint.ring", "0") !== "1" && pageStack.currentPage && pageStack.currentPage.ringMember) {
+            appWindow._ringHintWanted = core.setting("hint.ring", "0") !== "1"
+            if (!appWindow._ringHintWanted) {
+                appWindow._ringHintChecked = true
+            }
+        }
+    }
+
+    // Starts it on a ring page when no message or other hint is on screen
+    // (it lay over "1032 new episodes"); checked again every second
+    property bool _ringHintWanted: false
+    Timer {
+        id: ringHintCheck
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: appWindow._ringHintWanted
+        onTriggered: {
+            if (!ringHint.active && onceHint._key.length === 0 && !messageBanner.visible
+                    && pageStack.currentPage && pageStack.currentPage.ringMember && !pageStack.busy) {
+                appWindow._ringHintWanted = false
+                appWindow._ringHintChecked = true
                 ringHint.start()
             }
-            appWindow._ringHintChecked = true
         }
     }
 
@@ -666,12 +866,19 @@ ApplicationWindow {
         }
     }
 
-    // The player bar the first time it appears
+    // The player bar the first time it appears - (231) when it is really
+    // on screen ("shown": portrait, not on an episode page), not when
+    // playback starts on the episode page where the bar is hidden
     Connections {
-        target: playerController
-        onHasEpisodeChanged: {
-            if (playerController.hasEpisode && !appWindow.landscapeLayout) {
-                appWindow.showHint("playerBar", qsTr("Player bar: tap for the episode page, the moon for the sleep timer, the arrow for the chapters"))
+        target: playerBar
+        onShownChanged: {
+            if (playerBar.shown) {
+                // (232) Back above the bar where it comes in (220-231 at the
+                // top, overlooked while the bar moved in); the backing of
+                // 230/231 keeps it readable over the list
+                // (237) New key: users of 1.1 saw the old text - the
+                // expandable bar is new in 1.2
+                appWindow.showHint("playerBar12", qsTr("Player bar: tap for the episode page, ⏭ for the next episode, ˄ expands it: seeking, sleep timer, chapters, up next"))
             }
         }
     }
@@ -710,10 +917,12 @@ ApplicationWindow {
 
         OnceHint {
             id: onceHint
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: appWindow.playerBarHeight
+            // Above the player bar, or (220) at the top of the screen - then
+            // also above the bookmark panel's shade (z 200)
+            y: showTop ? 0 : parent.height - appWindow.playerBarHeight - height
             width: parent.width - appWindow.playerPanelWidth
-            z: 101
+            z: showTop ? 201 : 101
+            barExpanded: playerBar.expanded && playerBar.shown
             // Not together with the swipe hint (55)
             // Not before the swipe hint was checked at the start, not with
             // the swipe hint, not under a message (55, 56)
@@ -728,6 +937,18 @@ ApplicationWindow {
             bottomMargin: appWindow.playerBarHeight
             z: 101
             onFinished: core.setSetting("hint.ring", "1")
+        }
+
+        // (171) Name and note of a bookmark set from the player bar or the
+        // landscape player column - the same panel as on the episode page
+        BookmarkPanel {
+            id: windowBookmarkPanel
+            width: parent.width
+            z: 200
+        }
+        Connections {
+            target: pageStack
+            onCurrentPageChanged: if (windowBookmarkPanel.open) windowBookmarkPanel.open = false
         }
 
         MessageBanner {

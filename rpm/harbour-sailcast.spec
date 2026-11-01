@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.1
+Version:    1.2
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -59,6 +59,22 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sun Nov 01 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.2-1
+- Released on GitHub; the first version for OpenRepos and the Jolla
+  Store (1.1 was only on GitHub).
+  Discover: "For you" from what you listen to, trending, new German- and
+  English-language podcasts, categories, similar podcasts, "My
+  interests"; listen without subscribing, also shared episode links;
+  podcast statistics, "About this podcast", long lists grouped by season
+  or month; choose episodes to download or to mark as played/unplayed; a
+  whole podcast into the playlist; expanded player bar with seeking,
+  skip, speed and tabs for chapters, bookmarks and up next; playlist in
+  the order you see it, skipped episodes in "Recently heard"; own name,
+  automatic download, download location and clean-up per podcast;
+  downloads in the Music folder, existing downloads moved along; search
+  also in the descriptions; podcast:// links; hanging streams recovered;
+  a smoother first start with first steps and one-time hints.
+
 * Sat Oct 24 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.1-1
 - Sailcast in the sharing menu ("Add podcast") for links and text; search
   on the device (podcasts, episode titles, bookmarks); website addresses

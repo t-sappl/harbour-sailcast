@@ -5,13 +5,23 @@
 #include <QHash>
 #include <QObject>
 #include <QSet>
+#include <QSharedPointer>
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
 
+#include "fyyd.h"
+#include "podnews.h"
+
+struct ForYouProfile;
+struct EpisodeRow;
 class FeedProbe;
 class PodcastIndex;
+class ForYou;
+class Fyyd;
+struct ForYouItem;
+struct FyydPodcast;
 class NextcloudLogin;
 class GpodderDevices;
 class WebDavBackup;
@@ -54,6 +64,9 @@ class AppCore : public QObject
     Q_PROPERTY(int downloadCount READ downloadCount NOTIFY downloadsChanged)
     Q_PROPERTY(int archivingPodcastId READ archivingPodcastId NOTIFY archivingChanged)
     Q_PROPERTY(bool searchAvailable READ searchAvailable CONSTANT)
+    // Counts the changes of "Meine Interessen" (140): Discover computes
+    // "Für dich" again when it is shown and the number changed
+    Q_PROPERTY(int interestsRevision READ interestsRevision NOTIFY interestsChanged)
     Q_PROPERTY(QString databaseError READ databaseError CONSTANT)
     Q_PROPERTY(QString version READ version CONSTANT)
 
@@ -72,6 +85,8 @@ public:
     QString syncAccount() const;
     int podcastCount() const;
     int queueCount() const;
+    // (190) Tiles on the playlist page: count, seconds left, downloaded
+    Q_INVOKABLE QVariantMap queueStats() const;
     int downloadCount() const;
     int archivingPodcastId() const { return m_archivingId; }
     QString databaseError() const { return m_databaseError; }
@@ -82,6 +97,20 @@ public:
     Q_INVOKABLE void updatePodcast(int podcastId);
     // folderId (45): put the new podcast into this folder (0 = none)
     Q_INVOKABLE void subscribe(const QString &url, int folderId = 0);
+    // (156) Subscribes a podcast listened to without subscribing (147)
+    Q_INVOKABLE void subscribePodcast(int podcastId);
+    // (158) Category names as shown: "Society & Culture/Documentary" ->
+    // "Gesellschaft & Kultur / Dokumentation" (fyyd's German names), a top
+    // category left out when one of its sub-categories is there
+    Q_INVOKABLE QStringList categoryLabels(const QStringList &categories) const;
+    // (158) "de" -> "Deutsch" (the own names of "Meine Interessen")
+    Q_INVOKABLE QString languageName(const QString &code) const;
+    // "Anhören ohne Abo" (147): the podcast is stored provisionally (hidden,
+    // see Database) and updated; previewReady(podcastId, episodeId) follows -
+    // episodeId of the episode with this guid, -1 without guid (the podcast
+    // page) or if it is not found; previewFailed(error) if the feed fails.
+    // A subscribed podcast is answered at once.
+    Q_INVOKABLE void listenWithoutSubscribing(const QString &url, const QString &title, const QString &guid);
     Q_INVOKABLE void unsubscribe(int podcastId);
     // Checks an address before subscribing (no subscription, no database);
     // feedChecked() follows with {requested, ok, needsLogin, url, title,
@@ -95,6 +124,64 @@ public:
     // imageUrl, description, language, episodes, subscribed}] or searchFailed()
     bool searchAvailable() const;
     Q_INVOKABLE void searchPodcasts(const QString &term);
+    // Discover (137, the search page with an empty field): "Für dich"
+    // (forYouReady), Podcast Index trending (trendingReady) and fyyd's most
+    // active podcasts (activeReady) in the first language of the profile;
+    // rows as searchFinished plus reason (Für dich), all without spam and
+    // without podcasts with a "Nie" keyword
+    Q_INVOKABLE void discover();
+    // "Kein Interesse": never suggested again (suggestionHidden)
+    Q_INVOKABLE void hideSuggestion(const QString &url, const QString &title, const QString &author);
+    // "Im Trend" (139: Podcast Index trending and fyyd's most active
+    // podcasts in one list) for another language
+    Q_INVOKABLE void discoverTrending(const QString &language);
+    // A category to browse (150): "History" or "Leisure/Automotive" (Apple
+    // names as in interests()). Podcast Index trending of that category per
+    // language of the user, and fyyd's active podcasts of it, taking turns,
+    // each podcast once; spam, "Nie", "Kein Interesse" and podcasts without an
+    // episode for 24 months left out -> categoryReady(category, items)
+    Q_INVOKABLE void discoverCategory(const QString &category);
+    // "Für dich" again (after a change in "Meine Interessen")
+    Q_INVOKABLE void refreshForYou();
+    // "Meine Interessen" (139): {languages: [code], languagesChosen, languageNames: {code: name},
+    //  available: [{code, name}], categories: [{name, label, parent, share, listened, level}] (fyyd's
+    //  tree, top categories followed by their sub-categories; share relative to the strongest, 0..1),
+    //  more / never: [{word, forms: [...]}], fromSubscriptions}
+    Q_INVOKABLE QVariantMap interests() const;
+    Q_INVOKABLE void setInterest(const QString &category, int level);  // ForYou::Interest
+    Q_INVOKABLE void setDiscoverLanguages(const QStringList &languages); // empty = from the subscriptions
+    Q_INVOKABLE QStringList translateKeyword(const QString &word) const;
+    // kind: 1 = "Mehr davon", 3 = "Nie"; oldWord: replaced (editing), may be empty
+    Q_INVOKABLE void setKeyword(int kind, const QString &word, const QStringList &forms, const QString &oldWord);
+    Q_INVOKABLE void removeKeyword(int kind, const QString &word);
+    Q_INVOKABLE void setRecommendFromSubscriptions(bool on);
+    // "Ähnliche Podcasts" (141): fyyd's similar podcasts of one podcast (only
+    // its address is sent; title and author find it when fyyd has another
+    // address) - similarReady(feedUrl, items, known) / similarFailed
+    // website (157): the podcast's web page - fyyd's entry is also found by it
+    Q_INVOKABLE void similarPodcasts(const QString &feedUrl, const QString &title, const QString &author,
+                                     const QString &website = QString());
+    // "Neu" (149): the first episodes of podcasts new on fyyd (Hörsuppe's
+    // curation "Nullnummern") - newReady(language, items) with {key (the
+    // fyyd id), episodeTitle, guid, imageUrl, published, duration, added,
+    // description}, newest added first, episodes with a "Nie" keyword left
+    // out; newFailed(language, error).
+    // language "en" (193): Podnews' "New Podcasts" instead - the trailers of
+    // new shows, {key (the show's feed), title, author, imageUrl, published,
+    // duration (of the trailer), added, description, trailer: true}
+    Q_INVOKABLE void discoverNew(const QString &language = QString());
+    // The podcast of such an episode (the curation names only its id;
+    // Podnews only the feed, looked up in Podcast Index):
+    // newPodcastReady(key, {title, author, url, imageUrl, wanted, match,
+    // subscribed}) - wanted false for hidden, "Nie" or spam, match the
+    // category of the user's interests it fits ("" = none); {} = unknown
+    // (fyyd only - a Podnews show not in Podcast Index keeps Podnews' data)
+    Q_INVOKABLE void newPodcastInfo(const QString &key);
+    // (193) After "Anhören ohne Abo" of a Podnews show: its trailer (type
+    // "trailer", else a title with "Trailer", else the length Podnews names)
+    // and its first full episode - {trailer, first}, -1 = none
+    Q_INVOKABLE QVariantMap trailerAndFirst(int podcastId, int trailerSeconds) const;
+    int interestsRevision() const { return m_interestsRevision; }
     // Feed with login (HTTP Basic Auth): the user name goes into the
     // database, the password only into memory - QML keeps it in Sailfish
     // Secrets ("feed-<id>") and hands it over on every start with
@@ -135,13 +222,29 @@ public:
     // "episodeImageUrl" (own image only) and "coverUrl" (podcast cover).
     Q_INVOKABLE QVariantMap episode(int episodeId) const;
     Q_INVOKABLE QVariantMap podcast(int podcastId) const;
+    // (162) Statistics of a podcast for "Über diesen Podcast": listened
+    // (seconds), started (episodes played or begun), downloads (count, bytes
+    // on the phone), rhythm (text, "" = too few episodes), next (estimated
+    // next episode, ms, 0 = none - only with a regular rhythm and not overdue)
+    Q_INVOKABLE QVariantMap podcastStats(int podcastId) const;
+    // (163) Publishing rhythm from episode dates (Unix seconds, any order):
+    // {rhythm, next (ms)} - see podcastStats; also for "Add podcast"
+    static QVariantMap rhythmOf(QList<qint64> dates);
     Q_INVOKABLE void markPlayed(int episodeId);
     Q_INVOKABLE void markUnplayed(int episodeId);
     Q_INVOKABLE void markAllPlayed(int podcastId);
     // Called by the player on pause, stop, seek and every 30 s
     Q_INVOKABLE void recordPlayback(int episodeId, int started, int position, int total);
     // The episode in the player (its file is never cleaned up)
-    Q_INVOKABLE void setCurrentEpisode(int episodeId) { m_currentEpisode = episodeId; }
+    Q_INVOKABLE void setCurrentEpisode(int episodeId);
+    // (188) An episode heard to the end or skipped in the player: first in
+    // "Recently heard" (playlist page; at most 30 kept)
+    Q_INVOKABLE void noteHeard(int episodeId);
+    // (189) Position of an episode skipped with "next" (it is marked played):
+    // offered again when it is played or marked unplayed
+    Q_INVOKABLE void noteSkipped(int episodeId, int seconds);
+    int skippedAt(int episodeId) const;
+    void clearSkipped(int episodeId);
     Q_INVOKABLE void loadChapters(int episodeId);
     // Playback of a remote source failed: update the podcast's feed (signed
     // or rotating media links expire); podcastRefreshed() follows
@@ -155,6 +258,52 @@ public:
     Q_INVOKABLE void cancelAllDownloads();
     // Files inside the archive folder are not deleted here
     Q_INVOKABLE void deleteDownload(int episodeId);
+    // Moves a downloaded episode into the archive folder in Music (120)
+    Q_INVOKABLE void keepEpisode(int episodeId);
+    // All downloads of a podcast into its archive folder (121); returns the number
+    Q_INVOKABLE int keepPodcastDownloads(int podcastId);
+    // (217) Downloads not in the place their podcast's download location
+    // asks for (after changing it): per podcast {podcastId, title, count,
+    // bytes, toMusic}; podcastId > 0 = only that podcast. Kept files,
+    // archived podcasts, running downloads and the episode in the player
+    // are left out
+    Q_INVOKABLE QVariantList misplacedDownloads(int podcastId = 0) const;
+    // Moves them for these podcasts; returns the number of files moved
+    Q_INVOKABLE int moveDownloads(const QVariantList &podcastIds);
+    // (143) "Alle Folgen herunterladen": what is not downloaded yet -
+    // {all, allBytes, allUnknown, unplayed, unplayedBytes, unplayedUnknown}
+    // (bytes as declared in the feed; *Unknown = episodes without a size)
+    Q_INVOKABLE QVariantMap downloadAllInfo(int podcastId) const;
+    // Starts those downloads, newest first; returns how many
+    Q_INVOKABLE int downloadAll(int podcastId, bool unplayedOnly);
+    // (159) Episodes to choose from on "Folgen herunterladen": not downloaded,
+    // not loading, in the podcast's order - {id, title, published (ms),
+    // duration, size, played, section (season, else month/year)}
+    Q_INVOKABLE QVariantList downloadCandidates(int podcastId) const;
+    // Starts the downloads of these episodes; returns how many
+    Q_INVOKABLE int downloadEpisodes(const QVariantList &episodeIds);
+    // (167) "Mark as played …": the unplayed episodes of a podcast with
+    // their group (as downloadCandidates), and marking a choice of them
+    // (170) played: the played ones instead, for "mark as unplayed"
+    Q_INVOKABLE QVariantList unplayedCandidates(int podcastId, bool played = false) const;
+    Q_INVOKABLE int markEpisodesPlayed(const QVariantList &episodeIds);
+    Q_INVOKABLE int markEpisodesUnplayed(const QVariantList &episodeIds);
+    // (159) A group of a long podcast list (section as EpisodeListModel shows
+    // it - season or month/year), also the episodes not loaded yet:
+    // download what is not downloaded, add the unplayed to the end of the
+    // playlist (in the podcast's order), mark all as played; how many
+    Q_INVOKABLE int downloadSection(int podcastId, const QString &section);
+    Q_INVOKABLE int queueSection(int podcastId, const QString &section);
+    // (165) All unplayed episodes of a podcast to the end of the playlist,
+    // oldest first (a short, finished series heard at once)
+    Q_INVOKABLE int queuePodcast(int podcastId);
+    Q_INVOKABLE int markSectionPlayed(int podcastId, const QString &section);
+    // Unplayed downloaded episodes not in the playlist to its end, oldest
+    // first (121); returns the number
+    Q_INVOKABLE int queueDownloaded();
+    // Path of the downloaded file, empty if none (120: share the file)
+    Q_INVOKABLE QString downloadPath(int episodeId) const;
+    Q_INVOKABLE QString mimeType(int episodeId) const;
     Q_INVOKABLE bool isDownloading(int episodeId) const;
     Q_INVOKABLE qreal downloadProgress(int episodeId) const;
     // Running and waiting downloads: [{episodeId, title, podcastTitle,
@@ -162,6 +311,8 @@ public:
     Q_INVOKABLE QVariantList activeDownloads() const;
     // {count, bytes} of the downloaded files
     Q_INVOKABLE QVariantMap downloadStats() const;
+    // (218) Number of downloaded episodes (playlist pulley)
+    Q_INVOKABLE int downloadedCount() const;
     // Deletes the downloads of played episodes (days: last played more than
     // N days ago, -1: the setting "cleanup.days"); returns the number
     Q_INVOKABLE int cleanupDownloads(int days);
@@ -186,6 +337,9 @@ public:
     // first playlist episode other than the current one, else the most
     // recently played episode in progress; -1 if there is none
     Q_INVOKABLE int nextEpisode(int currentEpisodeId) const;
+    // (167) The next playlist episodes after the current one (at most
+    // count) - "Up next" in the expanded player bar
+    Q_INVOKABLE QVariantList upNext(int currentEpisodeId, int count) const;
     // Number of episodes in progress, without the given one (the current)
     Q_INVOKABLE int inProgressCount(int excludeEpisodeId) const;
 
@@ -197,6 +351,8 @@ public:
     Q_INVOKABLE void setArchived(int podcastId, bool archived);
     // Leave a podcast out of "update all" (manual update only, 44)
     Q_INVOKABLE void setManualUpdate(int podcastId, bool manual);
+    // Own name of a podcast, empty = the feed's title (112)
+    Q_INVOKABLE void setPodcastTitle(int podcastId, const QString &title);
     // The podcast page was opened: its "new episodes since you last looked"
     // marker goes away (50)
     Q_INVOKABLE void markPodcastSeen(int podcastId);
@@ -217,7 +373,9 @@ public:
     //  duration, played, position}] (titles, newest first),
     //  bookmarks: [as bookmarks()] (name, note, episode title)} -
     // at most 5 / 20 / 5, show notes are not searched
-    Q_INVOKABLE QVariantMap searchLocal(const QString &term) const;
+    // (236) inDescriptions: also episodes whose description contains the
+    // term ("described", each with an "excerpt" around it)
+    Q_INVOKABLE QVariantMap searchLocal(const QString &term, bool inDescriptions = false) const;
     Q_INVOKABLE int addBookmark(int episodeId, int seconds);
     Q_INVOKABLE void setBookmarkNote(int bookmarkId, const QString &note);
     // Name and note at once (50)
@@ -238,6 +396,12 @@ public:
     // them too, QML unsubscribes podcastIdsInFolder() first (feed secrets)
     Q_INVOKABLE void deleteFolder(int folderId);
     Q_INVOKABLE QVariantList podcastIdsInFolder(int folderId) const;
+    // (212) Per-podcast choice "podcast.<id>.<name>" on the settings page:
+    // {on, total} - subscribed podcasts whose own value is onValue, or
+    // empty while the global choice is on
+    Q_INVOKABLE QVariantMap podcastChoice(const QString &name, const QString &onValue, bool globalOn) const;
+    // (213) The ids of those podcasts (e.g. the ones downloading into Music)
+    Q_INVOKABLE QVariantList podcastIdsWithChoice(const QString &name, const QString &onValue, bool globalOn) const;
     Q_INVOKABLE void setPodcastFolder(int podcastId, int folderId);
     Q_INVOKABLE void markFolderPlayed(int folderId);
     // The older unplayed episodes of the episode's podcast (53)
@@ -269,7 +433,10 @@ public:
     // --- Import and export ---
     // folderId (45): folder for the podcasts that the file puts in no
     // folder (0 = "Other podcasts"); folders named in the file are used
-    Q_INVOKABLE void importOpml(const QString &path, int folderId = 0);
+    // (168) markOlder: after the first update of the added podcasts all but
+    // the newest episode of each is marked as played (setting
+    // "import.markOlder" holds the podcasts still waiting for their episodes)
+    Q_INVOKABLE void importOpml(const QString &path, int folderId = 0, bool markOlder = false);
     // Database of gpodder-sailfish (copied to a readable place first)
     Q_INVOKABLE void importGpodder(const QString &path);
     // Replaces the app database with a copy (e.g. a backup, or the
@@ -326,6 +493,21 @@ signals:
     void podcastRefreshed(int podcastId, bool ok);
     void searchFinished(const QString &term, const QVariantList &results);
     void searchFailed(const QString &term, const QString &error);
+    void forYouReady(const QVariantList &items);
+    void forYouStarted();
+    void trendingReady(const QString &language, const QVariantList &items);
+    void categoryReady(const QString &category, const QVariantList &items);
+    void interestsChanged();
+    void suggestionHidden(const QString &url);
+    // known: fyyd knows the podcast (else items is empty for that reason)
+    void similarReady(const QString &feedUrl, const QVariantList &items, bool known);
+    void similarFailed(const QString &error);
+    // (147) see listenWithoutSubscribing
+    void previewReady(int podcastId, int episodeId);
+    void newReady(const QString &language, const QVariantList &items);
+    void newFailed(const QString &language, const QString &error);
+    void newPodcastReady(const QString &key, const QVariantMap &podcast);
+    void previewFailed(const QString &error);
     // Result of checkFeed()
     void feedChecked(const QVariantMap &result);
     // Short text for the message banner
@@ -348,6 +530,9 @@ private:
     void openDatabase();
     QString databasePath() const;
     QString archiveRoot() const;
+    bool isKept(const EpisodeRow &e) const;
+    bool podcastInMusic(qint64 podcastId) const;
+    QList<EpisodeRow> misplacedEpisodes(qint64 podcastId) const;
     void reloadQueue();
     void autoDownload(qint64 podcastId, int newEpisodes);
     void onArchiveFinished(const ArchiveResult &result);
@@ -356,6 +541,8 @@ private:
     void archiveStateChanged(int episodeId);
     void writeArchiveMetadata();
     void cleanupOnStart();
+    // Per-podcast "delete played downloads" (117): id -> days (-1 never)
+    QHash<qint64, int> podcastCleanupDays() const;
     // A backup when the last one is older than "backup.days" (83); the
     // Nextcloud copy separately (it needs the sync password - also checked
     // after every sync)
@@ -368,6 +555,8 @@ private:
     // After episodes became played: out of the playlist (24) and, with
     // "cleanup.days" = 0, their downloads deleted right away
     void afterPlayed();
+    void cleanupRightAfterListening();
+    void markImportedOlder();
 
     Database *m_database;
     FeedUpdater *m_updater;
@@ -377,6 +566,62 @@ private:
     ChaptersLoader *m_chapters;
     FeedProbe *m_probe;
     PodcastIndex *m_index;
+    // Discover (137): own instances - ForYou counts the answers of its own
+    ForYou *m_forYou;
+    Fyyd *m_discoverFyyd;
+    PodcastIndex *m_discoverIndex;
+    // (150) Browsing a category: its sources per language ("pi:de", "fy:de")
+    PodcastIndex *m_catIndex;
+    Fyyd *m_catFyyd;
+    QString m_catName;
+    QStringList m_catParts;
+    QHash<QString, QVariantList> m_catResults;
+    void categoryPartReady(const QString &part, const QVariantList &items);
+    bool categoryWanted(const QVariantMap &map, qint64 newest) const;
+    // Podcast Index's name for an Apple category ("Society & Culture" ->
+    // "Society,Culture", "Leisure/Automotive" -> "Automotive")
+    static QString indexCategory(const QString &category);
+    Fyyd *m_similarFyyd;
+    Fyyd *m_newFyyd;        // (149) the curation
+    Fyyd *m_newInfoFyyd;    // (149) its podcasts, cached 7 days
+    Podnews *m_podnews;     // (193) "Neu" in English
+    PodcastIndex *m_newIndex;   // (193) its shows by feed address
+    QHash<QString, PodnewsTrailer> m_newTrailers;   // feed address -> show
+    QVariantMap newPodcastMap(const FyydPodcast &p) const;
+    QVariantMap newPodcastMap(const PodnewsTrailer &t, const PodcastSearchResult &r) const;
+    void markNew(QVariantMap &map, const QStringList &names, const QStringList &labels, const QString &title,
+                 const QString &description, const QString &language) const;
+    // (197) Apple names ("History", "Leisure/Automotive") and labels (German
+    // with a German phone) of a podcast's categories - from fyyd ids, or
+    // from Podcast Index's words ("Society", "Culture"); the first one is
+    // the main category (a top category when there is one)
+    void categoriesOf(const QList<int> &fyydIds, QStringList *names, QStringList *labels) const;
+    void categoriesOf(const QStringList &words, QStringList *names, QStringList *labels) const;
+    // A category of the list set to "never" (or its top category)
+    static bool neverCategory(const QStringList &names, const QStringList &never);
+    // fyyd's category tree, read once from its cache (197: the rows of Im
+    // Trend ask it per podcast); cleared when a new tree arrives
+    void loadCategoryTree() const;
+    mutable QList<FyydCategory> m_tree;
+    mutable QHash<int, FyydCategory> m_treeById;
+    // (197) Im Trend: without "never" categories, with the main category
+    // ("category" label) - false = left out
+    bool trendingRow(QVariantMap &map, const QStringList &names, const QStringList &labels,
+                     const QStringList &never) const;
+    // The profile for those rows, computed once per list (not per row)
+    mutable QSharedPointer<ForYouProfile> m_newProfile;
+    QVariantMap podcastMap(const PodcastSearchResult &r) const;
+    QVariantMap podcastMap(const FyydPodcast &p) const;
+    QVariantMap suggestionMap(const ForYouItem &item) const;
+    void trendingPartReady(const QString &language, bool fromFyyd, const QVariantList &items);
+    // "Im Trend": both parts of a language, merged once both are there
+    QHash<QString, QVariantList> m_trendIndex;
+    QHash<QString, QVariantList> m_trendFyyd;
+    QSet<QString> m_trendIndexDone;
+    QSet<QString> m_trendFyydDone;
+    bool m_forYouAgain = false;
+    int m_interestsRevision = 0;
+    void interestsEdited() { ++m_interestsRevision; m_newProfile.reset(); emit interestsChanged(); }
     NextcloudLogin *m_browserLogin;
     GpodderDevices *m_devices;
     WebDavBackup *m_webdav;
@@ -393,6 +638,16 @@ private:
     int m_updateTotal = 0;
     int m_updateNew = 0;
     int m_updateFailed = 0;
+    // (147) Podcasts loaded for "Anhören ohne Abo": id -> guid of the
+    // episode to play ("" = the podcast page)
+    QHash<qint64, QString> m_previews;
+    // An update of a subscription took part (the summary message is only
+    // for those, not for a preview alone)
+    bool m_updateRegular = false;
+    void removeProvisional(qint64 podcastId);
+    QList<EpisodeRow> sectionEpisodes(int podcastId, const QString &section) const;
+    // Seconds of a time in a shared link ("#t=1:02:03", "t=754", "t=12m30s"), 0 if none (148)
+    static int linkSeconds(const QString &url);
     QHash<int, qreal> m_downloadProgress;
     QSet<int> m_queue;      // cached ids of the playlist
 };

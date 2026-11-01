@@ -33,6 +33,21 @@ Page {
         id: folders
     }
 
+    // (220) After the first subscription: since 231 one hint for the
+    // podcast's context menu and folders (a separate menu hint would have
+    // been a third one here); the hint of 52 on the folder header follows
+    // once there is a folder
+    function folderHint() {
+        if (core.podcastCount > 0) {
+            appWindow.showHint("podcastMenu", qsTr("Press and hold a podcast:\nsettings · move to folder\nNew folder: pull down"), page)
+        }
+    }
+    Component.onCompleted: folderHint()
+    Connections {
+        target: core
+        onDataChanged: page.folderHint()
+    }
+
     SilicaFlickable {
         id: flickable
         anchors.fill: parent
@@ -73,12 +88,12 @@ Page {
             }
         }
 
-        ViewPlaceholder {
-            enabled: core.podcastCount === 0
-            text: qsTr("No podcasts yet")
-            hintText: qsTr("Pull down to search for podcasts, add one or import an OPML file")
-        }
-
         VerticalScrollDecorator {}
+    }
+
+    // (219) First steps as buttons instead of a hint to the pulley
+    GetStarted {
+        visible: core.podcastCount === 0
+        anchors.verticalCenter: parent.verticalCenter
     }
 }

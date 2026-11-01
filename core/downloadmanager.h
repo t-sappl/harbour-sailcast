@@ -62,10 +62,19 @@ public:
     bool isActive(qint64 episodeId) const { return m_active.contains(episodeId); }
 
     // Deletes the downloads of played episodes last played more than `days`
-    // days ago - never in archived podcasts, never files inside
+    // days ago (-1 = never) - never in archived podcasts, never files inside
     // `archiveRoot` and never the file of `keepEpisodeId` (the episode in
-    // the player).
-    CleanupResult cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId = 0);
+    // the player). `podcastDays` (117): a podcast's own choice instead of
+    // `days` (-1 never, 0 right after listening, N days). `all`: the user
+    // asked to delete all played downloads - every podcast as `days`,
+    // except those set to "never".
+    // (209) Removes ".part" files left by failed downloads that were never
+    // tried again: older than `days`, not of a running download - in the
+    // download folder and below `archiveRoot`; returns how many
+    int removeStaleParts(const QString &archiveRoot, int days = 7);
+    CleanupResult cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId = 0,
+                          const QHash<qint64, int> &podcastDays = QHash<qint64, int>(),
+                          bool all = false);
 
 signals:
     void progress(qint64 episodeId, qint64 received, qint64 total);

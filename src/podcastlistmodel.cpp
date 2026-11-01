@@ -50,6 +50,11 @@ void PodcastListModel::reload()
             return row.folderId == m_firstFolderId;
         });
     }
+    if (!m_firstIds.isEmpty()) {
+        std::stable_partition(rows.begin(), rows.end(), [this](const PodcastRow &row) {
+            return m_firstIds.contains(row.id);
+        });
+    }
     int fresh = 0;
     for (int i = 0; i < rows.size(); ++i) {
         if (rows.at(i).freshEpisodes) {
@@ -83,6 +88,33 @@ void PodcastListModel::setFirstFolderId(int folderId)
     }
 }
 
+QVariantList PodcastListModel::firstIds() const
+{
+    QVariantList list;
+    for (QSet<qint64>::const_iterator it = m_firstIds.constBegin(); it != m_firstIds.constEnd(); ++it) {
+        list.append(int(*it));
+    }
+    return list;
+}
+
+void PodcastListModel::setFirstIds(const QVariantList &ids)
+{
+    QSet<qint64> set;
+    for (int i = 0; i < ids.size(); ++i) {
+        set.insert(ids.at(i).toLongLong());
+    }
+    if (set == m_firstIds) {
+        return;
+    }
+    m_firstIds = set;
+    emit firstIdsChanged();
+    reload();
+    // The rows may be the same, only their "first" role changed
+    if (!m_rows.isEmpty()) {
+        emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0), QVector<int>() << FirstRole);
+    }
+}
+
 QVariant PodcastListModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
@@ -104,6 +136,7 @@ QVariant PodcastListModel::data(const QModelIndex &index, int role) const
     case ManualUpdateRole: return p.manualUpdate;
     case FolderIdRole: return int(p.folderId);
     case FreshRole: return p.freshEpisodes;
+    case FirstRole: return m_firstIds.contains(p.id);
     default: return QVariant();
     }
 }
@@ -125,6 +158,7 @@ QHash<int, QByteArray> PodcastListModel::roleNames() const
     names.insert(ManualUpdateRole, "manualUpdate");
     names.insert(FolderIdRole, "folderId");
     names.insert(FreshRole, "fresh");
+    names.insert(FirstRole, "first");
     return names;
 }
 

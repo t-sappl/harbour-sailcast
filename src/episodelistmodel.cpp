@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "episodelistmodel.h"
 
+#include <QDateTime>
+#include <QLocale>
 #include <QTimer>
 
 #include "appcore.h"
@@ -48,6 +50,36 @@ void EpisodeListModel::setFilter(Filter filter)
         emit filterChanged();
         scheduleReload();
     }
+}
+
+void EpisodeListModel::setSections(bool on)
+{
+    if (on != m_sections) {
+        m_sections = on;
+        emit sectionsChanged();
+        scheduleReload();
+    }
+}
+
+QString EpisodeListModel::sectionOf(const EpisodeRow &e) const
+{
+    return sectionLabel(e, m_bySeason);
+}
+
+QString EpisodeListModel::sectionLabel(const EpisodeRow &e, bool bySeason)
+{
+    if (bySeason) {
+        return e.season > 0 ? tr("Season %1").arg(e.season) : tr("Without season");
+    }
+    if (e.published <= 0) {
+        return tr("Without date");
+    }
+    const QDate date = QDateTime::fromMSecsSinceEpoch(e.published * 1000).date();
+    if (date.year() == QDate::currentDate().year()) {
+        // "Oktober 2026" (stand-alone month name of the phone's language)
+        return QLocale().standaloneMonthName(date.month()) + QLatin1Char(' ') + QString::number(date.year());
+    }
+    return QString::number(date.year());
 }
 
 void EpisodeListModel::setLimit(int limit)
@@ -119,6 +151,18 @@ void EpisodeListModel::reload()
                 rows.append(row);
             }
         }
+    } else if (m_filter == Recent) {
+        const QStringList ids = db->setting(QStringLiteral("player.recent")).split(QLatin1Char(','), QString::SkipEmptyParts);
+        for (const QString &value : ids) {
+            if (m_limit > 0 && rows.size() >= m_limit) {
+                break;
+            }
+            const EpisodeRow row = db->episode(value.toLongLong());
+            // Gone (unsubscribed) or the one playing: left out
+            if (row.id && row.id != m_excludeEpisodeId && !row.provisional) {
+                rows.append(row);
+            }
+        }
     } else {
         Database::EpisodeFilter filter = Database::AllEpisodes;
         int limit = m_limit;
@@ -134,24 +178,41 @@ void EpisodeListModel::reload()
             break;
         default: break;
         }
-        // One more, in case the excluded episode is among them
-        rows = db->episodes(m_podcastId, limit > 0 && m_excludeEpisodeId > 0 ? limit + 1 : limit, filter,
+        // One more, in case the excluded episode is among them; one more to
+        // know whether there are more (158)
+        rows = db->episodes(m_podcastId, limit > 0 ? limit + 1 + (m_excludeEpisodeId > 0 ? 1 : 0) : limit, filter,
                             m_oldestFirst, m_search);
+        // Seasons (158): only when the podcast's feed has two or more
+        m_bySeason = m_sections && m_podcastId > 0 && db->seasonCount(m_podcastId) >= 2;
         if (m_excludeEpisodeId > 0) {
             for (int i = rows.size() - 1; i >= 0; --i) {
                 if (rows.at(i).id == m_excludeEpisodeId) {
                     rows.removeAt(i);
                 }
             }
-            if (limit > 0) {
-                while (rows.size() > limit) {
-                    rows.removeLast();
-                }
+        }
+        const bool more = limit > 0 && rows.size() > limit;
+        if (limit > 0) {
+            while (rows.size() > limit) {
+                rows.removeLast();
             }
+        }
+        if (more != m_hasMore) {
+            m_hasMore = more;
+            emit countChanged();
         }
     }
     if (applyRows(rows)) {
         emit countChanged();
+    }
+    // Sections switched on or changed kind: every row's section is new;
+    // with sections every reload may move a section's first row (161)
+    const int mode = !m_sections ? 0 : (m_bySeason ? 2 : 1);
+    if (mode != m_appliedSectionMode || m_sections) {
+        m_appliedSectionMode = mode;
+        if (!m_rows.isEmpty()) {
+            emit dataChanged(index(0), index(m_rows.size() - 1));
+        }
     }
 }
 
@@ -243,8 +304,15 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case InProgressRole: return e.inProgress();
     case ChapterCountRole: return e.chapterCount;
     case BookmarkCountRole: return e.bookmarkCount;
+    case ProvisionalRole: return e.provisional;
+    case SectionRole: return m_sections ? sectionOf(e) : QString();
+    case SectionStartRole:
+        return m_sections && (index.row() == 0 || sectionOf(m_rows.at(index.row() - 1)) != sectionOf(e));
     case SeasonRole: return e.season;
     case EpisodeNumberRole: return e.episodeNumber;
+    // The file lies under its archive name (archive folder, 120)
+    case KeptRole: return e.downloaded && !e.archiveFile.isEmpty()
+                && e.downloadPath.endsWith(QLatin1Char('/') + e.archiveFile);
     case DownloadedRole: return e.downloaded;
     case DownloadingRole: return core ? core->isDownloading(int(e.id)) : false;
     case DownloadProgressRole: return core ? core->downloadProgress(int(e.id)) : 0.0;
@@ -273,6 +341,10 @@ QHash<int, QByteArray> EpisodeListModel::roleNames() const
     names.insert(BookmarkCountRole, "bookmarkCount");
     names.insert(SeasonRole, "season");
     names.insert(EpisodeNumberRole, "episodeNumber");
+    names.insert(KeptRole, "kept");
+    names.insert(ProvisionalRole, "provisional");
+    names.insert(SectionRole, "section");
+    names.insert(SectionStartRole, "sectionStart");
     names.insert(DownloadedRole, "downloaded");
     names.insert(DownloadingRole, "downloading");
     names.insert(DownloadProgressRole, "downloadProgress");

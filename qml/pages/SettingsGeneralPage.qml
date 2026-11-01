@@ -37,6 +37,30 @@ Page {
                 }
             }
 
+            TextSwitch {
+                text: qsTr("Discover as a ring page")
+                description: qsTr("Swipe from New episodes to Discover and on to Podcasts. Off: Discover is in the Podcasts pull-down menu instead.")
+                // (229) On by default
+                checked: core.setting("ui.discoverRing", "1") === "1"
+                automaticCheck: false
+                onClicked: {
+                    checked = !checked
+                    core.setSetting("ui.discoverRing", checked ? "1" : "0")
+                }
+            }
+
+            // (164) "Neu" exists only in German (Hörsuppe's list)
+            TextSwitch {
+                text: qsTr("Tab \"New\" in Discover")
+                description: qsTr("New podcasts: German from fyyd (first episodes, chosen by Hörsuppe), English from Podnews (trailers). Shown when German or English is one of your languages.")
+                checked: core.setting("ui.discoverNewTab", "1") === "1"
+                automaticCheck: false
+                onClicked: {
+                    checked = !checked
+                    core.setSetting("ui.discoverNewTab", checked ? "1" : "0")
+                }
+            }
+
             ComboBox {
                 label: qsTr("Start page")
                 description: qsTr("Applies from the next start.")

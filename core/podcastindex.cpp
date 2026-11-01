@@ -19,6 +19,9 @@
 namespace {
 const char ApiBase[] = "https://api.podcastindex.org/api/1.0/";
 const int TimeoutMs = 30000;
+// (193) The parallel requests tell a feed lookup from a cached search by
+// this prefix of their "term"
+const char FeedUrlPrefix[] = "\x01" "feedurl:";
 }
 
 PodcastIndex::PodcastIndex(QObject *parent)
@@ -78,6 +81,22 @@ void PodcastIndex::search(const QString &term, int max)
     send(text, max);
 }
 
+QNetworkReply *PodcastIndex::get(const QUrl &url)
+{
+    const QByteArray date = QByteArray::number(QDateTime::currentMSecsSinceEpoch() / 1000);
+    const QByteArray hash = QCryptographicHash::hash(m_key.toUtf8() + m_secret.toUtf8() + date,
+                                                     QCryptographicHash::Sha1).toHex();
+    QNetworkRequest request(url);
+    request.setRawHeader("User-Agent", NetworkAccess::userAgent());
+    request.setRawHeader("X-Auth-Key", m_key.toUtf8());
+    request.setRawHeader("X-Auth-Date", date);
+    request.setRawHeader("Authorization", hash);
+
+    QNetworkReply *reply = m_network->get(request);
+    QTimer::singleShot(TimeoutMs, reply, SLOT(abort()));
+    return reply;
+}
+
 void PodcastIndex::send(const QString &text, int max)
 {
     // An Apple Podcasts link (103): looked up by its id
@@ -93,18 +112,8 @@ void PodcastIndex::send(const QString &text, int max)
     }
     url.setQuery(query);
 
-    const QByteArray date = QByteArray::number(QDateTime::currentMSecsSinceEpoch() / 1000);
-    const QByteArray hash = QCryptographicHash::hash(m_key.toUtf8() + m_secret.toUtf8() + date,
-                                                     QCryptographicHash::Sha1).toHex();
-    QNetworkRequest request(url);
-    request.setRawHeader("User-Agent", NetworkAccess::userAgent());
-    request.setRawHeader("X-Auth-Key", m_key.toUtf8());
-    request.setRawHeader("X-Auth-Date", date);
-    request.setRawHeader("Authorization", hash);
-
-    QNetworkReply *reply = m_network->get(request);
+    QNetworkReply *reply = get(url);
     m_reply = reply;
-    QTimer::singleShot(TimeoutMs, reply, SLOT(abort()));
     connect(reply, &QNetworkReply::finished, this, [this, reply, text, max]() { onFinished(reply, text, max); });
 }
 
@@ -142,25 +151,19 @@ void PodcastIndex::onFinished(QNetworkReply *reply, const QString &term, int max
         qWarning("Podcast Index: HTTP %d, error %d, server %s, cf-ray %s, body %s", status, int(reply->error()),
                  reply->rawHeader("Server").constData(), reply->rawHeader("CF-RAY").constData(),
                  body.left(300).constData());
-        QString message;
-        if (timedOut) {
-            message = QStringLiteral("no answer from Podcast Index (timeout)");
-        } else if (status > 0) {
-            const QString description = QJsonDocument::fromJson(body).object()
-                    .value(QStringLiteral("description")).toString().trimmed();
-            message = QStringLiteral("Podcast Index answered HTTP %1").arg(status);
-            if (!description.isEmpty()) {
-                message += QStringLiteral(" (%1)").arg(description.left(120));
-            }
-        } else {
-            message = QStringLiteral("no connection to Podcast Index (network error %1)").arg(int(reply->error()));
-        }
+        const QString message = errorMessage(reply, status, body);
         emit searchFailed(term, message);
         return;
     }
-    const QJsonObject root = QJsonDocument::fromJson(body).object();
+    const QList<PodcastSearchResult> results = parseFeeds(QJsonDocument::fromJson(body).object());
+    emit searchFinished(term, results);
+}
+
+QList<PodcastSearchResult> PodcastIndex::parseFeeds(const QJsonObject &root)
+{
     QJsonArray feeds = root.value(QStringLiteral("feeds")).toArray();
-    // podcasts/byitunesid answers with one "feed" (an empty array if unknown)
+    // podcasts/byitunesid and podcasts/byfeedurl (193) answer with one
+    // "feed" (an empty array if unknown)
     if (root.value(QStringLiteral("feed")).isObject()) {
         feeds.append(root.value(QStringLiteral("feed")));
     }
@@ -194,9 +197,195 @@ void PodcastIndex::onFinished(QNetworkReply *reply, const QString &term, int max
         const QJsonObject funding = f.value(QStringLiteral("funding")).toObject();
         r.fundingUrl = funding.value(QStringLiteral("url")).toString();
         r.fundingMessage = funding.value(QStringLiteral("message")).toString();
+        r.newestItemTime = qint64(f.value(QStringLiteral("newestItemPublishTime")).toDouble());
+        if (r.newestItemTime <= 0) {
+            // search/byterm names it differently (135)
+            r.newestItemTime = qint64(f.value(QStringLiteral("newestItemPubdate")).toDouble());
+        }
+        r.trendScore = f.value(QStringLiteral("trendScore")).toInt();
         if (!r.url.isEmpty()) {
             results.append(r);
         }
     }
-    emit searchFinished(term, results);
+    return results;
+}
+
+QString PodcastIndex::errorMessage(QNetworkReply *reply, int status, const QByteArray &body)
+{
+    const bool timedOut = reply->error() == QNetworkReply::OperationCanceledError;
+    QString message;
+    if (timedOut) {
+        message = QStringLiteral("no answer from Podcast Index (timeout)");
+    } else if (status > 0) {
+        const QString description = QJsonDocument::fromJson(body).object()
+                .value(QStringLiteral("description")).toString().trimmed();
+        message = QStringLiteral("Podcast Index answered HTTP %1").arg(status);
+        if (!description.isEmpty()) {
+            message += QStringLiteral(" (%1)").arg(description.left(120));
+        }
+    } else {
+        message = QStringLiteral("no connection to Podcast Index (network error %1)").arg(int(reply->error()));
+    }
+    return message;
+}
+
+void PodcastIndex::trending(const QString &language, const QString &category, int max)
+{
+    const QString lang = language.trimmed().toLower();
+    const QString cat = category.trimmed();
+    if (!isAvailable()) {
+        QTimer::singleShot(0, this, [this, lang, cat]() {
+            emit trendingFailed(lang, cat, QStringLiteral("no API key built in"));
+        });
+        return;
+    }
+    QUrl url(QString::fromLatin1(ApiBase) + QStringLiteral("podcasts/trending"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("max"), QString::number(max));
+    if (!lang.isEmpty()) {
+        query.addQueryItem(QStringLiteral("lang"), lang);
+    }
+    if (!cat.isEmpty()) {
+        query.addQueryItem(QStringLiteral("cat"), cat);
+    }
+    url.setQuery(query);
+    // The key = the URL; the signature is in the headers, never in the cache
+    QByteArray body;
+    if (m_cache.fresh(url, &body)) {
+        QTimer::singleShot(0, this, [this, lang, cat, body]() {
+            emit trendingFinished(lang, cat, parseFeeds(QJsonDocument::fromJson(body).object()));
+        });
+        return;
+    }
+    sendTrending(url, lang, cat, false);
+}
+
+void PodcastIndex::cancelTrending()
+{
+    QList<QNetworkReply *> replies;
+    for (QSet<QNetworkReply *>::const_iterator it = m_trendingReplies.constBegin();
+         it != m_trendingReplies.constEnd(); ++it) {
+        replies.append(*it);
+    }
+    m_trendingReplies.clear();
+    for (int i = 0; i < replies.size(); ++i) {
+        replies.at(i)->disconnect(this);
+        replies.at(i)->abort();
+        replies.at(i)->deleteLater();
+    }
+}
+
+void PodcastIndex::searchCached(const QString &term, int max)
+{
+    const QString t = term.trimmed();
+    if (!isAvailable()) {
+        QTimer::singleShot(0, this, [this, t]() { emit searchCachedFailed(t, QStringLiteral("no API key built in")); });
+        return;
+    }
+    QUrl url(QString::fromLatin1(ApiBase) + QStringLiteral("search/byterm"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("q"), t);
+    query.addQueryItem(QStringLiteral("max"), QString::number(max));
+    url.setQuery(query);
+    QByteArray body;
+    if (m_cache.fresh(url, &body)) {
+        QTimer::singleShot(0, this, [this, t, body]() {
+            emit searchCachedFinished(t, parseFeeds(QJsonDocument::fromJson(body).object()));
+        });
+        return;
+    }
+    sendTrending(url, QString(), QString(), false, t);
+}
+
+void PodcastIndex::byFeedUrl(const QString &feedUrl)
+{
+    const QString address = feedUrl.trimmed();
+    if (!isAvailable()) {
+        QTimer::singleShot(0, this, [this, address]() {
+            emit byFeedUrlFailed(address, QStringLiteral("no API key built in"));
+        });
+        return;
+    }
+    QUrl url(QString::fromLatin1(ApiBase) + QStringLiteral("podcasts/byfeedurl"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("url"), address);
+    url.setQuery(query);
+    QByteArray body;
+    if (m_cache.fresh(url, &body)) {
+        QTimer::singleShot(0, this, [this, address, body]() {
+            emit byFeedUrlFinished(address, parseFeeds(QJsonDocument::fromJson(body).object()));
+        });
+        return;
+    }
+    sendTrending(url, QString(), QString(), false, QString::fromLatin1(FeedUrlPrefix) + address);
+}
+
+void PodcastIndex::deliverParallel(const QString &language, const QString &category, const QString &term,
+                                   const QList<PodcastSearchResult> &results)
+{
+    if (term.startsWith(QLatin1String(FeedUrlPrefix))) {
+        emit byFeedUrlFinished(term.mid(int(qstrlen(FeedUrlPrefix))), results);
+    } else if (!term.isEmpty()) {
+        emit searchCachedFinished(term, results);
+    } else {
+        emit trendingFinished(language, category, results);
+    }
+}
+
+void PodcastIndex::sendTrending(const QUrl &url, const QString &language, const QString &category, bool retried,
+                                const QString &term)
+{
+    QNetworkReply *reply = get(url);
+    m_trendingReplies.insert(reply);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, url, language, category, retried, term]() {
+        onTrendingFinished(reply, url, language, category, retried, term);
+    });
+}
+
+void PodcastIndex::onTrendingFinished(QNetworkReply *reply, const QUrl &url, const QString &language,
+                                      const QString &category, bool retried, const QString &term)
+{
+    reply->deleteLater();
+    if (!m_trendingReplies.remove(reply)) {
+        return;     // cancelled
+    }
+    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray body = reply->readAll();
+    const QJsonDocument document = QJsonDocument::fromJson(body);
+    if (reply->error() == QNetworkReply::NoError && status < 400 && document.isObject()) {
+        m_cache.store(url, body);
+        deliverParallel(language, category, term, parseFeeds(document.object()));
+        return;
+    }
+    const bool timedOut = reply->error() == QNetworkReply::OperationCanceledError;
+    const bool retryable = !timedOut && (status == 0 || status == 429 || status >= 500);
+    if (retryable && !retried) {
+        QTimer::singleShot(2000, this, [this, url, language, category, term]() {
+            sendTrending(url, language, category, true, term);
+        });
+        return;
+    }
+    QByteArray old;
+    if (status != 401 && status != 403 && m_cache.stale(url, &old)) {
+        deliverParallel(language, category, term, parseFeeds(QJsonDocument::fromJson(old).object()));
+        return;
+    }
+    const QString message = (status == 401 || status == 403)
+            ? QStringLiteral("API key rejected (HTTP %1)").arg(status)
+            : errorMessage(reply, status, body);
+    const bool feedLookup = term.startsWith(QLatin1String(FeedUrlPrefix));
+    qWarning("Podcast Index %s: %s", feedLookup ? "byfeedurl" : (term.isEmpty() ? "trending" : "search"),
+             qPrintable(message));
+    if (feedLookup) {
+        // 400/404: an address the directory does not know - no result
+        if (status == 400 || status == 404) {
+            emit byFeedUrlFinished(term.mid(int(qstrlen(FeedUrlPrefix))), QList<PodcastSearchResult>());
+        } else {
+            emit byFeedUrlFailed(term.mid(int(qstrlen(FeedUrlPrefix))), message);
+        }
+    } else if (!term.isEmpty()) {
+        emit searchCachedFailed(term, message);
+    } else {
+        emit trendingFailed(language, category, message);
+    }
 }

@@ -3,6 +3,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import harbour.sailcast 1.0
 import "../"
+import "../TimeFormat.js" as TimeFormat
 
 // The playlist page, top to bottom (order since 24):
 //   "Now playing"        - the current episode, always shown here; no
@@ -67,6 +68,29 @@ Page {
     Connections {
         target: core
         onDataChanged: page.refreshContinueTotal()
+    }
+
+    // (188) "Recently heard": heard to the end or skipped in the player,
+    // newest first - to come back to a skipped one; collapsed by default
+    property bool recentExpanded: core.setting("ui.recentExpanded", "0") === "1"
+    function toggleRecent() {
+        list._keepTop = false
+        recentExpanded = !recentExpanded
+        core.setSetting("ui.recentExpanded", recentExpanded ? "1" : "0")
+    }
+    EpisodeListModel {
+        id: recent
+        filter: EpisodeListModel.Recent
+        excludeEpisodeId: page.currentId
+        limit: 10
+    }
+
+    // (190) Tiles below the header: time left, episodes, downloaded
+    property var queueStats: core.queueStats()
+    Connections {
+        target: core
+        onQueueChanged: page.queueStats = core.queueStats()
+        onDataChanged: page.queueStats = core.queueStats()
     }
 
     EpisodeListModel {
@@ -181,12 +205,38 @@ Page {
 
         header: Column {
             width: list.width
-            onHeightChanged: if (list._keepTop) list.positionViewAtBeginning()
+            // (169) After scrolling, a growing header (chapters of "Now
+            // playing" opened) grew upwards out of view, because the list
+            // keeps its first row in place: while the header is in view,
+            // its top stays where it is instead
+            property real _lastHeight: 0
+            onHeightChanged: {
+                var delta = height - _lastHeight
+                _lastHeight = height
+                if (list._keepTop) {
+                    list.positionViewAtBeginning()
+                } else if (delta !== 0 && list.contentY < y + height) {
+                    list.contentY = Math.max(list.originY, list.contentY - delta)
+                }
+            }
 
             PageHeader {
                 title: qsTr("Playlist")
-                description: queue.count > 0 ? qsTr("%n episodes", "", queue.count) : ""
+                // (190) The number is in the tiles now
             }
+
+            // (190) Is it enough for the trip? Only with a playlist
+            StatTiles {
+                visible: (page.queueStats.count || 0) > 0
+                tiles: [
+                    { value: TimeFormat.length(page.queueStats.seconds || 0, qsTr("%1 h %2 min"), qsTr("%1 min")),
+                      label: qsTr("left to listen") },
+                    // (231) "1 episodes": singular (no English .ts, so no %n plural form)
+                    { value: "" + (page.queueStats.count || 0), label: (page.queueStats.count || 0) === 1 ? qsTr("episode") : qsTr("episodes") },
+                    { value: "" + (page.queueStats.downloaded || 0), label: qsTr("downloaded") }
+                ]
+            }
+            Item { width: 1; height: Theme.paddingMedium; visible: (page.queueStats.count || 0) > 0 }
 
             // --- Now playing ---
             SectionHeader {
@@ -227,6 +277,11 @@ Page {
         // everything waiting to be listened to. Countdown entry on top.
         PullDownMenu {
             visible: queue.count > 0 || core.podcastCount > 0 || core.bookmarkCount > 0
+            // (218) Number of downloads like the bookmarks - read when the
+            // menu opens (cheap, always current)
+            id: playlistMenu
+            property int downloaded: 0
+            onActiveChanged: if (active) downloaded = core.downloadedCount()
             MenuItem {
                 visible: queue.count > 0
                 text: qsTr("Clear playlist")
@@ -234,7 +289,17 @@ Page {
             }
             MenuItem {
                 visible: core.podcastCount > 0
-                text: core.downloadCount > 0 ? qsTr("Downloads (%1)").arg(core.downloadCount) : qsTr("Downloads")
+                // "Downloads (12)", running ones as "↓ 2" (as in the podcast list)
+                text: {
+                    var parts = []
+                    if (playlistMenu.downloaded > 0) {
+                        parts.push(playlistMenu.downloaded)
+                    }
+                    if (core.downloadCount > 0) {
+                        parts.push("↓ " + core.downloadCount)
+                    }
+                    return parts.length > 0 ? qsTr("Downloads (%1)").arg(parts.join(" · ")) : qsTr("Downloads")
+                }
                 onClicked: pageStack.push(Qt.resolvedUrl("DownloadsPage.qml"))
             }
             MenuItem {
@@ -277,7 +342,9 @@ Page {
             Item {
                 id: removeZone
                 width: parent.width
-                height: queue.count > 0 ? Theme.itemSizeLarge : 0
+                // (191) Half as high at rest (the gap to Continue listening
+                // looked empty), full while an episode is dragged
+                height: queue.count > 0 ? (page.dragIndex >= 0 ? Theme.itemSizeLarge : Theme.itemSizeLarge / 2) : 0
 
                 Rectangle {
                     anchors.fill: parent
@@ -368,6 +435,48 @@ Page {
                     text: qsTr("Show all")
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                }
+            }
+
+            // --- Recently heard (188, collapsible, below Continue listening) ---
+            BackgroundItem {
+                visible: recent.count > 0
+                width: parent.width
+                height: Theme.itemSizeExtraSmall
+                onClicked: page.toggleRecent()
+
+                Image {
+                    id: recentArrow
+                    anchors {
+                        right: parent.right
+                        rightMargin: Theme.horizontalPageMargin
+                        verticalCenter: parent.verticalCenter
+                    }
+                    width: Theme.iconSizeSmall
+                    height: width
+                    sourceSize.width: width
+                    sourceSize.height: height
+                    source: "image://theme/icon-m-down?" + Theme.highlightColor
+                    rotation: page.recentExpanded ? 180 : 0
+                    Behavior on rotation { NumberAnimation { duration: 150 } }
+                }
+                Label {
+                    anchors {
+                        right: recentArrow.left
+                        rightMargin: Theme.paddingMedium
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: qsTr("Recently heard (%1)").arg(recent.count)
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.highlightColor
+                }
+            }
+
+            Repeater {
+                model: recent
+                delegate: EpisodeDelegate {
+                    visible: page.recentExpanded
+                    width: list.width
                 }
             }
 

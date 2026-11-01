@@ -21,10 +21,19 @@ PullDownMenu {
         text: qsTr("Import and export")
         onClicked: pageStack.push(Qt.resolvedUrl("ImportExportPage.qml"))
     }
-    // Search and feed address in one page (51); only for adding (99 -
-    // "Suchen" in the other pulleys is the search on the device)
+    // (237) Search on the device here too - Discover is a swipe page by
+    // default (229), so the pulley entry is only needed without the ring
+    // (then both: whoever took it out knows the two). Before 237 only
+    // "Discover" here, to keep the two apart (86/99).
     MenuItem {
-        text: qsTr("Search / add podcast")
+        visible: core.podcastCount > 0
+        text: qsTr("Search")
+        onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
+    }
+    // Search and feed address in one page (51); only for adding
+    MenuItem {
+        visible: !appWindow.discoverRingOn
+        text: qsTr("Discover")
         onClicked: pageStack.push(Qt.resolvedUrl("SearchPage.qml"))
     }
     MenuItem {

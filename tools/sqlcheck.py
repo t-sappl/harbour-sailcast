@@ -6,7 +6,7 @@ import re, sqlite3
 src = open('core/database.cpp').read()
 def lits(block): return re.findall(r'"((?:[^"\\]|\\.)*)"', block)
 db = sqlite3.connect(':memory:')
-for m in re.finditer(r'const char \*const (SchemaV\d)\[\] = \{(.*?)\n\};', src, re.S):
+for m in re.finditer(r'const char \*const (SchemaV\d+)\[\] = \{(.*?)\n\};', src, re.S):
     body = re.sub(r'^\s*//.*$', '', m.group(2), flags=re.M)
     cur = []
     for tok in re.findall(r'"(?:[^"\\]|\\.)*"|,', body):
@@ -26,3 +26,12 @@ for s in stmts:
     except Exception as e: bad.append((s[:90], str(e)))
 print(ok, 'statements OK')
 for b in bad: print('ERROR', b)
+# The highest SchemaV* step must equal SchemaVersion (130: it stayed at 8
+# after v9 was added, and a migrated database could not be opened again)
+steps = [int(n) for n in re.findall(r'const char \*const SchemaV(\d+)\[\]', src)]
+declared = int(re.search(r'const int SchemaVersion = (\d+);', src).group(1))
+if steps and max(steps) != declared:
+    print('ERROR SchemaVersion is', declared, 'but the highest step is SchemaV%d' % max(steps))
+else:
+    print('SchemaVersion', declared, 'OK')
+

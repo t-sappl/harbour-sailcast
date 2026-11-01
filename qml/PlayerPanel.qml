@@ -176,7 +176,7 @@ Rectangle {
                     BusyIndicator {
                         anchors.centerIn: parent
                         size: BusyIndicatorSize.Medium
-                        running: player.playing && player.buffering
+                        running: player.waiting
                     }
                 }
                 SkipButton {
@@ -206,10 +206,9 @@ Rectangle {
                     iconSource: "image://theme/icon-m-favorite"
                     label: panel.bookmarkCount > 0 ? "" + panel.bookmarkCount : ""
                     onClicked: {
-                        var seconds = player.position
-                        if (core.addBookmark(player.episodeId, seconds) > 0) {
-                            appWindow.showMessage(qsTr("Bookmark at %1").arg(TimeFormat.clock(seconds)))
-                        }
+                        // (170/171) Then name and note in the docked panel,
+                        // as on the episode page
+                        appWindow.addBookmarkNow()
                     }
                 }
                 ToolbarButton {
@@ -236,7 +235,7 @@ Rectangle {
                 x: Theme.paddingLarge
                 width: parent.width - 2 * Theme.paddingLarge
                 Repeater {
-                    model: panel.sleepOptions.concat([-1, 0])
+                    model: panel.sleepOptions.concat([-1, -2, 0])
                     BackgroundItem {
                         width: optionLabel.implicitWidth + 2 * Theme.paddingLarge
                         height: Theme.itemSizeExtraSmall
@@ -244,10 +243,16 @@ Rectangle {
                             id: optionLabel
                             anchors.centerIn: parent
                             text: modelData > 0 ? qsTr("%n min", "", modelData)
-                                                : (modelData < 0 ? qsTr("End of episode") : qsTr("Off"))
+                                                : (modelData === -2 ? qsTr("Other …")
+                                                   : (modelData < 0 ? qsTr("End of episode") : qsTr("Off")))
                             color: parent.highlighted ? Theme.highlightColor : Theme.primaryColor
                         }
                         onClicked: {
+                            if (modelData === -2) {
+                                panel.sleepChoicesOpen = false
+                                appWindow.chooseSleepTime()
+                                return
+                            }
                             appWindow.sleepTimer.cancel()
                             player.stopAtEnd = false
                             if (modelData > 0) {

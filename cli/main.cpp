@@ -4,6 +4,8 @@
 // Works on its own database (default: ~/.local/share/sailcast-cli/sailcast.db),
 // never on the phone's.
 
+#include <functional>
+
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -15,6 +17,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QSaveFile>
 #include <QSharedPointer>
 #include <QStandardPaths>
@@ -32,9 +35,12 @@
 #include "feedparser.h"
 #include "feedprobe.h"
 #include "feedupdater.h"
+#include "foryou.h"
+#include "fyyd.h"
 #include "gpodderimport.h"
 #include "opml.h"
 #include "podcastindex.h"
+#include "podnews.h"
 #include "syncengine.h"
 
 namespace {
@@ -158,7 +164,7 @@ int cmdImportOpml(Database &db, const QString &path)
     }
     int added = 0, existing = 0;
     for (int i = 0; i < entries.size(); ++i) {
-        qint64 id = db.findPodcast(entries.at(i).url);
+        qint64 id = db.findSubscribed(entries.at(i).url);
         if (id >= 0) {
             ++existing;
             if (entries.at(i).folder.isEmpty() || db.podcast(id).folderId != 0) {
@@ -326,6 +332,410 @@ int cmdSearch(QCoreApplication &app, const QString &term)
     return exitCode;
 }
 
+// Discover (126): fyyd directory and Podcast Index trending (no database)
+QString discoverDate(qint64 seconds)
+{
+    return seconds > 0 ? QDateTime::fromMSecsSinceEpoch(seconds * 1000).toString(QStringLiteral("yyyy-MM-dd"))
+                       : QStringLiteral("?");
+}
+
+void printFyydPodcasts(const QList<FyydPodcast> &podcasts)
+{
+    for (int i = 0; i < podcasts.size(); ++i) {
+        const FyydPodcast &p = podcasts.at(i);
+        out() << "[" << p.id << "] " << p.title << "  (" << (p.language.isEmpty() ? QStringLiteral("?") : p.language)
+              << ", " << p.episodeCount << " episodes, last " << discoverDate(p.lastPub) << ")" << nl;
+        if (!p.author.isEmpty()) {
+            out() << "    by " << p.author << nl;
+        }
+        out() << "    " << p.url << nl;
+    }
+    out() << podcasts.size() << " podcasts" << nl;
+}
+
+int cmdDiscover(QCoreApplication &app, QStringList args, bool fresh, bool raw, int count)
+{
+    const QString what = args.isEmpty() ? QString() : args.takeFirst();
+    const QString arg = args.isEmpty() ? QString() : args.first();
+    Fyyd fyyd;
+    PodcastIndex index;
+    Podnews podnews;
+    const QByteArray envKey = qgetenv("PODCASTINDEX_KEY");
+    const QByteArray envSecret = qgetenv("PODCASTINDEX_SECRET");
+    if (!envKey.isEmpty() && !envSecret.isEmpty()) {
+        index.setCredentials(QString::fromUtf8(envKey), QString::fromUtf8(envSecret));
+    }
+    if (fresh) {
+        fyyd.cache().setMaxAge(0);
+        index.cache().setMaxAge(0);
+        podnews.cache().setMaxAge(0);
+    }
+    int exitCode = 0;
+    QObject::connect(&fyyd, &Fyyd::received, [&](const QUrl &url, const QByteArray &body, bool fromCache) {
+        if (fromCache) {
+            err() << "(from the cache: " << url.toString() << ")" << nl;
+        }
+        if (raw) {
+            err() << url.toString() << nl << QString::fromUtf8(body) << nl;
+        }
+    });
+    QObject::connect(&fyyd, &Fyyd::failed, [&](const QString &request, const QString &error) {
+        err() << request << " failed: " << error << nl;
+        exitCode = 2;
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::categoriesReady, [&](const QList<FyydCategory> &categories) {
+        for (int i = 0; i < categories.size(); ++i) {
+            const FyydCategory &c = categories.at(i);
+            out() << (c.parentId ? "    " : "") << "[" << c.id << "] " << c.name << " / " << c.nameDe
+                  << "  (" << c.slug << ")" << nl;
+        }
+        out() << categories.size() << " categories" << nl;
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::hotReady, [&](const QString &, const QList<FyydPodcast> &podcasts) {
+        printFyydPodcasts(podcasts);
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::categoryReady, [&](int, const QList<FyydPodcast> &podcasts, bool more) {
+        printFyydPodcasts(podcasts);
+        if (more) {
+            out() << "(more on the next page)" << nl;
+        }
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::similarReady, [&](const QString &, int id, const QList<FyydPodcast> &podcasts) {
+        if (id <= 0) {
+            out() << "Podcast not known to fyyd" << nl;
+        } else {
+            out() << "fyyd id " << id << nl;
+            printFyydPodcasts(podcasts);
+        }
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::podcastCollectionsReady,
+                     [&](const QString &, int id, const QList<FyydCollection> &collections) {
+        if (id <= 0) {
+            out() << "Podcast not known to fyyd" << nl;
+        } else {
+            out() << "fyyd id " << id << nl;
+            for (int i = 0; i < collections.size(); ++i) {
+                const FyydCollection &c = collections.at(i);
+                out() << "[" << c.id << "] " << c.title << "  (user " << c.userId << ")"
+                      << (ForYou::usefulCollection(c.title, c.description) ? "" : "  - not counted (149)") << nl
+                      << "    " << c.url << nl;
+            }
+            out() << collections.size() << " collections" << nl;
+        }
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::collectionReady,
+                     [&](const FyydCollection &c, const QList<FyydPodcast> &podcasts) {
+        out() << "Collection [" << c.id << "] " << c.title << "  (user " << c.userId << ")" << nl;
+        if (!c.description.isEmpty()) {
+            out() << "    " << c.description.left(200) << nl;
+        }
+        printFyydPodcasts(podcasts);
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::categoryCurationsReady,
+                     [&](int, const QList<FyydCuration> &curations, bool more) {
+        for (int i = 0; i < curations.size(); ++i) {
+            const FyydCuration &c = curations.at(i);
+            out() << "[" << c.id << "] " << c.title << "  (user " << c.userId << ")" << nl
+                  << "    " << c.url << nl;
+        }
+        out() << curations.size() << " curations" << (more ? " (more on the next page)" : "") << nl;
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::curationReady, [&](const FyydCuration &c, const QList<FyydEpisode> &episodes) {
+        out() << "Curation [" << c.id << "] " << c.title << "  (user " << c.userId << ")" << nl;
+        if (!c.description.isEmpty()) {
+            out() << "    " << c.description.left(200) << nl;
+        }
+        for (int i = 0; i < episodes.size(); ++i) {
+            const FyydEpisode &e = episodes.at(i);
+            out() << discoverDate(e.published) << "  " << formatDuration(e.duration) << "  " << e.title
+                  << "  (podcast " << e.podcastId << ", added " << discoverDate(e.added) << ")" << nl
+                  << "    " << e.enclosure << nl;
+        }
+        out() << episodes.size() << " episodes" << nl;
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::podcastReady, [&](int requested, const FyydPodcast &p) {
+        if (p.id <= 0) {
+            out() << "Podcast " << requested << " not known to fyyd" << nl;
+            exitCode = 2;
+        } else {
+            printFyydPodcasts(QList<FyydPodcast>() << p);
+        }
+        app.quit();
+    });
+    QObject::connect(&fyyd, &Fyyd::lookupReady, [&](const QString &, int id, bool byTitle) {
+        if (id > 0) {
+            out() << "fyyd id " << id << (byTitle ? "  (found by title and author - fyyd has another address)" : "")
+                  << nl;
+        } else {
+            out() << "Podcast not known to fyyd" << nl;
+            exitCode = 2;
+        }
+        app.quit();
+    });
+    QObject::connect(&index, &PodcastIndex::trendingFinished,
+                     [&](const QString &, const QString &, const QList<PodcastSearchResult> &results) {
+        for (int i = 0; i < results.size(); ++i) {
+            const PodcastSearchResult &r = results.at(i);
+            out() << r.title << "  (" << r.author << ", " << r.language << ", trend " << r.trendScore
+                  << ", newest " << discoverDate(r.newestItemTime) << ")" << nl
+                  << "    " << r.categories.join(QStringLiteral(", ")) << nl << "    " << r.url << nl;
+        }
+        out() << results.size() << " podcasts" << nl;
+        app.quit();
+    });
+    // (193) "Neu" in English
+    QObject::connect(&podnews, &Podnews::trailersReady, [&](const QList<PodnewsTrailer> &trailers) {
+        for (int i = 0; i < trailers.size(); ++i) {
+            const PodnewsTrailer &t = trailers.at(i);
+            out() << discoverDate(t.published) << "  " << formatDuration(t.duration) << "  " << t.title
+                  << "  (" << t.author << (t.genre.isEmpty() ? QString() : QStringLiteral(", ") + t.genre) << ")" << nl
+                  << "    feed:    " << t.feedUrl << nl
+                  << "    trailer: " << t.audioUrl << nl;
+            if (raw) {
+                out() << "    " << t.description.left(300) << nl;
+            }
+        }
+        out() << trailers.size() << " shows" << nl;
+        app.quit();
+    });
+    QObject::connect(&podnews, &Podnews::failed, [&](const QString &error) {
+        err() << "Podnews failed: " << error << nl;
+        exitCode = 2;
+        app.quit();
+    });
+    QObject::connect(&index, &PodcastIndex::byFeedUrlFinished,
+                     [&](const QString &feedUrl, const QList<PodcastSearchResult> &results) {
+        if (results.isEmpty()) {
+            out() << "Not in Podcast Index: " << feedUrl << nl;
+            exitCode = 2;
+        }
+        for (int i = 0; i < results.size(); ++i) {
+            const PodcastSearchResult &r = results.at(i);
+            out() << r.title << "  (" << r.author << ", " << r.language << ", " << r.episodeCount << " episodes, newest "
+                  << discoverDate(r.newestItemTime) << ")" << nl
+                  << "    " << r.categories.join(QStringLiteral(", ")) << nl << "    " << r.url << nl;
+        }
+        app.quit();
+    });
+    QObject::connect(&index, &PodcastIndex::byFeedUrlFailed, [&](const QString &, const QString &error) {
+        err() << "Podcast Index failed: " << error << nl;
+        exitCode = 2;
+        app.quit();
+    });
+    QObject::connect(&index, &PodcastIndex::trendingFailed,
+                     [&](const QString &, const QString &, const QString &error) {
+        err() << "Trending failed: " << error << nl;
+        exitCode = 2;
+        app.quit();
+    });
+
+    // A feed address: loaded first for its title and author, as the app has
+    // them in its database (128) - fyyd may list the podcast under another
+    // address
+    FeedProbe probe;
+    std::function<void(const QString &, const QString &)> afterProbe;
+    QObject::connect(&probe, &FeedProbe::finished, [&](const FeedProbeResult &r) {
+        if (r.ok()) {
+            err() << "Feed: " << r.title << " / " << r.author << nl;
+            afterProbe(r.title, r.author);
+        } else {
+            static const char *const names[] = { "ok", "login required", "not a podcast feed", "HTTP error",
+                                                 "network error", "timeout", "invalid URL" };
+            err() << "Feed not readable (" << names[r.status];
+            if (r.httpStatus > 0) {
+                err() << ", HTTP " << r.httpStatus;
+            }
+            if (!r.error.isEmpty()) {
+                err() << ", " << r.error;
+            }
+            err() << ") - by address only" << nl;
+            afterProbe(QString(), QString());
+        }
+    });
+    const auto withFeed = [&](std::function<void(const QString &, const QString &)> next) {
+        afterProbe = next;
+        probe.check(arg);
+    };
+
+    // A number = fyyd id, else a feed address
+    bool isId = false;
+    const int id = arg.toInt(&isId);
+    const bool needsArg = what == QLatin1String("category") || what == QLatin1String("similar")
+            || what == QLatin1String("collections") || what == QLatin1String("collection")
+            || what == QLatin1String("curations") || what == QLatin1String("curation")
+            || what == QLatin1String("lookup") || what == QLatin1String("podcast")
+            || what == QLatin1String("feedurl");
+    if (needsArg && arg.isEmpty()) {
+        err() << "discover " << what << ": argument missing" << nl;
+        return 1;
+    }
+    std::function<void()> start;
+    if (what == QLatin1String("hot")) {
+        start = [&]() { fyyd.hot(arg, count); };
+    } else if (what == QLatin1String("categories")) {
+        start = [&]() { fyyd.categories(); };
+    } else if (what == QLatin1String("category")) {
+        const int page = args.size() > 1 ? args.at(1).toInt() : 0;
+        start = [&, id, page]() { fyyd.category(id, page, count); };
+    } else if (what == QLatin1String("similar")) {
+        start = [&, id, isId]() {
+            if (isId) {
+                fyyd.similar(id, count);
+            } else {
+                withFeed([&](const QString &title, const QString &author) {
+                    fyyd.similarForFeed(arg, count, title, author);
+                });
+            }
+        };
+    } else if (what == QLatin1String("collections")) {
+        start = [&, id, isId]() {
+            if (isId) {
+                fyyd.podcastCollections(id, count);
+            } else {
+                withFeed([&](const QString &title, const QString &author) {
+                    fyyd.podcastCollectionsForFeed(arg, count, title, author);
+                });
+            }
+        };
+    } else if (what == QLatin1String("collection")) {
+        start = [&, id]() { fyyd.collection(id); };
+    } else if (what == QLatin1String("curations")) {
+        start = [&, id]() { fyyd.categoryCurations(id, 0, count); };
+    } else if (what == QLatin1String("curation")) {
+        start = [&, id]() { fyyd.curation(id); };
+    } else if (what == QLatin1String("podcast")) {
+        start = [&, id]() { fyyd.podcast(id); };
+    } else if (what == QLatin1String("lookup")) {
+        start = [&]() {
+            withFeed([&](const QString &title, const QString &author) { fyyd.lookup(arg, title, author); });
+        };
+    } else if (what == QLatin1String("podnews")) {
+        start = [&]() { podnews.trailers(); };
+    } else if (what == QLatin1String("feedurl")) {
+        start = [&]() { index.byFeedUrl(arg); };
+    } else if (what == QLatin1String("trending")) {
+        const QString category = args.size() > 1 ? QStringList(args.mid(1)).join(QLatin1Char(' ')) : QString();
+        start = [&, category]() { index.trending(arg, category, count); };
+    } else {
+        err() << "discover: hot, categories, category, similar, collections, collection, curations, curation, "
+                 "podcast, lookup, trending, podnews or feedurl" << nl;
+        return 1;
+    }
+    QTimer::singleShot(0, &app, start);
+    app.exec();
+    return exitCode;
+}
+
+// "Für dich" (129) from the database's subscriptions, with the points of
+// every suggestion for tuning
+int cmdForYou(QCoreApplication &app, Database &db, bool fresh, bool raw, bool subscriptions, int count)
+{
+    ForYou forYou(&db);
+    forYou.setPhoneLanguage(QLocale::system().name());
+    forYou.setUseSubscriptions(subscriptions);
+    forYou.setMaxItems(count);
+    const QByteArray envKey = qgetenv("PODCASTINDEX_KEY");
+    const QByteArray envSecret = qgetenv("PODCASTINDEX_SECRET");
+    if (!envKey.isEmpty() && !envSecret.isEmpty()) {
+        forYou.podcastIndex()->setCredentials(QString::fromUtf8(envKey), QString::fromUtf8(envSecret));
+    }
+    if (fresh) {
+        forYou.fyyd()->cache().setMaxAge(0);
+        forYou.podcastIndex()->cache().setMaxAge(0);
+    }
+    if (raw) {
+        QObject::connect(forYou.fyyd(), &Fyyd::received, [&](const QUrl &url, const QByteArray &body, bool) {
+            err() << url.toString() << nl << QString::fromUtf8(body) << nl;
+        });
+    }
+    QObject::connect(forYou.fyyd(), &Fyyd::failed, [&](const QString &request, const QString &error) {
+        err() << "fyyd " << request << " failed: " << error << nl;
+    });
+    QObject::connect(forYou.podcastIndex(), &PodcastIndex::trendingFailed,
+                     [&](const QString &language, const QString &category, const QString &error) {
+        err() << "Trending " << language << " " << category << " failed: " << error << nl;
+    });
+    QObject::connect(&forYou, &ForYou::finished, [&](const ForYouProfile &profile, const QList<ForYouItem> &items) {
+        out() << "Languages:";
+        for (int i = 0; i < profile.languages.size(); ++i) {
+            out() << " " << profile.languages.at(i) << " "
+                  << QString::number(100 * profile.languageShares.value(profile.languages.at(i)), 'f', 0) << " %";
+        }
+        out() << (profile.phoneLanguage ? "  (phone)" : "") << (profile.languagesChosen ? "  (chosen)" : "") << nl;
+        for (int i = 0; i < profile.moreKeywords.size(); ++i) {
+            out() << "More of: " << profile.moreKeywords.at(i).join(QStringLiteral(" / ")) << nl;
+        }
+        for (int i = 0; i < profile.neverKeywords.size(); ++i) {
+            out() << "Never:   " << profile.neverKeywords.at(i).join(QStringLiteral(" / ")) << nl;
+        }
+        out() << nl << "Strongest podcasts:" << nl;
+        for (int i = 0; i < profile.podcasts.size() && i < 15; ++i) {
+            const ForYouProfile::Podcast &p = profile.podcasts.at(i);
+            out() << QString::number(p.weight, 'f', 1).rightJustified(5) << "  " << p.title << "  (" << p.plays
+                  << " played, last " << discoverDate(p.lastPlayed) << ")" << nl;
+        }
+        out() << nl << "Categories (share for the suggestions, from listening alone, interest):" << nl;
+        static const char *const levels[] = { "", "more", "less", "never" };
+        for (int i = 0; i < profile.categories.size() && i < 15; ++i) {
+            const QString c = profile.categories.at(i).first;
+            const int level = profile.interests.value(c);
+            out() << QString::number(100 * profile.categories.at(i).second, 'f', 0).rightJustified(5) << " %  "
+                  << c << "  (" << QString::number(100 * profile.listened.value(c), 'f', 0) << " %"
+                  << (level ? QStringLiteral(", ") + QLatin1String(levels[level]) : QString()) << ")" << nl;
+        }
+        for (int i = 0; i < profile.never.size(); ++i) {
+            out() << "never  " << profile.never.at(i) << nl;
+        }
+        out() << nl << "Suggestions:" << nl;
+        for (int i = 0; i < items.size(); ++i) {
+            const ForYouItem &item = items.at(i);
+            QString reason;
+            switch (item.reason) {
+            case ForYouItem::ReasonSimilar:
+                reason = QStringLiteral("similar to ") + item.reasonPodcast;
+                break;
+            case ForYouItem::ReasonCollections:
+                reason = QStringLiteral("in %1 collections with %2").arg(item.reasonCount).arg(item.reasonPodcast);
+                break;
+            case ForYouItem::ReasonCategory:
+                reason = QStringLiteral("because you listen to ") + item.reasonCategory
+                        + (item.reasonCategoryDe.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(item.reasonCategoryDe));
+                break;
+            case ForYouItem::ReasonTrending:
+                reason = QStringLiteral("trending");
+                break;
+            case ForYouItem::ReasonKeyword:
+                reason = QStringLiteral("keyword ") + item.reasonKeyword;
+                break;
+            }
+            out() << QString::number(item.score, 'f', 1).rightJustified(5) << "  " << item.title << "  ("
+                  << item.language << ", newest " << discoverDate(item.newest) << ")" << nl
+                  << "       " << reason << nl
+                  << "       category " << QString::number(item.categoryPoints, 'f', 1)
+                  << " | language " << item.languagePoints << " | similar " << item.similarPoints
+                  << " | collections " << item.collectionPoints << " | trend " << item.trendPoints
+                  << " | keyword " << item.keywordPoints
+                  << (item.trending ? " [trending]" : "") << (item.hot ? " [hot]" : "") << nl
+                  << "       " << item.categories.join(QStringLiteral(", ")) << nl
+                  << "       " << item.url << nl;
+        }
+        out() << items.size() << " suggestions" << nl;
+        app.quit();
+    });
+    QTimer::singleShot(0, &forYou, [&forYou]() { forYou.start(); });
+    app.exec();
+    return 0;
+}
+
 // Checks an address like the app's "Add podcast" dialog (no database)
 int cmdCheck(QCoreApplication &app, const QString &url)
 {
@@ -344,7 +754,15 @@ int cmdCheck(QCoreApplication &app, const QString &url)
         out() << nl << "Feed URL: " << r.url << (r.discovered ? "  (named by the website)" : "") << nl;
         if (r.ok()) {
             out() << "Title:    " << r.title << nl << "Author:   " << r.author << nl
-                  << "Cover:    " << r.coverUrl << nl << "Episodes: " << r.episodes << nl;
+                  << "Cover:    " << r.coverUrl << nl << "Episodes: " << r.episodes << nl
+                  << "Language: " << r.language << nl
+                  << "Categories: " << r.categories.join(QStringLiteral(", ")) << nl;
+            // (148) The address was an episode page of this feed
+            if (r.hasShared) {
+                out() << "Shared episode: " << r.shared.title << "  (guid " << r.shared.guid << ")" << nl;
+            } else if (r.discovered) {
+                out() << "Shared episode: none found for this page" << nl;
+            }
         }
         exitCode = r.ok() ? 0 : 2;
         app.quit();
@@ -609,6 +1027,9 @@ int cmdSync(QCoreApplication &app, Database &db, const QString &dbPath)
               << " removed here, " << r.subscriptionsUploaded << " changes uploaded" << nl;
         if (r.feedsLoaded > 0) {
             out() << "  Feeds loaded:  " << r.feedsLoaded << nl;
+        }
+        if (r.urlsRewritten > 0) {
+            out() << "  Addresses rewritten by the server: " << r.urlsRewritten << nl;
         }
         out() << "  Episodes:      " << r.actionsReceived << " actions received, " << r.applied.applied
               << " applied, " << r.applied.older << " older than the local state, " << r.applied.pending
@@ -1021,7 +1442,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("sailcast-cli"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.1 (build 105)"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.2 (build 240)"));
 
     const QString defaultDb = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
             + QStringLiteral("/sailcast-cli/sailcast.db");
@@ -1042,6 +1463,29 @@ int main(int argc, char *argv[])
             "  parse-file FILE        parse a local feed file (no database)\n"
             "  check URL              check an address before subscribing (no database)\n"
             "  search TERM            search podcasts in the Podcast Index (no database)\n"
+            "\nDiscover (no database; answers cached for 24 h, --fresh asks again):\n"
+            "  discover hot [LANG]    most active podcasts of the last days (fyyd)\n"
+            "  discover categories    fyyd's categories (English / German)\n"
+            "  discover category ID [PAGE]  podcasts of a fyyd category\n"
+            "  discover similar URL|ID      similar podcasts (fyyd, by feed address or fyyd id)\n"
+            "  discover collections URL|ID  fyyd collections that contain the podcast\n"
+            "  discover collection ID       podcasts of a fyyd collection\n"
+            "  discover curations CATEGORY_ID  public curations of a category\n"
+            "  discover curation ID         episodes of a curation\n"
+            "  discover podcast ID          one podcast by its fyyd id (149)\n"
+            "  discover lookup URL          fyyd id of a feed\n"
+            "  discover trending [LANG] [CATEGORY]  trending podcasts (Podcast Index)\n"
+            "  discover podnews       new shows with trailers (Podnews \"New Podcasts\", 193)\n"
+            "  discover feedurl URL   one podcast by its feed address (Podcast Index, 193)\n"
+            "  discover foryou        \"Für dich\" from the database's subscriptions, with points\n"
+            "                         (--no-subs: without similar podcasts and collections)\n"
+            "  discover foryou language de,en|auto  languages for the suggestions\n"
+            "  discover foryou keyword more|never add WORD [FORM ...]\n"
+            "                         keyword (translated if known, or the given forms)\n"
+            "  discover foryou keyword more|never remove WORD\n"
+            "  discover foryou interest CATEGORY more|normal|less|never\n"
+            "                         \"Meine Interessen\": level of a category (Apple name,\n"
+            "                         e.g. History, \"Leisure/Automotive\")\n"
             "  auth ID USER           set the login of a feed (asks for the password)\n"
             "  auth ID                remove the login of a feed\n"
             "  stats                  totals\n"
@@ -1082,8 +1526,18 @@ int main(int argc, char *argv[])
     QCommandLineOption parallelOption(QStringList() << QStringLiteral("p") << QStringLiteral("parallel"),
                                       QStringLiteral("Feeds fetched at the same time (default 4)."),
                                       QStringLiteral("count"), QStringLiteral("4"));
+    QCommandLineOption freshOption(QStringLiteral("fresh"),
+                                   QStringLiteral("discover: ignore cached answers."));
+    QCommandLineOption noSubscriptionsOption(QStringLiteral("no-subs"),
+                                             QStringLiteral("foryou: without fyyd's similar podcasts and collections "
+                                                            "of the strongest subscriptions (as the app's setting off)."));
+    QCommandLineOption rawOption(QStringLiteral("raw"),
+                                 QStringLiteral("discover: print the raw answers (stderr)."));
     parser.addOption(dbOption);
     parser.addOption(limitOption);
+    parser.addOption(freshOption);
+    parser.addOption(rawOption);
+    parser.addOption(noSubscriptionsOption);
     parser.addOption(unplayedOption);
     parser.addOption(inProgressOption);
     parser.addOption(downloadedOption);
@@ -1098,6 +1552,16 @@ int main(int argc, char *argv[])
     const QString command = args.takeFirst();
 
     // Works without a database
+    const bool forYou = command == QLatin1String("discover") && !args.isEmpty()
+            && args.first() == QLatin1String("foryou");
+    if (command == QLatin1String("discover") && !forYou) {
+        // -n: number of results (default 30 here, -1 = 50)
+        int count = parser.value(limitOption).toInt();
+        if (count <= 0) {
+            count = 50;
+        }
+        return cmdDiscover(app, args, parser.isSet(freshOption), parser.isSet(rawOption), count);
+    }
     if (command == QLatin1String("search")) {
         if (args.isEmpty()) {
             err() << command << ": TERM missing" << nl;
@@ -1136,6 +1600,77 @@ int main(int argc, char *argv[])
         return true;
     };
 
+    if (forYou) {
+        int count = parser.value(limitOption).toInt();
+        if (count <= 0) {
+            count = 50;
+        }
+        // Default 15 suggestions as in the app (-n 30 is the general default)
+        if (!parser.isSet(limitOption)) {
+            count = 15;
+        }
+        args.removeFirst();     // "foryou"
+        // discover foryou language de,en|auto (135)
+        if (!args.isEmpty() && args.first() == QLatin1String("language")) {
+            ForYou forYou(&db);
+            const QString value = args.size() > 1 ? args.at(1) : QString();
+            forYou.setLanguages(value == QLatin1String("auto") ? QStringList() : value.split(QLatin1Char(',')));
+            out() << "Languages: " << (forYou.chosenLanguages().isEmpty() ? QStringLiteral("from the subscriptions")
+                                                                          : forYou.chosenLanguages().join(QLatin1Char(',')))
+                  << nl;
+            return 0;
+        }
+        // discover foryou keyword more|never add WORD [FORM ...] / remove WORD (135)
+        if (!args.isEmpty() && args.first() == QLatin1String("keyword")) {
+            if (args.size() < 4 || (args.at(1) != QLatin1String("more") && args.at(1) != QLatin1String("never"))
+                    || (args.at(2) != QLatin1String("add") && args.at(2) != QLatin1String("remove"))) {
+                err() << "discover foryou keyword more|never add WORD [FORM ...]" << nl
+                      << "discover foryou keyword more|never remove WORD" << nl;
+                return 1;
+            }
+            ForYou forYou(&db);
+            const ForYou::Interest kind = args.at(1) == QLatin1String("never") ? ForYou::Never : ForYou::More;
+            if (args.at(2) == QLatin1String("remove")) {
+                forYou.removeKeyword(kind, args.at(3));
+                out() << "Removed: " << args.at(3) << nl;
+            } else {
+                const QStringList forms = forYou.addKeyword(kind, args.at(3), args.mid(4));
+                out() << (kind == ForYou::Never ? "Never: " : "More of: ") << forms.join(QStringLiteral(" / "));
+                if (forms.size() == 1) {
+                    out() << "  (no translation known - if the English word differs, add it: keyword "
+                          << args.at(1) << " add " << args.at(3) << " WORD)";
+                }
+                out() << nl;
+            }
+            return 0;
+        }
+        // discover foryou interest CATEGORY more|normal|less|never (133)
+        if (!args.isEmpty() && args.first() == QLatin1String("interest")) {
+            if (args.size() < 3) {
+                err() << "discover foryou interest CATEGORY more|normal|less|never" << nl;
+                return 1;
+            }
+            const QString level = args.last();
+            const QString category = QStringList(args.mid(1, args.size() - 2)).join(QLatin1Char(' '));
+            ForYou forYou(&db);
+            if (level == QLatin1String("more")) {
+                forYou.setInterest(category, ForYou::More);
+            } else if (level == QLatin1String("less")) {
+                forYou.setInterest(category, ForYou::Less);
+            } else if (level == QLatin1String("never")) {
+                forYou.setInterest(category, ForYou::Never);
+            } else if (level == QLatin1String("normal")) {
+                forYou.setInterest(category, ForYou::Normal);
+            } else {
+                err() << "Level: more, normal, less or never" << nl;
+                return 1;
+            }
+            out() << category << ": " << level << nl;
+            return 0;
+        }
+        return cmdForYou(app, db, parser.isSet(freshOption), parser.isSet(rawOption),
+                         !parser.isSet(noSubscriptionsOption), count);
+    }
     if (command == QLatin1String("import-opml")) {
         return needArg(QStringLiteral("FILE")) ? cmdImportOpml(db, args.first()) : 1;
     }

@@ -20,8 +20,25 @@ advertising. It contacts only the following servers:
   "Sailcast-Backups" of that account, the newest 5 are kept. "Restore" reads
   them from there. Switch it off in Settings → Backup to keep the copies on
   the phone only.
-- **Podcast Index (api.podcastindex.org)** – only when you use the podcast
-  search: the search term is sent.
+- **Podcast Index (api.podcastindex.org)** – when you search for podcasts:
+  the search term is sent. On the Discover page: the language and the
+  category of trending podcasts, and your "More of this" keywords (as
+  search terms).
+- **fyyd (api.fyyd.de)** – on the Discover page: the language (most active
+  podcasts), the category tree, and your "More of this" keywords (as search
+  terms). With "Recommendations from my subscriptions" (on by default,
+  switch in "My interests"): the feed addresses of your 10 most listened
+  podcasts, to find similar ones and the public collections they are in.
+  Your listening history itself, the categories you weight and your "Never"
+  keywords stay on the phone. Answers are kept for a day on the phone.
+  "Similar podcasts" (podcast page, Add podcast) sends the address of that
+  one podcast. The "New" tab asks for Hörsuppe's public list of first
+  episodes and then for each listed podcast by its fyyd number – nothing
+  about you.
+- **Podnews (podnews.net)** – the "New" tab in English: Podnews' public list
+  "New Podcasts" (trailers of new shows) is loaded, kept for 6 hours on the
+  phone; for each show listed, Podcast Index is asked by the show's feed
+  address (its categories and language) – nothing about you.
 - **Your cloud archive address, if you set one** (e.g. a local rclone server).
 
 Sharing: "Share" sends an episode's web address (optionally with the

@@ -4,10 +4,12 @@
 
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 
 class QNetworkAccessManager;
 class QNetworkReply;
+struct ParsedEpisode;
 
 // Result of a feed check (see FeedProbe)
 struct FeedProbeResult
@@ -20,11 +22,20 @@ struct FeedProbeResult
     QString title;
     QString author;
     QString coverUrl;
+    QString language;       // (123)
+    QStringList categories; // (123)
+    QString link;           // (157) the podcast's web page
+    QList<qint64> dates;    // (163) publishing times of the newest episodes (≤ 30)
     int episodes = 0;       // episodes with a media file
     QString description;    // of the podcast (50)
     // The newest episodes (50, at most 5): title, published, duration
-    struct Latest { QString title; qint64 published; int duration; };
+    // guid (147): to play it without subscribing
+    struct Latest { QString title; qint64 published; int duration; QString guid; };
     QList<Latest> latest;
+    // (148) The address was the web page of an episode of this feed (a
+    // shared episode link): that episode, found by its <link>
+    bool hasShared = false;
+    Latest shared;
     int httpStatus = 0;
     bool discovered = false; // url is the feed named by a website
     // A web page: its title (og:title, else <title>) - the add page searches
@@ -67,6 +78,9 @@ public:
     // The title of a web page: og:title, else <title>, entities decoded;
     // empty if there is none (103)
     static QString pageTitle(const QByteArray &html);
+    // Address of a web page without scheme, "www.", fragment and trailing
+    // slash, host in lower case - to compare episode links (148)
+    static QString pageKey(const QString &url);
 
 signals:
     void finished(const FeedProbeResult &result);
@@ -87,6 +101,10 @@ private:
     // when all are checked
     FeedProbeResult m_best;
     bool m_hasBest = false;
+    // (148) The web page that named the feed, after redirects
+    QString m_pageUrl;
+    // Finds the episode whose <link> is the requested page (148)
+    void matchShared(const QList<ParsedEpisode> &episodes);
     void finishDiscovered();
     // For a website: the next feed, else the best result (or "no feed");
     // false if the address was no website with feeds

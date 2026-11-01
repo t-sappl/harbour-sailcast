@@ -76,6 +76,7 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
     ParsedEpisode item;
     QString channelImageUrl;    // <image><url> - fallback for the cover
     QString channelSummary;     // itunes:summary - fallback for the description
+    QString topCategory;        // the itunes:category a subcategory belongs to (123)
 
     while (!xml.atEnd()) {
         xml.readNext();
@@ -213,6 +214,10 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                 setNumber(item.season, readText(xml), ns == NsPodcast);
             } else if ((ns == NsItunes || ns == NsPodcast) && name == QLatin1String("episode")) {
                 setNumber(item.episodeNumber, readText(xml), ns == NsPodcast);
+            } else if (ns == NsItunes && name == QLatin1String("episodeType")) {
+                // (193) Only the special ones are kept: "full" is the rule
+                const QString type = readText(xml).trimmed().toLower();
+                item.type = type == QLatin1String("trailer") || type == QLatin1String("bonus") ? type : QString();
             } else if (ns == NsItunes && name == QLatin1String("duration")) {
                 const int seconds = TimeParse::durationSeconds(readText(xml));
                 if (seconds > 0) {
@@ -243,6 +248,33 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                         && feed.funding.size() < 5) {
                     feed.funding.append(funding);
                 }
+            } else if (channelChild && isPlain(ns) && name == QLatin1String("language")) {
+                // "de-AT", "en_US", "DE" -> "de" (123)
+                QString code = readText(xml).trimmed().toLower();
+                const int dash = code.indexOf(QLatin1Char('-'));
+                const int underscore = code.indexOf(QLatin1Char('_'));
+                int cut = dash < 0 ? underscore : (underscore < 0 ? dash : qMin(dash, underscore));
+                if (cut >= 0) {
+                    code.truncate(cut);
+                }
+                feed.language = code.left(8);
+            } else if (ns == NsItunes && name == QLatin1String("category")
+                       && (channelChild || parent == QLatin1String("category"))) {
+                // <itunes:category text="Science"><itunes:category text="Astronomy"/>
+                // -> "Science", "Science/Astronomy" (123)
+                const QString text = attrs.value(QLatin1String("text")).toString().trimmed();
+                if (!text.isEmpty()) {
+                    QString entry = text;
+                    if (channelChild) {
+                        topCategory = text;
+                    } else if (!topCategory.isEmpty()) {
+                        entry = topCategory + QLatin1Char('/') + text;
+                    }
+                    if (!feed.categories.contains(entry) && feed.categories.size() < 10) {
+                        feed.categories.append(entry);
+                    }
+                }
+                stack.append(name.toString());
             } else if (ns == NsItunes && name == QLatin1String("new-feed-url")) {
                 feed.newUrl = readText(xml);
             } else if (parent == QLatin1String("image") && isPlain(ns) && name == QLatin1String("url")) {

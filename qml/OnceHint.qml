@@ -9,6 +9,8 @@ import Sailfish.Silica 1.0
 // the icon of the About page resets all hints (AppCore::resetHints).
 InteractionHintLabel {
     id: hint
+    // (220) Gradient towards the top edge when shown there
+    invert: showTop
 
     // While something else is at the bottom of the screen (the swipe hint
     // at the first start, a message), hints wait. A hint already on screen
@@ -20,6 +22,19 @@ InteractionHintLabel {
 
     property string _key: ""
     property string _text: ""
+    // (220) Shown at the top of the screen instead of above the player bar
+    // (player bar hint: not over the list; bookmark hint: above the panel
+    // and the keyboard)
+    property bool atTop: false
+    property bool _top: false
+    // (232) While the player bar is expanded, every hint goes to the top
+    // (above the bar it would sit in the middle of the list)
+    property bool barExpanded: false
+    readonly property bool showTop: atTop || barExpanded
+    // (231) When the hint came on screen: one that was readable for 2 s
+    // counts as read when its page goes or something else comes first
+    property real _shownAt: 0
+    readonly property int _readMs: 2000
     property Item _owner: null
     property var _waiting: []
     // Keys known to be shown already - no database read for every list
@@ -41,7 +56,7 @@ InteractionHintLabel {
         _done = {}
     }
 
-    function show(key, text, owner) {
+    function show(key, text, owner, top) {
         if (key === _key || shownBefore(key)) {
             return
         }
@@ -51,7 +66,7 @@ InteractionHintLabel {
             }
         }
         var list = _waiting.slice(0)
-        list.push({ key: key, text: text, owner: owner || null, paged: !!owner })
+        list.push({ key: key, text: text, owner: owner || null, paged: !!owner, top: !!top })
         _waiting = list
         _pump()
     }
@@ -81,6 +96,9 @@ InteractionHintLabel {
         _owner = next.paged ? next.owner : null
         _key = next.key
         _text = next.text
+        _top = !!next.top
+        atTop = _top
+        _shownAt = Date.now()
         hint.text = next.text
         _done[next.key] = true
         core.setSetting("hint." + next.key, "1")
@@ -101,9 +119,14 @@ InteractionHintLabel {
     // Another page: a hint of the old page goes back into the queue (and
     // counts as not shown); one of the new page may follow
     onCurrentPageChanged: {
-        if (_key.length > 0 && _owner && _owner !== currentPage) {
+        if (_key.length > 0 && _owner && _owner !== currentPage && Date.now() - _shownAt >= _readMs) {
+            // (231) Seen long enough (e.g. the user followed it to another
+            // page): read, not queued again
+            _key = ""
+            hideTimer.stop()
+        } else if (_key.length > 0 && _owner && _owner !== currentPage) {
             var list = _waiting.slice(0)
-            list.unshift({ key: _key, text: _text, owner: _owner, paged: true })
+            list.unshift({ key: _key, text: _text, owner: _owner, paged: true, top: _top })
             _waiting = list
             delete _done[_key]
             core.setSetting("hint." + _key, "0")
@@ -117,10 +140,14 @@ InteractionHintLabel {
 
     onPausedChanged: {
         if (paused) {
-            if (_key.length > 0) {
+            if (_key.length > 0 && Date.now() - _shownAt >= _readMs) {
+                // (231) Seen long enough: read
+                _key = ""
+                hideTimer.stop()
+            } else if (_key.length > 0) {
                 // Back to the front of the queue, shown again afterwards
                 var list = _waiting.slice(0)
-                list.unshift({ key: _key, text: _text, owner: _owner, paged: _owner !== null })
+                list.unshift({ key: _key, text: _text, owner: _owner, paged: _owner !== null, top: _top })
                 _waiting = list
                 _key = ""
                 hideTimer.stop()
@@ -134,6 +161,27 @@ InteractionHintLabel {
     opacity: _key.length > 0 ? 1.0 : 0.0
     visible: opacity > 0
     Behavior on opacity { FadeAnimation { duration: 400 } }
+
+    // (230) A dark backing under the whole text: the label's own gradient
+    // is almost transparent at its far edge, so long hints (3-4 lines) lay
+    // directly on the list below and could not be read. Short fade at the
+    // edge towards the page, then nearly opaque. Drawn below the label's
+    // own gradient and text (z -1); turned with "invert" (hint at the top).
+    Rectangle {
+        z: -1
+        anchors.fill: parent
+        rotation: hint.showTop ? 180 : 0
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Theme.rgba(Theme.highlightDimmerColor, 0.0) }
+            GradientStop {
+                position: Math.min(0.3, 2 * Theme.paddingLarge / Math.max(1, hint.height))
+                color: Theme.rgba(Theme.highlightDimmerColor, 0.95)
+            }
+            // (231) Nearly opaque: over the expanded player bar's list the
+            // rows still showed through at 0.85
+            GradientStop { position: 1.0; color: Theme.rgba(Theme.highlightDimmerColor, 0.97) }
+        }
+    }
 
     MouseArea {
         anchors.fill: parent

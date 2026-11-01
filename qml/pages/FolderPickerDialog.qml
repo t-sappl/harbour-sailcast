@@ -11,6 +11,9 @@ Dialog {
 
     property int folderId: 0
     property string podcastTitle: ""
+    // (170) Also used when subscribing: "Subscribe" with the folder
+    property string headerTitle: qsTr("Move to folder")
+    property string acceptLabel: ""
     property var folderList: core.folders()
     // A folder created here is the target: the dialog accepts itself as
     // soon as it is shown again (48)
@@ -39,7 +42,8 @@ Dialog {
         header: Column {
             width: parent ? parent.width : 0
             DialogHeader {
-                title: qsTr("Move to folder")
+                title: dialog.headerTitle
+                acceptText: dialog.acceptLabel.length > 0 ? dialog.acceptLabel : defaultAcceptText
             }
             Label {
                 visible: dialog.podcastTitle.length > 0

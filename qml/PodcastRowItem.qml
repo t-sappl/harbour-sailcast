@@ -76,15 +76,24 @@ ListItem {
                 if (row.listenedSeconds >= 60) {
                     parts.push(qsTr("%1 listened").arg(TimeFormat.length(row.listenedSeconds, qsTr("%1 h %2 min"), qsTr("%1 min"))))
                 }
+                // (194) A line breaks only between the parts, not inside
+                // one ("166 h 42 min listened" stays together)
+                for (var i = 0; i < parts.length; i++) {
+                    parts[i] = parts[i].replace(/ /g, "\u00a0")
+                }
+                // (191) An arrow instead of "downloaded": the line fits more
+                // often in one row; (194) kept with the part before it, so
+                // it never stands alone on the second line
                 if (row.downloadedCount > 0) {
-                    parts.push(qsTr("%n downloaded", "", row.downloadedCount))
+                    parts[parts.length - 1] += "\u00a0·\u00a0\u2193\u00a0" + row.downloadedCount
                 }
                 if (row.archived) {
-                    parts.push(qsTr("archived"))
+                    parts.push(qsTr("archived").replace(/ /g, "\u00a0"))
                 } else if (row.manualUpdate) {
-                    parts.push("⏸ " + qsTr("manual update"))
+                    parts.push(("⏸ " + qsTr("manual update")).replace(/ /g, "\u00a0"))
                 }
-                return parts.join(" · ")
+                // The dot stays at the end of a line, not at the start
+                return parts.join("\u00a0· ")
             }
             // Two lines at most (71): the statistics were cut off
             wrapMode: Text.Wrap

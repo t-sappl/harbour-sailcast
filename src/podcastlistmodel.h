@@ -3,6 +3,8 @@
 #define PODCASTLISTMODEL_H
 
 #include <QList>
+#include <QSet>
+#include <QVariantList>
 
 #include "database.h"
 #include "rowlistmodel.h"
@@ -24,6 +26,9 @@ class PodcastListModel : public RowListModel<PodcastRow>
     // (57, choosing the podcasts of a folder): -1 off (default), 0 those
     // without a folder, N folder N
     Q_PROPERTY(int firstFolderId READ firstFolderId WRITE setFirstFolderId NOTIFY firstFolderIdChanged)
+    // These podcasts first, then the rest - both alphabetical (213, "never
+    // delete" list: those in the Music folder on top); role "first"
+    Q_PROPERTY(QVariantList firstIds READ firstIds WRITE setFirstIds NOTIFY firstIdsChanged)
 
 public:
     enum Roles {
@@ -40,7 +45,8 @@ public:
         ListenedSecondsRole,
         ManualUpdateRole,
         FolderIdRole,
-        FreshRole
+        FreshRole,
+        FirstRole
     };
 
     explicit PodcastListModel(QObject *parent = nullptr);
@@ -53,6 +59,8 @@ public:
     void setFolderId(int folderId);
     int firstFolderId() const { return m_firstFolderId; }
     void setFirstFolderId(int folderId);
+    QVariantList firstIds() const;
+    void setFirstIds(const QVariantList &ids);
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE int indexOf(int podcastId) const { return rowOf(podcastId); }
@@ -61,6 +69,7 @@ signals:
     void countChanged();
     void folderIdChanged();
     void firstFolderIdChanged();
+    void firstIdsChanged();
     void freshCountChanged();
 
 private:
@@ -68,6 +77,7 @@ private:
     bool m_reloadPending = false;
     int m_folderId = -1;
     int m_firstFolderId = -1;
+    QSet<qint64> m_firstIds;
     int m_freshCount = 0;
 };
 

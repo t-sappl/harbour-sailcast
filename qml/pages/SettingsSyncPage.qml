@@ -158,6 +158,9 @@ Page {
             Button {
                 visible: page.nextcloud && !core.browserLoginActive
                 anchors.horizontalCenter: parent.horizontalCenter
+                // (193) As wide as the buttons below (ButtonLayout; 194:
+                // the medium width - the large one was wider than those)
+                width: Theme.buttonWidthMedium
                 text: qsTr("Sign in with the browser")
                 enabled: serverField.text.trim().length > 0 && !core.syncing
                 onClicked: core.startBrowserLogin(serverField.text)
@@ -181,6 +184,7 @@ Page {
             Button {
                 visible: page.nextcloud && core.browserLoginActive
                 anchors.horizontalCenter: parent.horizontalCenter
+                width: Theme.buttonWidthMedium
                 text: qsTr("Cancel")
                 onClicked: core.cancelBrowserLogin()
             }

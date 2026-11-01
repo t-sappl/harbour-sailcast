@@ -88,6 +88,114 @@ QString Archiver::folderFor(qint64 podcastId) const
 
 // --- Archive ----------------------------------------------------------------
 
+// The folder name is chosen once and kept, even if the title changes
+QString Archiver::ensureFolderName(const PodcastRow &podcast)
+{
+    QString folderName = podcast.archiveFolder;
+    if (folderName.isEmpty()) {
+        folderName = FileNames::safe(podcast.title, 80);
+        if (m_database->isArchiveFolderUsed(folderName, podcast.id)) {
+            folderName += QStringLiteral(" (%1)").arg(podcast.id);
+        }
+        // (210) Music is shared: a folder of that name from another app (no
+        // episodes.json of Sailcast's archive in it) is not used
+        const QString existing = QDir(m_root).absoluteFilePath(folderName);
+        if (!m_root.isEmpty() && QDir(existing).exists()
+                && !QFile::exists(existing + QLatin1Char('/') + QLatin1String(MetadataFile))) {
+            folderName += QStringLiteral(" (Sailcast)");
+        }
+        m_database->setArchiveFolder(podcast.id, folderName);
+    }
+    return folderName;
+}
+
+QString Archiver::musicTarget(qint64 episodeId)
+{
+    if (m_root.isEmpty()) {
+        return QString();
+    }
+    const EpisodeRow e = m_database->episode(episodeId);
+    const PodcastRow podcast = m_database->podcast(e.podcastId);
+    if (!e.id || !podcast.id) {
+        return QString();
+    }
+    const QString folder = QDir(m_root).absoluteFilePath(ensureFolderName(podcast));
+    const QString target = folder + QLatin1Char('/') + FileNames::forEpisode(e);
+    return QFile::exists(target) ? QString() : target;
+}
+
+bool Archiver::relocate(qint64 episodeId, const QString &target)
+{
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id || !e.downloaded || target.isEmpty() || QFile::exists(target)
+            || !QFile::exists(e.downloadPath)) {
+        return false;
+    }
+    const QFileInfo info(target);
+    if (!QDir().mkpath(info.absolutePath()) || !moveFile(e.downloadPath, target)) {
+        return false;
+    }
+    m_database->setDownloaded(e.id, info.absoluteFilePath());
+    // The podcast's old folder, when nothing is left in it
+    QDir().rmdir(QFileInfo(e.downloadPath).absolutePath());
+    return true;
+}
+
+QString Archiver::keepEpisode(qint64 episodeId, QString *error)
+{
+    const auto failWith = [error](const QString &text) {
+        if (error) {
+            *error = text;
+        }
+        return QString();
+    };
+    if (m_root.isEmpty()) {
+        return failWith(QStringLiteral("No archive folder set"));
+    }
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id || !e.downloaded || !QFile::exists(e.downloadPath)) {
+        return failWith(QStringLiteral("The episode is not downloaded"));
+    }
+    const PodcastRow podcast = m_database->podcast(e.podcastId);
+    if (!podcast.id) {
+        return failWith(QStringLiteral("Podcast not found"));
+    }
+    const QString folder = QDir(m_root).absoluteFilePath(ensureFolderName(podcast));
+    if (!QDir().mkpath(folder)) {
+        return failWith(QStringLiteral("Cannot create the folder %1").arg(folder));
+    }
+    QString name = e.archiveFile;
+    if (name.isEmpty()) {
+        // A name not used by another episode of this podcast or a file there
+        QSet<QString> used;
+        const QList<EpisodeRow> episodes = m_database->episodes(e.podcastId);
+        for (int i = 0; i < episodes.size(); ++i) {
+            if (!episodes.at(i).archiveFile.isEmpty()) {
+                used.insert(episodes.at(i).archiveFile.toLower());
+            }
+        }
+        const QString base = FileNames::forEpisode(e);
+        name = base;
+        for (int n = 2; used.contains(name.toLower())
+                        || QFile::exists(folder + QLatin1Char('/') + name); ++n) {
+            name = numbered(base, n);
+        }
+        m_database->setArchiveFile(e.id, name);
+    }
+    const QString target = folder + QLatin1Char('/') + name;
+    if (QFileInfo(target).absoluteFilePath() != QFileInfo(e.downloadPath).absoluteFilePath()) {
+        if (QFile::exists(target)) {
+            QFile::remove(target);      // an older or broken copy of the same episode
+        }
+        if (!moveFile(e.downloadPath, target)) {
+            return failWith(QStringLiteral("Cannot move the file to %1").arg(target));
+        }
+    }
+    m_database->setDownloaded(e.id, target);
+    writeMetadata(e.podcastId);
+    return target;
+}
+
 void Archiver::archive(qint64 podcastId)
 {
     if (isRunning()) {
@@ -104,15 +212,7 @@ void Archiver::archive(qint64 podcastId)
         return;
     }
 
-    // The folder name is chosen once and kept, even if the title changes
-    QString folderName = podcast.archiveFolder;
-    if (folderName.isEmpty()) {
-        folderName = FileNames::safe(podcast.title, 80);
-        if (m_database->isArchiveFolderUsed(folderName, podcastId)) {
-            folderName += QStringLiteral(" (%1)").arg(podcastId);
-        }
-        m_database->setArchiveFolder(podcastId, folderName);
-    }
+    const QString folderName = ensureFolderName(podcast);
 
     m_podcastId = podcastId;
     m_result = ArchiveResult();
@@ -425,7 +525,8 @@ ArchiveImportResult Archiver::importFolder(const QString &folder)
         return result;
     }
 
-    qint64 podcastId = m_database->findPodcast(url);
+    // A provisional one (147) becomes a subscription in addPodcast
+    qint64 podcastId = m_database->findSubscribed(url);
     if (podcastId < 0) {
         podcastId = m_database->addPodcast(url, p.value(QStringLiteral("title")).toString());
         if (podcastId < 0) {

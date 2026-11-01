@@ -65,6 +65,12 @@ Page {
                 text: qsTr("Delete played downloads")
                 onClicked: remorse.execute(qsTr("Deleting played downloads"), function() { core.cleanupDownloads(0) })
             }
+            // (121) e.g. before a trip without network
+            MenuItem {
+                visible: downloaded.count > 0
+                text: qsTr("Add unplayed to the playlist")
+                onClicked: core.queueDownloaded()
+            }
         }
 
         header: Column {
@@ -72,9 +78,42 @@ Page {
 
             PageHeader {
                 title: qsTr("Downloads")
-                description: qsTr("%n files", "", page.stats.count || 0) + " · "
-                             + TimeFormat.size(page.stats.bytes || 0, qsTr("%1 MB"), qsTr("%1 GB"))
             }
+
+            // (190) Tiles instead of the header line: files, space used,
+            // played (what "Delete played downloads" frees), free space
+            StatTiles {
+                visible: (page.stats.count || 0) > 0 || (page.stats.free || -1) >= 0
+                // Three tiles, one row: number and size together
+                tiles: {
+                    var list = [
+                        { value: (page.stats.count || 0) + " · " + TimeFormat.size(page.stats.bytes || 0, qsTr("%1 MB"), qsTr("%1 GB")),
+                          label: qsTr("downloads") },
+                        { value: (page.stats.played || 0) > 0
+                                 ? (page.stats.played + " · " + TimeFormat.size(page.stats.playedBytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
+                                 : "–",
+                          label: qsTr("played, can go") }
+                    ]
+                    if ((page.stats.free || -1) >= 0) {
+                        list.push({ value: TimeFormat.size(page.stats.free, qsTr("%1 MB"), qsTr("%1 GB")), label: qsTr("free on the phone") })
+                    }
+                    return list
+                }
+            }
+            // (217) How much of it is in the Music folder
+            Label {
+                visible: (page.stats.music || 0) > 0
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+                font.pixelSize: Theme.fontSizeExtraSmall
+                color: Theme.secondaryHighlightColor
+                text: qsTr("Of them in the Music folder: %1").arg(page.stats.music + " · "
+                      + TimeFormat.size(page.stats.musicBytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
+            }
+
+            Item { width: 1; height: Theme.paddingMedium }
 
             SectionHeader {
                 visible: page.active.length > 0
