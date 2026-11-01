@@ -1,9 +1,11 @@
 # Sailcast
 
-Podcast app for Sailfish OS with a native C++ core. Subscriptions and the
-listening state are synchronized with other podcast apps (e.g. AntennaPod on
-Android) through a Nextcloud with the app **GPodder Sync** or a gpodder.net
-compatible server.
+Podcast app for Sailfish OS with a native C++ core. **Discover** new podcasts –
+suggestions for you, trending and new shows, categories and similar podcasts
+(from [Podcast Index](https://podcastindex.org) and [fyyd](https://fyyd.de)) –
+and listen before subscribing. Subscriptions and the listening state are
+synchronized with other podcast apps (e.g. AntennaPod on Android) through a
+Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 <p>
 <img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
 <img src="screenshots/discover.png" width="19%" alt="Discover: For you">
