@@ -72,7 +72,9 @@ public:
         KeptRole,            // (120) the downloaded file is in the archive folder
         ProvisionalRole,     // (156) its podcast is not subscribed
         SectionRole,         // (158) see sections
-        SectionStartRole     // (161) the first row of its section
+        SectionStartRole,    // (161) the first row of its section
+        VideoRole,           // (245) a video episode or one with a video version
+        VideoFileRole        // (245) the episode's own file is a video
     };
 
     explicit EpisodeListModel(QObject *parent = nullptr);
@@ -118,6 +120,8 @@ signals:
     void countChanged();
 
 private:
+    // (245) Episodes with a video version, read with every reload
+    QSet<qint64> m_videoIds;
     void refreshEpisode(int episodeId);
     void refreshDownload(int episodeId);
     void scheduleReload();

@@ -66,8 +66,8 @@ Page {
         width: parent.width - appWindow.playerPanelWidth
 
         PageHeader {
-            title: qsTr("Search")
-            description: qsTr("Podcasts, episodes and bookmarks on the device")
+            title: qsTr("Search my podcasts")
+            description: qsTr("Podcasts, episodes and bookmarks on this phone")
         }
 
         SearchField {
@@ -270,13 +270,25 @@ Page {
                         x: Theme.horizontalPageMargin
                         width: parent.width - 2 * Theme.horizontalPageMargin
                         anchors.verticalCenter: parent.verticalCenter
-                        Label {
+                        // (255) The bookmark ribbon instead of the star
+                        Row {
                             width: parent.width
-                            truncationMode: TruncationMode.Fade
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: bookmarkItem.highlighted ? Theme.highlightColor : Theme.primaryColor
-                            text: "\u2605 " + ((rowItem.entry.title || "").length > 0 ? rowItem.entry.title : qsTr("Bookmark"))
-                                  + " · " + TimeFormat.clock(rowItem.entry.position)
+                            spacing: Theme.paddingSmall
+                            BookmarkIcon {
+                                id: bookmarkMarkIcon
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Theme.iconSizeExtraSmall * 0.8
+                                filled: true
+                                color: bookmarkItem.highlighted ? Theme.highlightColor : Theme.primaryColor
+                            }
+                            Label {
+                                width: parent.width - bookmarkMarkIcon.width - parent.spacing
+                                truncationMode: TruncationMode.Fade
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: bookmarkItem.highlighted ? Theme.highlightColor : Theme.primaryColor
+                                text: ((rowItem.entry.title || "").length > 0 ? rowItem.entry.title : qsTr("Bookmark"))
+                                      + " · " + TimeFormat.clock(rowItem.entry.position)
+                            }
                         }
                         Label {
                             width: parent.width

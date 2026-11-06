@@ -29,6 +29,6 @@ SupportsMultipleFiles=false
 [X-Sailjail]
 OrganizationName=harbour-sailcast
 ApplicationName=harbour-sailcast
-Permissions=Internet;Audio;Downloads;Music;Secrets
+Permissions=Internet;Audio;Downloads;Music;Videos;Secrets
 # Started over D-Bus when something is shared to it while closed (84)
 ExecDBus=harbour-sailcast

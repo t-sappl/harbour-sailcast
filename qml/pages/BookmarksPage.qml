@@ -41,6 +41,7 @@ Page {
 
         delegate: ListItem {
             id: row
+            onMenuOpenChanged: if (menuOpen) list._keepTop = false
             width: list.width
             contentHeight: Math.max(Theme.itemSizeLarge, textColumn.height + 2 * Theme.paddingMedium)
             onClicked: appWindow.player.playFrom(modelData.episodeId, modelData.position, false)
@@ -84,14 +85,26 @@ Page {
                 // Same order in every row (73: named and unnamed bookmarks
                 // used to look different): bookmark and time, episode,
                 // podcast, note
-                Label {
+                // (255) The bookmark ribbon instead of the star
+                Row {
                     width: parent.width
-                    // (191) Unnamed: only the time ("★ Bookmark · …" repeated)
-                    text: "★ " + (modelData.title.length > 0 ? modelData.title + " · " : "")
-                          + TimeFormat.clock(modelData.position)
-                    truncationMode: TruncationMode.Fade
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.highlightColor
+                    spacing: Theme.paddingSmall
+                    BookmarkIcon {
+                        id: bookmarkMarkIcon
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Theme.iconSizeExtraSmall * 0.8
+                        filled: true
+                        color: Theme.highlightColor
+                    }
+                    Label {
+                        width: parent.width - bookmarkMarkIcon.width - parent.spacing
+                        // (191) Unnamed: only the time ("Bookmark · …" repeated)
+                        text: (modelData.title.length > 0 ? modelData.title + " · " : "")
+                              + TimeFormat.clock(modelData.position)
+                        truncationMode: TruncationMode.Fade
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.highlightColor
+                    }
                 }
                 Label {
                     width: parent.width
@@ -125,7 +138,7 @@ Page {
         ViewPlaceholder {
             enabled: page.bookmarkList.length === 0
             text: qsTr("No bookmarks")
-            hintText: qsTr("Set one with the star on the episode page")
+            hintText: qsTr("Set one with the bookmark button on the episode page")
         }
 
         VerticalScrollDecorator {}

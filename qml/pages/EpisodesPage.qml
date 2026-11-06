@@ -22,6 +22,19 @@ Page {
                            categories: page.podcast.categories || [] })
     }
     property bool unplayedOnly: core.setting("ui.unplayedOnly", "0") === "1"
+    // (254, #37) "Keep only the newest one unplayed?" answered for this
+    // podcast - a property, since core.setting() in a binding would not
+    // re-read the stored value after the tap
+    property bool newestOfferAnswered: core.setting("podcast." + podcastId + ".newestOffer", "0") === "1"
+    function answerNewestOffer() {
+        newestOfferAnswered = true
+        core.setSetting("podcast." + podcastId + ".newestOffer", "1")
+    }
+    readonly property string showingText: (unplayedOnly ? qsTr("Showing: only unplayed") : qsTr("Showing: all episodes")) + " \u203a"
+    function toggleUnplayedOnly() {
+        unplayedOnly = !unplayedOnly
+        core.setSetting("ui.unplayedOnly", unplayedOnly ? "1" : "0")
+    }
     // Oldest first for serials (53, podcast settings) and the search in the
     // episode titles (53; the field sits in the list header, so its text
     // goes through this property - see 39)
@@ -36,6 +49,16 @@ Page {
     Connections {
         target: core
         onDataChanged: page.podcast = core.podcast(page.podcastId)
+    }
+    // (262) Starting an episode of this podcast = "Keep all unplayed"
+    Connections {
+        target: appWindow.player
+        onEpisodeIdChanged: {
+            if (!page.newestOfferAnswered && appWindow.player.episodeId > 0
+                    && appWindow.player.podcastId === page.podcastId) {
+                page.answerNewestOffer()
+            }
+        }
     }
 
     // Expanding the description must not move the page: a growing list
@@ -155,27 +178,6 @@ Page {
         // pull, so a long pulley is not stopped on them by mistake
         PullDownMenu {
             busy: core.updating || page.archiving
-            // (143) Only what is used often; unsubscribe, login, support,
-            // save in Music and "download all" are on the podcast settings
-            // page, "similar podcasts" is the line next to the cover
-            // (165) The whole podcast into the playlist, oldest first
-            MenuItem {
-                visible: (page.podcast.unplayed || 0) > 0
-                text: qsTr("Add unplayed to the playlist")
-                onClicked: core.queuePodcast(page.podcastId)
-            }
-            MenuItem {
-                // (155) Not for a podcast listened to without subscribing
-                // (170) Also for marking played ones as unplayed; opens with
-                // the played ones when nothing is unplayed
-                visible: (page.podcast.episodeCount || 0) > 0 && page.podcast.provisional !== true
-                // (167) A choice of episodes (all, all but the newest, single
-                // ones, older ones) instead of all at once with a countdown
-                text: qsTr("Mark as played / unplayed …")
-                onClicked: pageStack.push(Qt.resolvedUrl("MarkPlayedDialog.qml"),
-                                          { podcastId: page.podcastId, podcastTitle: page.podcast.title || "",
-                                            unplayMode: (page.podcast.unplayed || 0) === 0 })
-            }
             MenuItem {
                 // (155) Its settings (unsubscribe, downloads, archive …) only
                 // for a subscription - "Abonnieren" instead
@@ -193,12 +195,29 @@ Page {
                     }
                 }
             }
+            // (143) Only what is used often; unsubscribe, login, support,
+            // save in Music and "download all" are on the podcast settings
+            // page, "similar podcasts" is the line next to the cover
+            // (165) The whole podcast into the playlist, oldest first
             MenuItem {
-                text: page.unplayedOnly ? qsTr("Show all episodes") : qsTr("Show only unplayed")
-                onClicked: {
-                    page.unplayedOnly = !page.unplayedOnly
-                    core.setSetting("ui.unplayedOnly", page.unplayedOnly ? "1" : "0")
-                }
+                visible: (page.podcast.unplayed || 0) > 0
+                // (248) With the number, and a countdown (a podcast can have
+                // hundreds of unplayed episodes)
+                text: qsTr("Add unplayed to the playlist (%1)").arg(page.podcast ? core.queuePodcastCount(page.podcastId) : 0)
+                onClicked: remorse.execute(qsTr("Adding %1 episodes to the playlist").arg(core.queuePodcastCount(page.podcastId)),
+                                           function() { core.queuePodcast(page.podcastId) })
+            }
+            MenuItem {
+                // (155) Not for a podcast listened to without subscribing
+                // (170) Also for marking played ones as unplayed; opens with
+                // the played ones when nothing is unplayed
+                visible: (page.podcast.episodeCount || 0) > 0 && page.podcast.provisional !== true
+                // (167) A choice of episodes (all, all but the newest, single
+                // ones, older ones) instead of all at once with a countdown
+                text: qsTr("Mark as played / unplayed …")
+                onClicked: pageStack.push(Qt.resolvedUrl("MarkPlayedDialog.qml"),
+                                          { podcastId: page.podcastId, podcastTitle: page.podcast.title || "",
+                                            unplayMode: (page.podcast.unplayed || 0) === 0 })
             }
             MenuItem {
                 text: qsTr("Update")
@@ -220,7 +239,26 @@ Page {
 
             PageHeader {
                 title: page.podcast.title || ""
-                description: page.archiving ? qsTr("Archiving …") : (page.podcast.author || "")
+                description: page.archiving ? qsTr("Copying to archive …") : (page.podcast.author || "")
+            }
+
+            // (245) Video podcast: under the header, right-aligned as its
+            // description
+            Row {
+                visible: page.podcast.video === true
+                anchors.right: parent.right
+                anchors.rightMargin: Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
+                VideoIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Theme.iconSizeExtraSmall
+                    color: Theme.secondaryHighlightColor
+                }
+                Label {
+                    text: qsTr("Video podcast")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.secondaryHighlightColor
+                }
             }
 
             // Search in the episode titles (53)
@@ -274,7 +312,7 @@ Page {
                         visible: page.podcast.archived === true
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: qsTr("Archived - not updated any more")
+                        text: qsTr("Ended - not updated any more")
                         font.pixelSize: Theme.fontSizeExtraSmall
                         color: Theme.secondaryHighlightColor
                     }
@@ -319,6 +357,64 @@ Page {
                 }
             }
 
+            // (254, usability audit #37) Right after subscribing (or an
+            // import), every episode is still unplayed - for a podcast
+            // with a long backlog that's hundreds to wade through. Offered
+            // once per podcast while all episodes are still unplayed, from
+            // 2 on (Thomas 5 Nov: an arbitrary higher threshold would just
+            // cause "why did I get this for one podcast but not the other"
+            // questions - 2 is the only non-arbitrary cutoff, since with a
+            // single episode "only the newest" and "keep all" are the same
+            // thing anyway). The answer, either way, is remembered so it
+            // never asks again for this podcast.
+            // (262, Thomas 6 Nov, mockup m9) Accent line, a grey explanation
+            // and two pills, all left-aligned. Starting an episode of this
+            // podcast counts as "Keep all unplayed"; merely opening one does not.
+            Column {
+                visible: page.podcast.unplayed > 0
+                         && page.podcast.unplayed === page.podcast.episodeCount
+                         && page.podcast.episodeCount >= 2
+                         && !page.newestOfferAnswered
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
+                Item { width: 1; height: Theme.paddingMedium }
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.highlightColor
+                    text: qsTr("All %n episodes are unplayed", "", page.podcast.episodeCount || 0)
+                }
+                Label {
+                    width: parent.width
+                    wrapMode: Text.Wrap
+                    horizontalAlignment: Text.AlignLeft
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    color: Theme.secondaryColor
+                    text: qsTr("Keep only the newest one unplayed? The older ones are then marked as played.")
+                }
+                Item { width: 1; height: Theme.paddingSmall }
+                Flow {
+                    width: parent.width
+                    spacing: Theme.paddingMedium
+                    ActionPill {
+                        kind: "primary"
+                        text: qsTr("Only the newest")
+                        onClicked: {
+                            page.answerNewestOffer()
+                            core.markEverythingPlayed(true, [page.podcastId])
+                        }
+                    }
+                    ActionPill {
+                        kind: "secondary"
+                        text: qsTr("Keep all unplayed")
+                        onClicked: page.answerNewestOffer()
+                    }
+                }
+                Item { width: 1; height: Theme.paddingLarge }
+            }
+
             // Not subscribed (147, "Anhören ohne Abo"): say so, offer it
             Column {
                 visible: page.podcast.provisional === true
@@ -332,8 +428,9 @@ Page {
                     color: Theme.secondaryHighlightColor
                     text: qsTr("Not subscribed - you can listen to the episodes. Without a subscription the podcast disappears after 30 days without listening.")
                 }
-                Button {
-                    anchors.horizontalCenter: parent.horizontalCenter
+                ActionPill {
+                    kind: "primary"
+                    x: Theme.horizontalPageMargin
                     text: qsTr("Subscribe")
                     onClicked: appWindow.subscribeWithFolder(page.podcast.url || "", page.podcast.title || "")
                 }
@@ -364,18 +461,45 @@ Page {
 
             // (237) Visible that there is more: statistics and "About this
             // podcast" open with the description (tapping it was not obvious)
-            BackgroundItem {
+            // (257, Thomas) "Showing: … ›" on the left of the same row (two
+            // orange lines one above the other looked odd) - while the
+            // description is closed; opened, the line sits above the episodes
+            Item {
                 visible: (page.podcast.description || "").length > 0
                 width: parent.width
-                height: Theme.itemSizeExtraSmall
-                onClicked: page.toggleDescription()
-                Label {
+                // (246) Opened: less room up to "Statistics" (too much space)
+                height: page.descriptionExpanded ? Math.round(Theme.itemSizeExtraSmall * 0.6) : Theme.itemSizeExtraSmall
+
+                BackgroundItem {
+                    id: rowUnplayedSwitch
+                    visible: !page.descriptionExpanded
+                    anchors.left: parent.left
+                    width: rowUnplayedLabel.width + 2 * Theme.horizontalPageMargin
+                    height: parent.height
+                    onClicked: page.toggleUnplayedOnly()
+                    Label {
+                        id: rowUnplayedLabel
+                        x: Theme.horizontalPageMargin
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: Theme.fontSizeExtraSmall
+                        color: rowUnplayedSwitch.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                        text: page.showingText
+                    }
+                }
+                BackgroundItem {
                     anchors.right: parent.right
-                    anchors.rightMargin: Theme.horizontalPageMargin
-                    anchors.verticalCenter: parent.verticalCenter
-                    font.pixelSize: Theme.fontSizeExtraSmall
-                    color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
-                    text: page.descriptionExpanded ? qsTr("Less ⌃") : qsTr("More: statistics and info ⌄")
+                    width: moreLabel.width + 2 * Theme.horizontalPageMargin
+                    height: parent.height
+                    onClicked: page.toggleDescription()
+                    Label {
+                        id: moreLabel
+                        anchors.right: parent.right
+                        anchors.rightMargin: Theme.horizontalPageMargin
+                        anchors.verticalCenter: parent.verticalCenter
+                        font.pixelSize: Theme.fontSizeExtraSmall
+                        color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                        text: page.descriptionExpanded ? qsTr("Less ⌃") : qsTr("More: statistics and info ⌄")
+                    }
                 }
             }
 
@@ -388,7 +512,11 @@ Page {
                 width: parent.width
                 readonly property var stats: visible ? core.podcastStats(page.podcastId) : ({})
 
-                SectionHeader { text: qsTr("Statistics") }
+                SectionHeader {
+                    text: qsTr("Statistics")
+                    // (246) closer to "Less ⌃" above
+                    height: Math.round(Theme.itemSizeExtraSmall * 0.7)
+                }
                 StatTiles {
                     tiles: {
                         var s = aboutColumn.stats
@@ -398,7 +526,8 @@ Page {
                                                        : qsTr("%1 h").arg(Number(hours).toLocaleString(Qt.locale(), "f", 1)),
                                      label: qsTr("listened") })
                         tiles.push({ value: "" + (s.started || 0), label: qsTr("episodes started") })
-                        tiles.push({ value: (s.bytes || 0) > 0 ? TimeFormat.size(s.bytes, qsTr("%1 MB"), qsTr("%1 GB")) : "0",
+                        // (246) "0 MB" without downloads (was "0")
+                        tiles.push({ value: (s.bytes || 0) > 0 ? TimeFormat.size(s.bytes, qsTr("%1 MB"), qsTr("%1 GB")) : qsTr("%1 MB").arg(0),
                                      label: qsTr("%n downloads", "", s.downloads || 0) })
                         if ((s.rhythm || "").length > 0) {
                             tiles.push({ value: s.rhythm, label: qsTr("publishing rhythm") })
@@ -453,26 +582,50 @@ Page {
                 }
 
                 Item { width: 1; height: Theme.paddingLarge }
-                // (192) Centred, equally wide (one alone: half width)
-                Row {
+                Flow {
                     id: linkButtons
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
                     spacing: Theme.paddingMedium
-                    readonly property real cell: (parent.width - 2 * Theme.horizontalPageMargin - spacing) / 2
-                    Button {
-                        width: linkButtons.cell
+                    ActionPill {
+                        kind: "secondary"
                         visible: (page.podcast.link || "").length > 0
                         text: qsTr("Website")
                         onClicked: Qt.openUrlExternally(page.podcast.link)
                     }
-                    Button {
-                        width: linkButtons.cell
+                    ActionPill {
+                        kind: "secondary"
                         visible: (page.podcast.funding || []).length > 0
                         text: qsTr("Support")
                         onClicked: Qt.openUrlExternally(page.podcast.funding[0].url)
                     }
                 }
                 Item { width: 1; height: Theme.paddingLarge * 2 }
+            }
+
+            // (254, usability audit pattern 1) "Show only unplayed" was in
+            // the pulley only; (256, Thomas: the pill looked odd between the
+            // text lines beside the cover - mockup m6, variant B) a state
+            // line above the episodes, right-aligned like "Sorted: … ›" on
+            // the Podcasts page: it says what is shown, a tap switches. Same
+            // setting as the pulley entry (which stays); always shown.
+            BackgroundItem {
+                id: unplayedSwitch
+                // (257) Here only when it is not in the row of "More"
+                visible: page.descriptionExpanded || (page.podcast.description || "").length === 0
+                width: parent.width
+                height: Theme.itemSizeExtraSmall
+                onClicked: page.toggleUnplayedOnly()
+                Label {
+                    anchors {
+                        right: parent.right
+                        rightMargin: Theme.horizontalPageMargin
+                        verticalCenter: parent.verticalCenter
+                    }
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    color: unplayedSwitch.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                    text: page.showingText
+                }
             }
 
             Item { width: 1; height: Theme.paddingSmall }
@@ -503,12 +656,12 @@ Page {
                     id: groupMenu
                     ContextMenu {
                         MenuItem {
-                            text: qsTr("Download this group")
-                            onClicked: appWindow.requestSectionDownload(page.podcastId, model.section)
-                        }
-                        MenuItem {
                             text: qsTr("Add unplayed to the playlist")
                             onClicked: core.queueSection(page.podcastId, model.section)
+                        }
+                        MenuItem {
+                            text: qsTr("Download this group")
+                            onClicked: appWindow.requestSectionDownload(page.podcastId, model.section)
                         }
                         MenuItem {
                             text: qsTr("Mark this group as played")
@@ -525,5 +678,10 @@ Page {
 
 
         VerticalScrollDecorator {}
+    }
+
+    // (248) Countdown of "Add unplayed to the playlist"
+    RemorsePopup {
+        id: remorse
     }
 }

@@ -19,8 +19,20 @@ SilicaListView {
 
     height: Math.min(count, visibleRows) * rowHeight
     clip: true
-    interactive: count > visibleRows
     model: player.chapters
+    // (268) Downward drag from the top (see PlayerTabs): always
+    // interactive, so a short list takes the drag from its rows
+    signal swipedDown()
+    interactive: true
+    boundsBehavior: Flickable.DragOverBounds
+    property bool _fromTop: false
+    onDraggingVerticallyChanged: _fromTop = draggingVertically && atYBeginning
+    onContentYChanged: {
+        if (_fromTop && draggingVertically && contentY < originY - 2 * Theme.paddingLarge) {
+            _fromTop = false
+            swipedDown()
+        }
+    }
 
     function showCurrent() {
         if (player.chapterIndex >= 0 && player.chapterIndex < count) {

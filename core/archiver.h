@@ -14,6 +14,7 @@ class DownloadManager;
 class FeedUpdater;
 class QNetworkAccessManager;
 struct PodcastRow;
+struct EpisodeRow;
 
 struct ArchiveResult
 {
@@ -67,6 +68,9 @@ public:
              QObject *parent = nullptr);
 
     void setArchiveRoot(const QString &root) { m_root = root; }
+    // (245) Video files of "Downloads in Music" and "Save in Music" go to
+    // this root instead (~/Videos/Podcasts), in a folder of the same name
+    void setVideoRoot(const QString &root) { m_videoRoot = root; }
     QString archiveRoot() const { return m_root; }
     bool isRunning() const { return m_podcastId != 0; }
 
@@ -106,6 +110,9 @@ signals:
     void failed(const QString &error);
 
 private:
+    QString m_videoRoot;
+    // (245) The root for an episode's file: Videos for video files
+    QString rootFor(const EpisodeRow &e) const;
     void saveCover();
     QString ensureFolderName(const PodcastRow &podcast);
     void archiveEpisodes();

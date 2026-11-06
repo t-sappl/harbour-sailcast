@@ -25,10 +25,15 @@ Page {
     property int importFolderId: 0
     property var exportFolders: []
     readonly property bool hasFolders: core.folders().length > 0
+    readonly property bool noFolders: exportFolders.length === 1 && exportFolders[0] === -1
 
     function exportFoldersText() {
         if (exportFolders.length === 0) {
             return qsTr("Everything")
+        }
+        // (248) None chosen: no export
+        if (page.noFolders) {
+            return qsTr("None")
         }
         var names = []
         var list = core.folders()
@@ -162,12 +167,13 @@ Page {
                     var selectPage = pageStack.push(Qt.resolvedUrl("FolderSelectPage.qml"), { selected: page.exportFolders })
                     selectPage.selectedChanged.connect(function() { page.exportFolders = selectPage.selected })
                 }
+                PageArrow {}
             }
 
             ImportExportItem {
                 title: qsTr("Save OPML file")
                 description: qsTr("The subscriptions (with their folders), in Downloads. Private feed addresses with a key are included.")
-                enabled: core.podcastCount > 0
+                enabled: core.podcastCount > 0 && !page.noFolders
                 onClicked: {
                     var path = core.exportOpml(page.exportFolders)
                     if (path.length > 0) {
@@ -179,7 +185,7 @@ Page {
             ImportExportItem {
                 title: qsTr("Share OPML file")
                 description: qsTr("Saves the file and opens the sharing menu (e-mail, Bluetooth, …)")
-                enabled: core.podcastCount > 0
+                enabled: core.podcastCount > 0 && !page.noFolders
                 onClicked: {
                     var path = core.exportOpml(page.exportFolders)
                     if (path.length > 0) {
@@ -210,7 +216,7 @@ Page {
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
                 text: page.archiveFolders.length > 0
-                      ? qsTr("Takes over the episodes, files and listening state of an archived podcast - without network.")
+                      ? qsTr("Takes over the episodes, files and listening state of an archived podcast – without network.")
                       : qsTr("No archived podcasts in %1").arg(core.archiveDirectory())
             }
 

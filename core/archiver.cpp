@@ -109,6 +109,11 @@ QString Archiver::ensureFolderName(const PodcastRow &podcast)
     return folderName;
 }
 
+QString Archiver::rootFor(const EpisodeRow &e) const
+{
+    return !m_videoRoot.isEmpty() && e.mimeType.startsWith(QLatin1String("video/")) ? m_videoRoot : m_root;
+}
+
 QString Archiver::musicTarget(qint64 episodeId)
 {
     if (m_root.isEmpty()) {
@@ -119,7 +124,7 @@ QString Archiver::musicTarget(qint64 episodeId)
     if (!e.id || !podcast.id) {
         return QString();
     }
-    const QString folder = QDir(m_root).absoluteFilePath(ensureFolderName(podcast));
+    const QString folder = QDir(rootFor(e)).absoluteFilePath(ensureFolderName(podcast));
     const QString target = folder + QLatin1Char('/') + FileNames::forEpisode(e);
     return QFile::exists(target) ? QString() : target;
 }
@@ -160,7 +165,7 @@ QString Archiver::keepEpisode(qint64 episodeId, QString *error)
     if (!podcast.id) {
         return failWith(QStringLiteral("Podcast not found"));
     }
-    const QString folder = QDir(m_root).absoluteFilePath(ensureFolderName(podcast));
+    const QString folder = QDir(rootFor(e)).absoluteFilePath(ensureFolderName(podcast));
     if (!QDir().mkpath(folder)) {
         return failWith(QStringLiteral("Cannot create the folder %1").arg(folder));
     }

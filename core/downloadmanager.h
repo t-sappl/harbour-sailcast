@@ -72,6 +72,9 @@ public:
     // tried again: older than `days`, not of a running download - in the
     // download folder and below `archiveRoot`; returns how many
     int removeStaleParts(const QString &archiveRoot, int days = 7);
+    // (245) A second root whose kept files (archive name) stay, as in the
+    // archive root: ~/Videos/Podcasts for video files
+    void setVideoRoot(const QString &root) { m_videoRoot = root; }
     CleanupResult cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId = 0,
                           const QHash<qint64, int> &podcastDays = QHash<qint64, int>(),
                           bool all = false);
@@ -88,6 +91,7 @@ private slots:
     void pump();
 
 private:
+    QString m_videoRoot;
     struct Job
     {
         qint64 episodeId = 0;

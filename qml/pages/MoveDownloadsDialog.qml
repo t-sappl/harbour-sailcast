@@ -50,6 +50,27 @@ Dialog {
         return { count: count, bytes: bytes, ids: ids }
     }
 
+    // (246) "1 download" (no English .ts, so no %n plural form)
+    function countText(n) {
+        return n === 1 ? qsTr("1 download") : qsTr("%1 downloads").arg(n)
+    }
+    function targetText(entry) {
+        if (!entry.toMusic) {
+            return qsTr("phone")
+        }
+        return entry.videos === 0 ? qsTr("Music folder")
+             : (entry.videos === entry.count ? qsTr("Videos folder") : qsTr("Music / Videos folder"))
+    }
+    function selectAll(on) {
+        var copy = {}
+        if (!on) {
+            for (var i = 0; i < entries.length; i++) {
+                copy["" + entries[i].podcastId] = true
+            }
+        }
+        off = copy
+    }
+
     function sizeText(bytes) {
         return TimeFormat.size(bytes, qsTr("%1 MB"), qsTr("%1 GB"))
     }
@@ -80,14 +101,34 @@ Dialog {
                 text: qsTr("The download location changed. These downloads are still in the old place – move them now? New downloads go to the new place anyway.")
             }
 
-            Item { width: 1; height: Theme.paddingLarge }
+            Item { width: 1; height: Theme.paddingMedium }
+
+            // (246) All / none, as in the mark-played dialog
+            Flow {
+                visible: page.entries.length > 1
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
+                Chip {
+                    text: qsTr("All")
+                    on: page.selected.ids.length === page.entries.length
+                    onClicked: page.selectAll(true)
+                }
+                Chip {
+                    text: qsTr("None")
+                    on: page.selected.ids.length === 0
+                    onClicked: page.selectAll(false)
+                }
+            }
+
+            Item { width: 1; height: Theme.paddingMedium }
         }
 
         delegate: TextSwitch {
             width: list.width
             text: modelData.title
-            description: qsTr("%n downloads", "", modelData.count) + " · " + page.sizeText(modelData.bytes)
-                         + " → " + (modelData.toMusic ? qsTr("Music folder") : qsTr("phone"))
+            description: page.countText(modelData.count) + " · " + page.sizeText(modelData.bytes)
+                         + " → " + page.targetText(modelData)
             checked: page.isChecked(modelData.podcastId)
             automaticCheck: false
             onClicked: page.toggle(modelData.podcastId)
@@ -103,7 +144,7 @@ Dialog {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 color: Theme.highlightColor
-                text: qsTr("Selected: %n downloads", "", page.selected.count) + " · " + page.sizeText(page.selected.bytes)
+                text: qsTr("Selected: %1").arg(page.countText(page.selected.count)) + " · " + page.sizeText(page.selected.bytes)
             }
 
             Label {

@@ -13,6 +13,7 @@
 
 #include "fyyd.h"
 #include "podnews.h"
+#include "feedtypes.h"
 
 struct ForYouProfile;
 struct EpisodeRow;
@@ -86,7 +87,8 @@ public:
     int podcastCount() const;
     int queueCount() const;
     // (190) Tiles on the playlist page: count, seconds left, downloaded
-    Q_INVOKABLE QVariantMap queueStats() const;
+    // (246) Without the episode `excludeId` (the one playing, counted live by the page)
+    Q_INVOKABLE QVariantMap queueStats(int excludeId = -1) const;
     int downloadCount() const;
     int archivingPodcastId() const { return m_archivingId; }
     QString databaseError() const { return m_databaseError; }
@@ -232,9 +234,22 @@ public:
     static QVariantMap rhythmOf(QList<qint64> dates);
     Q_INVOKABLE void markPlayed(int episodeId);
     Q_INVOKABLE void markUnplayed(int episodeId);
+    // (253) Out of "New episodes", stays unplayed
+    Q_INVOKABLE void removeFromNew(int episodeId);
     Q_INVOKABLE void markAllPlayed(int podcastId);
+    // (246) Settings: every podcast (archived ones too, not provisional),
+    // optionally all but the newest episode of each; one message
+    Q_INVOKABLE void markEverythingPlayed(bool keepNewest, const QVariantList &podcastIds = QVariantList());
+    // (248) For the dialog: podcasts with something to mark - podcastId,
+    // title, count (what markEverythingPlayed would mark), archived
+    Q_INVOKABLE QVariantList markablePodcasts(bool keepNewest) const;
     // Called by the player on pause, stop, seek and every 30 s
     Q_INVOKABLE void recordPlayback(int episodeId, int started, int position, int total);
+    // (244) Listening log: seconds really listened (wall clock) since the
+    // last call - from the player while it plays
+    Q_INVOKABLE void logListening(int episodeId, int seconds, int mediaSeconds);
+    // (244) The podcast's feed offers a video version (podcast:alternateEnclosure)
+    Q_INVOKABLE bool podcastHasVideoVersion(int podcastId) const;
     // The episode in the player (its file is never cleaned up)
     Q_INVOKABLE void setCurrentEpisode(int episodeId);
     // (188) An episode heard to the end or skipped in the player: first in
@@ -297,6 +312,9 @@ public:
     // (165) All unplayed episodes of a podcast to the end of the playlist,
     // oldest first (a short, finished series heard at once)
     Q_INVOKABLE int queuePodcast(int podcastId);
+    // (248) How many queuePodcast / queueDownloaded would add (pulley text)
+    Q_INVOKABLE int queuePodcastCount(int podcastId) const;
+    Q_INVOKABLE int queueDownloadedCount() const;
     Q_INVOKABLE int markSectionPlayed(int podcastId, const QString &section);
     // Unplayed downloaded episodes not in the playlist to its end, oldest
     // first (121); returns the number
@@ -530,7 +548,17 @@ private:
     void openDatabase();
     QString databasePath() const;
     QString archiveRoot() const;
+    // (245) ~/Videos/Podcasts: video files of "Downloads in Music" / "Save in Music"
+    QString videoRoot() const;
+    QString mediaRootFor(const EpisodeRow &e) const;
+    // (248) Duplicate subscriptions
+    void mergeDuplicate(qint64 from, qint64 into);
+    void mergeCaseDuplicates();
+    bool ensureMergeBackup();
     bool isKept(const EpisodeRow &e) const;
+    // (244) The video version of an episode to play: its podcast prefers
+    // video ("podcast.<id>.version" = "video") and the feed offers one
+    ParsedAlternate videoAlternate(const EpisodeRow &e) const;
     bool podcastInMusic(qint64 podcastId) const;
     QList<EpisodeRow> misplacedEpisodes(qint64 podcastId) const;
     void reloadQueue();

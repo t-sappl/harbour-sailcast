@@ -1,6 +1,7 @@
 # Sailcast
 
-Podcast app for Sailfish OS with a native C++ core. **Discover** new podcasts –
+Podcast app for Sailfish OS with a native C++ core, for audio and **video
+podcasts**. **Discover** new podcasts –
 suggestions for you, trending and new shows, categories and similar podcasts
 (from [Podcast Index](https://podcastindex.org) and [fyyd](https://fyyd.de)) –
 and listen before subscribing. Subscriptions and the listening state are
@@ -8,6 +9,7 @@ synchronized with other podcast apps (e.g. AntennaPod on Android) through a
 Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 <p>
 <img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
+<img src="screenshots/video.png" width="19%" alt="Video podcast on the episode page">
 <img src="screenshots/discover.png" width="19%" alt="Discover: For you">
 <img src="screenshots/add-podcast.png" width="19%" alt="Add podcast: listen without subscribing, statistics, similar podcasts">
 <img src="screenshots/podcast-page.png" width="19%" alt="Podcast page with groups and statistics">
@@ -36,8 +38,19 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
   next episode), "About this podcast", long lists grouped by season or
   month; choose episodes to download, to mark as played or unplayed, or add
   a whole podcast to the playlist
-- **Player bar** (1.2): next, and expanded a position bar, skip, speed,
-  bookmark, sleep timer, chapters, bookmarks with notes or what plays next
+- **Player bar**: next; swipe up to open, down to close (1.3); expanded a
+  position bar, skip, speed, bookmark, sleep timer, "Previous" (1.3) and
+  tabs for chapters, show notes (1.3), bookmarks with notes and what plays
+  next; press and hold a button to see its name (1.3)
+- **Video podcasts** (1.3): picture on the episode page, full screen,
+  "sound only"; audio and video versions of a feed
+  (`podcast:alternateEnclosure`) – then "sound only" switches to the audio
+  version and saves data –, HLS streams; a question before streaming over
+  mobile data; video files in `~/Videos/Podcasts/<Podcast>/`
+- **Sorting** of the podcast list (1.3): alphabetical, newest episode, last
+  subscribed, most unplayed; press and hold the skip buttons for 1 min steps;
+  mark everything as played (all or all but the newest per podcast); the
+  global speed in the settings; a playlist button in every episode row
 - **New episodes, Podcasts, Playlist** as three pages to swipe between (start page selectable)
 - **Folders** for podcasts – collapsible, in the grid and the list, kept in OPML exports
 - **Podcast search** through [Podcast Index](https://podcastindex.org) with
@@ -46,8 +59,7 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
   without a feed the site's name is searched)
 - **Share links to Sailcast** from the browser or other apps to add a podcast
 - **Search on the phone** in your podcasts, episode titles (optionally the descriptions) and bookmarks
-  ("Search"); new podcasts are found on a page of their own ("Search / add
-  podcast")
+  ("Search"); new podcasts are found in "Discover"
 - **Playlist** with drag sorting, "Now playing" and "Continue listening"
 - **Player** on the episode page with a labelled toolbar (speed, download,
   playlist, bookmark, sleep timer): chapters (Podlove and `podcast:chapters`),

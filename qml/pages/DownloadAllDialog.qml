@@ -168,9 +168,24 @@ Dialog {
                     on: !dialog.unplayedOnly
                     onClicked: dialog.unplayedOnly = false
                 }
+            }
+
+            // (246) All / none as two chips, as in the mark-played dialog
+            // (one chip changed its text between "Select all" and "Select none")
+            Flow {
+                visible: dialog.shown.length > 1
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
                 Chip {
-                    text: dialog.chosen.length === dialog.shown.length ? qsTr("Select none") : qsTr("Select all")
-                    onClicked: dialog.selectAll(dialog.chosen.length !== dialog.shown.length)
+                    text: qsTr("All")
+                    on: dialog.shown.length > 0 && dialog.chosen.length === dialog.shown.length
+                    onClicked: dialog.selectAll(true)
+                }
+                Chip {
+                    text: qsTr("None")
+                    on: dialog.chosen.length === 0
+                    onClicked: dialog.selectAll(false)
                 }
             }
 

@@ -2,7 +2,8 @@
 TARGET = harbour-sailcast
 
 CONFIG += sailfishapp sailfishapp_i18n
-TRANSLATIONS += translations/harbour-sailcast-de.ts
+TRANSLATIONS += translations/harbour-sailcast-de.ts \
+    translations/harbour-sailcast-en.ts
 
 QT += network sql multimedia dbus
 
@@ -60,6 +61,18 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/PodcastMenu.qml \
     qml/PlayerController.qml \
     qml/SeekBar.qml \
+    qml/VideoView.qml \
+    qml/VideoIcon.qml \
+    qml/pages/MarkAllPlayedDialog.qml \
+    qml/ActionPill.qml \
+    qml/PageArrow.qml \
+    qml/DownloadsMenuItem.qml \
+    qml/HoldNameBubble.qml \
+    qml/PlaylistIcon.qml \
+    qml/BookmarkIcon.qml \
+    qml/RingNeighbours.qml \
+    qml/FolderLegend.qml \
+    qml/PlayerTabs.qml \
     qml/SkipButton.qml \
     qml/SleepBadge.qml \
     qml/SleepTimer.qml \
@@ -107,6 +120,7 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/FolderSelectPage.qml \
     qml/pages/FolderPodcastsPage.qml \
     qml/pages/PodcastChoiceDialog.qml \
+    qml/pages/ShareChoicePage.qml \
     qml/pages/MoveDownloadsDialog.qml \
     qml/pages/FolderDeleteDialog.qml \
     qml/pages/GpodderDeviceDialog.qml \

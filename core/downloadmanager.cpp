@@ -442,6 +442,8 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
     }
     const QString root = archiveRoot.isEmpty() ? QString()
                                                : QDir(archiveRoot).absolutePath() + QLatin1Char('/');
+    const QString videoRoot = m_videoRoot.isEmpty() ? QString()
+                                                    : QDir(m_videoRoot).absolutePath() + QLatin1Char('/');
     const qint64 now = Database::now();
 
     const QList<EpisodeRow> downloads = m_database->episodes(-1, -1, Database::Downloaded);
@@ -469,7 +471,8 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
                 || archivedPodcasts.contains(e.podcastId)
                 // (209) In Music: only files kept or archived (named in the
                 // archive) stay; "Downloads in Music" are cleaned up
-                || (!root.isEmpty() && info.absoluteFilePath().startsWith(root) && !e.archiveFile.isEmpty())) {
+                || (!root.isEmpty() && info.absoluteFilePath().startsWith(root) && !e.archiveFile.isEmpty())
+                || (!videoRoot.isEmpty() && info.absoluteFilePath().startsWith(videoRoot) && !e.archiveFile.isEmpty())) {
             continue;
         }
         const qint64 size = info.size();

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // A keyword of "Meine Interessen" (139): "Mehr davon" (kind 1) or "Nie"
 // (kind 3). The other forms (English) are filled from the built-in word
@@ -97,9 +98,10 @@ Dialog {
 
             Item { width: 1; height: Theme.paddingLarge }
 
-            Button {
+            ActionPill {
+                kind: "destructive"
+                x: Theme.horizontalPageMargin
                 visible: dialog.oldWord.length > 0
-                anchors.horizontalCenter: parent.horizontalCenter
                 text: qsTr("Remove keyword")
                 onClicked: {
                     core.removeKeyword(dialog.kind, dialog.oldWord)

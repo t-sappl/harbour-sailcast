@@ -37,14 +37,21 @@ Page {
         // Keeps a few screens of delegates (and their images) alive
         cacheBuffer: height
 
-        header: PageHeader {
-            title: qsTr("New episodes")
-            description: core.updating ? qsTr("Updating %1 %").arg(Math.round(core.updateProgress * 100))
-                                       : (core.syncing ? qsTr("Synchronizing") : "")
+        header: Column {
+            width: list.width
+            PageHeader {
+                title: qsTr("New episodes")
+                description: core.updating ? qsTr("Updating %1 %").arg(Math.round(core.updateProgress * 100))
+                                           : (core.syncing ? qsTr("Synchronizing") : "")
+            }
+            // (255) Neighbours of the ring, below the header
+            RingNeighbours { kind: "home"; ringMember: page.ringMember }
         }
 
         PullDownMenu {
             busy: core.updating || core.syncing
+            // (253) The download count is read when the menu opens
+            onActiveChanged: if (active) homeDownloads.refresh()
             MenuItem {
                 text: qsTr("Settings")
                 onClicked: pageStack.push(Qt.resolvedUrl("SettingsPage.qml"))
@@ -54,11 +61,21 @@ Page {
                 text: qsTr("Import and export")
                 onClicked: pageStack.push(Qt.resolvedUrl("ImportExportPage.qml"))
             }
-            // Downloads and bookmarks: in the playlist pulley since 73
+            // Bookmarks: in the playlist pulley since 73, here too since 255
+            MenuItem {
+                visible: core.bookmarkCount > 0
+                text: qsTr("Bookmarks (%1)").arg(core.bookmarkCount)
+                onClicked: pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"))
+            }
+            // (253) Downloads here too (in the playlist pulley since 73,
+            // hard to find there - usability audit #10)
+            DownloadsMenuItem {
+                id: homeDownloads
+            }
             // Search on the device (86)
             MenuItem {
                 visible: core.podcastCount > 0
-                text: qsTr("Search")
+                text: qsTr("Search my podcasts")
                 onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
             }
             // Separate sync entry (86) when "Sync und Update" is off
@@ -78,7 +95,14 @@ Page {
             }
         }
 
-        delegate: EpisodeDelegate {}
+        // (258, Thomas 6 Nov: the menu of a row ran down behind the player
+        // bar) _keepTop pulled the list back to the top as soon as the
+        // opening menu grew the content, so it was never scrolled into
+        // view - an opening menu ends the "keep the top" state
+        delegate: EpisodeDelegate {
+            newEpisodesList: true
+            onMenuOpenChanged: if (menuOpen) list._keepTop = false
+        }
 
         ViewPlaceholder {
             // (219) Without podcasts: GetStarted below

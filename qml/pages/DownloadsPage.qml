@@ -55,6 +55,12 @@ Page {
         cacheBuffer: height
 
         PullDownMenu {
+            // (264, Thomas 6 Nov: no way from here to the download settings)
+            // Navigation first, as "Settings" on the other pages
+            MenuItem {
+                text: qsTr("Download settings")
+                onClicked: pageStack.push(Qt.resolvedUrl("SettingsDownloadsPage.qml"))
+            }
             MenuItem {
                 visible: page.active.length > 0
                 text: qsTr("Cancel all downloads")
@@ -66,10 +72,14 @@ Page {
                 onClicked: remorse.execute(qsTr("Deleting played downloads"), function() { core.cleanupDownloads(0) })
             }
             // (121) e.g. before a trip without network
+            // (248) With the number, and a countdown (the playlist was
+            // filled by accident)
             MenuItem {
                 visible: downloaded.count > 0
-                text: qsTr("Add unplayed to the playlist")
-                onClicked: core.queueDownloaded()
+                // read again whenever the list changes
+                text: qsTr("Add unplayed to the playlist (%1)").arg(downloaded.count >= 0 ? core.queueDownloadedCount() : 0)
+                onClicked: remorse.execute(qsTr("Adding %1 episodes to the playlist").arg(core.queueDownloadedCount()),
+                                           function() { core.queueDownloaded() })
             }
         }
 
@@ -92,7 +102,7 @@ Page {
                         { value: (page.stats.played || 0) > 0
                                  ? (page.stats.played + " · " + TimeFormat.size(page.stats.playedBytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
                                  : "–",
-                          label: qsTr("played, can go") }
+                          label: qsTr("played, can be deleted") }
                     ]
                     if ((page.stats.free || -1) >= 0) {
                         list.push({ value: TimeFormat.size(page.stats.free, qsTr("%1 MB"), qsTr("%1 GB")), label: qsTr("free on the phone") })
@@ -109,8 +119,26 @@ Page {
                 horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
-                text: qsTr("Of them in the Music folder: %1").arg(page.stats.music + " · "
+                // (256) plainer words
+                text: qsTr("%1 of them are in Music and Videos").arg(page.stats.music + " · "
                       + TimeFormat.size(page.stats.musicBytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
+            }
+
+            Item { width: 1; height: Theme.paddingLarge; visible: (page.stats.played || 0) > 0 }
+
+            // (253, usability audit #11) The same action as the pulley
+            // entry, but visible - the pulley alone was hard to find
+            // (forum: "I had to search a while")
+            // (256, Thomas: the grey default button looked odd) a pill;
+            // (269, Thomas 6 Nov) the shared ActionPill, red: it deletes
+            // files (it was hand-built, centred and filled like a main
+            // action - missed in 263 because it was no Silica Button)
+            ActionPill {
+                visible: (page.stats.played || 0) > 0
+                x: Theme.horizontalPageMargin
+                kind: "destructive"
+                text: qsTr("Delete played downloads")
+                onClicked: remorse.execute(qsTr("Deleting played downloads"), function() { core.cleanupDownloads(0) })
             }
 
             Item { width: 1; height: Theme.paddingMedium }
@@ -126,6 +154,7 @@ Page {
 
                 delegate: ListItem {
                     id: activeRow
+                    onMenuOpenChanged: if (menuOpen) list._keepTop = false
                     property int episodeId: modelData.episodeId
                     property real progress: modelData.progress
                     property bool running: modelData.running
@@ -211,7 +240,10 @@ Page {
             }
         }
 
-        delegate: EpisodeDelegate {}
+        // (259) An opening menu ends "keep the top" (see HomePage)
+        delegate: EpisodeDelegate {
+            onMenuOpenChanged: if (menuOpen) list._keepTop = false
+        }
 
         ViewPlaceholder {
             enabled: downloaded.count === 0 && page.active.length === 0

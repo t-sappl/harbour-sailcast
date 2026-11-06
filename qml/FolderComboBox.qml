@@ -40,6 +40,9 @@ ComboBox {
     }
 
     label: qsTr("Folder")
+    // (254, usability audit #4/jargon) "Other podcasts" on its own didn't
+    // say that it just means no folder.
+    description: qsTr("\"Other podcasts\": no folder")
     currentIndex: indexFor(folderId)
     value: {
         for (var i = 0; i < folderList.length; i++) {

@@ -66,3 +66,35 @@ function size(bytes, megabytePattern, gigabytePattern) {
     }
     return megabytePattern.arg(Math.max(1, Math.round(mb)))
 }
+
+// (256) Time stamps in show notes ("12:34", "1:02:03") as links
+// "sailcast-seek:<seconds>" - outside links, not after "Uhr"/"h"/"am"/"pm",
+// not past the length (lengthSeconds; 0 = unknown). From the episode page
+// (53), shared with the Notes tab of the player.
+function linkTimestamps(html, lengthSeconds) {
+    var parts = ("" + (html || "")).split(/(<[^>]*>)/)
+    var inLink = false
+    var length = lengthSeconds > 0 ? lengthSeconds : 24 * 3600
+    for (var i = 0; i < parts.length; i++) {
+        var part = parts[i]
+        if (part.charAt(0) === "<") {
+            if (/^<a[\s>]/i.test(part)) {
+                inLink = true
+            } else if (/^<\/a\s*>/i.test(part)) {
+                inLink = false
+            }
+            continue
+        }
+        if (inLink) {
+            continue
+        }
+        parts[i] = part.replace(/\b(?:(\d{1,2}):)?([0-5]?\d):([0-5]\d)\b(?!\s*(Uhr|h\b|o'clock|am\b|pm\b))/gi, function(match, h, m, s) {
+            var seconds = (h ? parseInt(h, 10) * 3600 : 0) + parseInt(m, 10) * 60 + parseInt(s, 10)
+            if (seconds > length) {
+                return match
+            }
+            return "<a href=\"sailcast-seek:" + seconds + "\">" + match + "</a>"
+        })
+    }
+    return parts.join("")
+}

@@ -55,6 +55,26 @@ Dialog {
         changes = copy
     }
 
+    // (246) Chips "All" / "None"
+    function setAll(on) {
+        var ids = podcasts.ids()
+        var copy = {}
+        for (var i = 0; i < ids.length; i++) {
+            copy["" + ids[i]] = on
+        }
+        changes = copy
+    }
+    readonly property int checkedCount: {
+        var ids = podcasts.count >= 0 ? podcasts.ids() : []
+        var n = 0
+        for (var i = 0; i < ids.length; i++) {
+            if (isChecked(ids[i])) {
+                n++
+            }
+        }
+        return n
+    }
+
     onAccepted: {
         for (var k in changes) {
             var id = parseInt(k)
@@ -105,6 +125,26 @@ Dialog {
             }
 
             Item { width: 1; height: Theme.paddingMedium }
+
+            // (246) All / none, as in the mark-played dialog
+            Flow {
+                visible: podcasts.count > 1
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                spacing: Theme.paddingSmall
+                Chip {
+                    text: qsTr("All")
+                    on: page.checkedCount === podcasts.count
+                    onClicked: page.setAll(true)
+                }
+                Chip {
+                    text: qsTr("None")
+                    on: page.checkedCount === 0
+                    onClicked: page.setAll(false)
+                }
+            }
+
+            Item { width: 1; height: Theme.paddingMedium }
         }
 
         section.property: page.grouped ? "first" : ""
@@ -116,7 +156,7 @@ Dialog {
             width: list.width
             text: model.title
             // Archived podcasts keep everything in their archive folder
-            description: model.archived ? qsTr("archived – kept in its archive folder") : ""
+            description: model.archived ? qsTr("ended – not changed automatically") : ""
             checked: page.isChecked(model.podcastId)
             automaticCheck: false
             onClicked: page.toggle(model.podcastId)

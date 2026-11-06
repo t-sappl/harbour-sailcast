@@ -20,15 +20,24 @@ Column {
     property int unplayed: 0
     property int podcastCount: 0
     property bool showHeader: true
+    // (254) false: nothing built (the "all podcasts" section while the
+    // folders are shown)
+    property bool active: true
     property bool gridMode: true
     property bool canMoveUp: false
     property bool canMoveDown: false
+    // (256) The legend line under this header (the first open folder)
+    property bool showLegend: false
+    // (256) Folded or unfolded by a tap (the page scrolls an unfolded
+    // folder near the bottom edge into view)
+    signal folded(bool collapsed)
 
     property bool collapsed: showHeader && core.setting("ui.folderCollapsed." + folderId, "0") === "1"
 
     function toggle() {
         collapsed = !collapsed
         core.setSetting("ui.folderCollapsed." + folderId, collapsed ? "1" : "0")
+        folded(collapsed)
     }
 
     width: parent ? parent.width : 0
@@ -45,6 +54,8 @@ Column {
     PodcastListModel {
         id: podcasts
         folderId: section.folderId
+        // (246) In the order chosen on the Podcasts page
+        sorted: true
     }
 
     ListItem {
@@ -143,7 +154,7 @@ Column {
                 }
                 MenuItem {
                     visible: section.unplayed > 0
-                    text: qsTr("Mark all as played")
+                    text: qsTr("Mark all in folder as played")
                     onClicked: appWindow.remorseMarkFolderPlayed(section.folderId, section.name)
                 }
                 MenuItem {
@@ -156,6 +167,15 @@ Column {
         }
     }
 
+    // (256) The two explanations under the first open folder header
+    // (Thomas 6 Nov: "seen once, understood"); which folder that is, the
+    // page decides (showLegend)
+    FolderLegend {
+        visible: section.showHeader && section.showLegend && !section.collapsed && section.active
+        height: visible ? implicitHeight : 0
+        gridStyle: section.gridMode
+    }
+
     // Grid: 3 covers per row in portrait; in landscape (54) as many as fit
     // with about the portrait tile size
     readonly property int gridColumns: Math.max(3, Math.round(width / (Math.min(Screen.width, Screen.height) / 3)))
@@ -166,7 +186,7 @@ Column {
         visible: section.gridMode && !section.collapsed
         width: parent.width
         Repeater {
-            model: section.gridMode && !section.collapsed ? podcasts : null
+            model: section.active && section.gridMode && !section.collapsed ? podcasts : null
             PodcastTile {
                 width: section.width / section.gridColumns
                 contentHeight: width
@@ -177,6 +197,7 @@ Column {
                 manualUpdate: model.manualUpdate || section.manualUpdate
                 lastError: model.lastError
                 fresh: model.fresh
+                video: model.video === true
             }
         }
     }
@@ -186,7 +207,7 @@ Column {
         visible: !section.gridMode && !section.collapsed
         width: parent.width
         Repeater {
-            model: !section.gridMode && !section.collapsed ? podcasts : null
+            model: section.active && !section.gridMode && !section.collapsed ? podcasts : null
             PodcastRowItem {
                 width: section.width
                 podcastId: model.podcastId
@@ -200,6 +221,7 @@ Column {
                 manualUpdate: model.manualUpdate || section.manualUpdate
                 lastError: model.lastError
                 fresh: model.fresh
+                video: model.video === true
             }
         }
     }

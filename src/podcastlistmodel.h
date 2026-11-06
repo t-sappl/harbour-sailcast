@@ -29,6 +29,9 @@ class PodcastListModel : public RowListModel<PodcastRow>
     // These podcasts first, then the rest - both alphabetical (213, "never
     // delete" list: those in the Music folder on top); role "first"
     Q_PROPERTY(QVariantList firstIds READ firstIds WRITE setFirstIds NOTIFY firstIdsChanged)
+    // (246) Sorted as set on the Podcasts page ("podcasts.sort"); off for
+    // choice lists, which stay alphabetical
+    Q_PROPERTY(bool sorted READ sorted WRITE setSorted NOTIFY sortedChanged)
 
 public:
     enum Roles {
@@ -46,7 +49,8 @@ public:
         ManualUpdateRole,
         FolderIdRole,
         FreshRole,
-        FirstRole
+        FirstRole,
+        VideoRole           // (247) video podcast
     };
 
     explicit PodcastListModel(QObject *parent = nullptr);
@@ -60,16 +64,35 @@ public:
     int firstFolderId() const { return m_firstFolderId; }
     void setFirstFolderId(int folderId);
     QVariantList firstIds() const;
+    bool sorted() const { return m_sorted; }
+    void setSorted(bool sorted)
+    {
+        if (m_sorted != sorted) {
+            m_sorted = sorted;
+            emit sortedChanged();
+            scheduleReload();
+        }
+    }
     void setFirstIds(const QVariantList &ids);
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE int indexOf(int podcastId) const { return rowOf(podcastId); }
+    // (246) Ids of all rows, in order (chips "All" / "None" of choice lists)
+    Q_INVOKABLE QVariantList ids() const
+    {
+        QVariantList list;
+        for (int i = 0; i < m_rows.size(); ++i) {
+            list.append(int(m_rows.at(i).id));
+        }
+        return list;
+    }
 
 signals:
     void countChanged();
     void folderIdChanged();
     void firstFolderIdChanged();
     void firstIdsChanged();
+    void sortedChanged();
     void freshCountChanged();
 
 private:
@@ -78,6 +101,8 @@ private:
     int m_folderId = -1;
     int m_firstFolderId = -1;
     QSet<qint64> m_firstIds;
+    bool m_sorted = false;
+    QSet<qint64> m_videoIds;    // (247) video podcasts, read with every reload
     int m_freshCount = 0;
 };
 

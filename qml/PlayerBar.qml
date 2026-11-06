@@ -42,9 +42,42 @@ Rectangle {
 
     // Takes all touches on the bar that no control inside handles - they
     // must not reach the page behind the bar and scroll it
+    // (264, forum, Eudoxos: "enlarge the miniplayer with a swipe") A clearly
+    // vertical swipe opens (up) or closes (down) the expanded area, in
+    // addition to the button. Left/right swipes are not touched (they page
+    // through the ring); controls and the seek bar keep their own touches.
+    property bool _swiped: false
+    function swipeEnded(dx, dy, stage) {
+        if (_swiped) {
+            return
+        }
+        // long enough, and steeper than about 50 degrees
+        if (Math.abs(dy) < Theme.paddingLarge * 2 || Math.abs(dy) < 1.2 * Math.abs(dx)) {
+            return
+        }
+        console.warn("PlayerBar swipe (" + stage + "): dx=" + Math.round(dx) + " dy=" + Math.round(dy) + " expanded=" + expanded)
+        if (dy < 0 && !expanded) {
+            expanded = true
+            _swiped = true
+        } else if (dy > 0 && expanded) {
+            expanded = false
+            speedChoicesOpen = false
+            _swiped = true
+        }
+    }
+
     MouseArea {
         anchors.fill: parent
         preventStealing: true
+        property real _x0: 0
+        property real _y0: 0
+        onPressed: {
+            _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false
+            console.warn("PlayerBar touch on the bar: x=" + Math.round(mouse.x) + " y=" + Math.round(mouse.y))
+        }
+        // acts while the finger moves (a release outside may never arrive)
+        onPositionChanged: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
+        onReleased: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "release")
         onWheel: wheel.accepted = true
     }
 
@@ -71,6 +104,9 @@ Rectangle {
                     || page.objectName === "feedLoginDialog"
                     || page.objectName === "archiveDialog"
                     || page.objectName === "mobileDataDialog"
+                    // (246) its last line was covered by the bar
+                    || page.objectName === "moveDownloadsDialog"
+                    || page.objectName === "markAllPlayedDialog"
                     // Sailfish file picker (import)
                     || page.selectedContentProperties !== undefined)
     }
@@ -166,21 +202,6 @@ Rectangle {
     property var bookmarkList: []
     property var upNextList: []
     property bool speedChoicesOpen: false
-    // (178) Tabs of the expanded area
-    property string chosenTab: ""
-    readonly property var tabs: {
-        var list = []
-        if (player.chapters.length > 0) list.push({ key: "chapters", text: qsTr("Chapters") })
-        if (bookmarkList.length > 0) list.push({ key: "bookmarks", text: qsTr("Bookmarks") })
-        list.push({ key: "next", text: qsTr("Up next") })
-        return list
-    }
-    readonly property string currentTab: {
-        for (var i = 0; i < tabs.length; i++) {
-            if (tabs[i].key === chosenTab) return chosenTab
-        }
-        return tabs[0].key
-    }
     readonly property var speeds: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0]
     function refreshBookmarks() {
         bookmarkList = player.hasEpisode ? core.bookmarks(player.episodeId) : []
@@ -198,6 +219,31 @@ Rectangle {
         }
         upNextList = list
     }
+    // (253) "Previous": the episode heard before the one playing (the top
+    // of "Recently heard" without it) - one tap back to it, at its saved
+    // position (Thomas: "briefly another episode, then the playlist down
+    // to Recently heard")
+    property var previousEpisode: ({})
+    function refreshPrevious() {
+        var ids = ("" + core.setting("player.recent", "")).split(",")
+        for (var i = 0; i < ids.length; i++) {
+            var id = parseInt(ids[i])
+            if (id > 0 && id !== player.episodeId) {
+                var e = core.episode(id)
+                if (e.episodeId) {
+                    previousEpisode = e
+                    return
+                }
+            }
+        }
+        previousEpisode = ({})
+    }
+    onExpandedChanged: {
+        // (256, Thomas) The duration row closes when the bar is folded or
+        // unfolded - it stayed open over the folded bar
+        sleepSelectorOpen = false
+        if (expanded) refreshPrevious()
+    }
     function speedText(value) {
         var decimals = Math.round(value * 100) % 10 === 0 ? 1 : 2
         return Number(value).toLocaleString(Qt.locale(), "f", decimals) + "×"
@@ -205,9 +251,9 @@ Rectangle {
     Connections {
         target: player
         onEpisodeIdChanged: {
-            playerBar.chosenTab = ""
             playerBar.refreshBookmarks()
             playerBar.refreshUpNext()
+            playerBar.refreshPrevious()
         }
         onFollowUpIdChanged: playerBar.refreshUpNext()
     }
@@ -215,10 +261,13 @@ Rectangle {
         target: core
         onBookmarksChanged: playerBar.refreshBookmarks()
         onQueueChanged: playerBar.refreshUpNext()
+        // (253) "Recently heard" changes with dataChanged (noteHeard)
+        onDataChanged: if (playerBar.expanded) playerBar.refreshPrevious()
     }
     Component.onCompleted: {
         refreshBookmarks()
         refreshUpNext()
+        refreshPrevious()
     }
 
     // Sleep timer: the moon button opens a row of durations above the bar
@@ -231,7 +280,7 @@ Rectangle {
     }
 
     readonly property real sleepRowHeight: Theme.itemSizeSmall
-    readonly property var sleepOptions: [5, 10, 15, 30, 45, 60, 90]
+    readonly property var sleepOptions: [5, 10, 20, 30, 45, 60]
 
     readonly property real collapsedHeight: Theme.itemSizeLarge
 
@@ -287,8 +336,9 @@ Rectangle {
         Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
         Behavior on opacity { FadeAnimation { duration: 150 } }
 
-        // The durations, "end of episode" and the unit / stop cell
-        readonly property real cellWidth: (width - 2 * Theme.horizontalPageMargin) / (playerBar.sleepOptions.length + 3)
+        // The durations, "end of episode" (two cells wide since 255) and
+        // the unit / stop cell
+        readonly property real cellWidth: (width - 2 * Theme.horizontalPageMargin) / (playerBar.sleepOptions.length + 4)
 
         Row {
             x: Theme.horizontalPageMargin
@@ -327,16 +377,24 @@ Rectangle {
             // End of the episode
             BackgroundItem {
                 id: endOption
-                width: sleepRow.cellWidth
+                width: 2 * sleepRow.cellWidth
                 height: parent.height
 
+                // (255, usability check 254: "End" was not understood) The
+                // full text; it wraps to two lines before it shrinks (check
+                // in the largest font size, test 4.207)
                 Label {
+                    id: endLabel
                     anchors.centerIn: parent
-                    width: parent.width
+                    width: parent.width - Theme.paddingSmall
                     horizontalAlignment: Text.AlignHCenter
-                    fontSizeMode: Text.HorizontalFit
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                    fontSizeMode: Text.Fit
                     minimumPixelSize: Theme.fontSizeTiny
-                    text: qsTr("End")
+                    height: parent.height
+                    verticalAlignment: Text.AlignVCenter
+                    text: qsTr("End of episode")
                     font.pixelSize: Theme.fontSizeExtraSmall
                     font.bold: player.stopAtEnd
                     color: (player.stopAtEnd || endOption.highlighted) ? Theme.highlightColor : Theme.primaryColor
@@ -414,10 +472,20 @@ Rectangle {
             BackgroundItem {
                 width: parent.width - nextButton.width - parent.spacing
                        - expandIcon.width - parent.spacing
+                       - playGap.width - parent.spacing
                        - playButton.width - parent.spacing
                 height: parent.height
                 anchors.verticalCenter: parent.verticalCenter
-                onClicked: playerBar.openEpisode()
+                property real _x0: 0
+                property real _y0: 0
+                onPressed: {
+                    _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false
+                    console.warn("PlayerBar touch on the title: x=" + Math.round(mouse.x) + " y=" + Math.round(mouse.y))
+                }
+                onPositionChanged: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
+                onReleased: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "release")
+                // a swipe that began on the title is no tap
+                onClicked: if (!playerBar._swiped) playerBar.openEpisode()
 
                 Row {
                     anchors.fill: parent
@@ -471,7 +539,7 @@ Rectangle {
                             Label {
                                 id: timeLeft
                                 visible: player.duration > 0
-                                text: "−" + TimeFormat.clock(player.duration - player.position) + " · "
+                                text: "−" + TimeFormat.clock(Math.max(0, player.duration - player.position)) + " · "
                                 color: Theme.secondaryColor
                                 font.pixelSize: Theme.fontSizeTiny
                             }
@@ -494,7 +562,9 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 icon.source: playerBar.expanded ? "image://theme/icon-m-down" : "image://theme/icon-m-up"
                 icon.color: playerBar.expanded ? Theme.highlightColor : Theme.secondaryColor
+                HoldNameBubble { id: expandBubble; attached: true; name: playerBar.expanded ? qsTr("Close player") : qsTr("Open player") }
                 onClicked: {
+                    if (expandBubble.takeHeld()) return
                     playerBar.expanded = !playerBar.expanded
                     if (!playerBar.expanded) {
                         playerBar.speedChoicesOpen = false
@@ -504,20 +574,41 @@ Rectangle {
 
             // (167) Next chapter, after the last one the next episode (as
             // the cover); the sleep timer moved to the expanded area
+            // (256, Thomas pressed it instead of play - and it marks the
+            // episode as played: mockup m5, variant A) smaller and dimmer,
+            // with a gap before the play button
             IconButton {
                 id: nextButton
                 anchors.verticalCenter: parent.verticalCenter
+                scale: 0.8
+                opacity: 0.75
                 icon.source: "image://theme/icon-m-next"
                 icon.color: Theme.primaryColor
-                onClicked: player.next()
+                HoldNameBubble { id: nextBubble; attached: true; name: qsTr("Next chapter or episode") }
+                onClicked: {
+                    if (nextBubble.takeHeld()) return
+                    player.next()
+                }
             }
 
+            Item {
+                id: playGap
+                width: Theme.paddingLarge
+                height: 1
+            }
+
+            // (256) Large, the same symbol as on the episode page and in the
+            // expanded bar
             IconButton {
                 id: playButton
                 anchors.verticalCenter: parent.verticalCenter
-                icon.source: player.playing ? "image://theme/icon-m-pause" : "image://theme/icon-m-play"
+                icon.source: player.playing ? "image://theme/icon-l-pause" : "image://theme/icon-l-play"
                 icon.color: Theme.primaryColor
-                onClicked: player.toggle()
+                HoldNameBubble { id: playBubble; attached: true; name: player.playing ? qsTr("Pause") : qsTr("Play") }
+                onClicked: {
+                    if (playBubble.takeHeld()) return
+                    player.toggle()
+                }
 
                 BusyIndicator {
                     anchors.centerIn: parent
@@ -581,7 +672,7 @@ Rectangle {
                         anchors.centerIn: parent
                         width: Theme.itemSizeExtraSmall
                         seconds: -player.skipBackSeconds
-                        onClicked: player.skip(seconds)
+                        onSkip: player.skip(seconds)
                     }
                 }
                 ToolbarButton {
@@ -590,27 +681,78 @@ Rectangle {
                     height: Theme.itemSizeSmall
                     active: playerBar.speedChoicesOpen
                     text: playerBar.speedText(player.rate)
-                    onClicked: playerBar.speedChoicesOpen = !playerBar.speedChoicesOpen
+                    HoldNameBubble { id: speedBubble; attached: true; name: qsTr("Speed") }
+                    onClicked: {
+                        if (speedBubble.takeHeld()) return
+                        playerBar.speedChoicesOpen = !playerBar.speedChoicesOpen
+                    }
                 }
                 ToolbarButton {
+                    id: bookmarkButton
                     width: controls.cellWidth
                     symbolScale: 0.8
                     height: Theme.itemSizeSmall
-                    iconSource: "image://theme/icon-m-favorite"
+                    // (253) Held above its neighbours while the name
+                    // bubble is shown, so it is never painted over
+                    z: bookmarkBubble.shown ? 100 : 0
+                    bookmarkMark: 0
+                    // (256, Thomas) the number of bookmarks, as on the
+                    // episode page and the panel
+                    badge: playerBar.bookmarkList.length > 0 ? "" + playerBar.bookmarkList.length : ""
+                    property bool _held: false
+                    onPressAndHold: {
+                        _held = true
+                        bookmarkBubble.shown = true
+                    }
+                    onPressedChanged: if (!pressed) bookmarkBubble.shown = false
+                    onCanceled: {
+                        _held = false
+                        bookmarkBubble.shown = false
+                    }
                     onClicked: {
+                        if (_held) {
+                            _held = false
+                            return
+                        }
                         // (170/171) Then name and note in the docked panel,
                         // as on the episode page
                         appWindow.addBookmarkNow()
                     }
+                    HoldNameBubble {
+                        id: bookmarkBubble
+                        name: qsTr("Bookmark")
+                    }
                 }
                 ToolbarButton {
+                    id: sleepButton
                     width: controls.cellWidth
                     symbolScale: 0.8
                     height: Theme.itemSizeSmall
+                    z: sleepBubble.shown ? 100 : 0
                     visible: !appWindow.sleepTimer.ending
                     moon: true
                     active: playerBar.sleepSelectorOpen || appWindow.sleepTimer.active || player.stopAtEnd
-                    onClicked: playerBar.sleepSelectorOpen = !playerBar.sleepSelectorOpen
+                    property bool _held: false
+                    onPressAndHold: {
+                        _held = true
+                        sleepBubble.shown = true
+                    }
+                    onPressedChanged: if (!pressed) sleepBubble.shown = false
+                    onCanceled: {
+                        _held = false
+                        sleepBubble.shown = false
+                    }
+                    onClicked: {
+                        if (_held) {
+                            _held = false
+                            return
+                        }
+                        playerBar.sleepSelectorOpen = !playerBar.sleepSelectorOpen
+                    }
+                    HoldNameBubble {
+                        id: sleepBubble
+                        name: qsTr("Sleep timer · stop after this episode")
+                    }
                 }
                 // In the last minute of the sleep timer: "+5" (53)
                 ToolbarButton {
@@ -629,7 +771,7 @@ Rectangle {
                         anchors.centerIn: parent
                         width: Theme.itemSizeExtraSmall
                         seconds: player.skipForwardSeconds
-                        onClicked: player.skip(seconds)
+                        onSkip: player.skip(seconds)
                     }
                 }
             }
@@ -661,231 +803,43 @@ Rectangle {
                 }
             }
 
-            // (178) Chapters, bookmarks and the next playlist episodes as
-            // tabs over one area of fixed height (before: one below the
-            // other, "Up next" only without chapters and bookmarks). Tabs
-            // without content are left out; the first one with content is
-            // chosen, a choice holds until the next episode.
-            Row {
-                id: barTabs
+            // (255, usability check 254: "Previous" stood under the
+            // heading "Up next") One line above the tabs, on every tab; only
+            // while there is a previous episode. Small and subdued like a
+            // hint; a tap plays it from its saved position (from the start
+            // when it was heard to the end) - playOrToggle as in the lists.
+            BackgroundItem {
                 width: parent.width
-                Repeater {
-                    model: playerBar.tabs
-                    // By id (145)
-                    BackgroundItem {
-                        id: barTabItem
-                        width: barTabs.width / Math.max(1, playerBar.tabs.length)
-                        height: Theme.itemSizeExtraSmall
-                        readonly property bool current: playerBar.currentTab === modelData.key
-                        onClicked: playerBar.chosenTab = modelData.key
-                        Label {
-                            anchors.centerIn: parent
-                            width: parent.width - 2 * Theme.paddingSmall
-                            horizontalAlignment: Text.AlignHCenter
-                            truncationMode: TruncationMode.Fade
-                            text: modelData.text
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: barTabItem.current || barTabItem.highlighted ? Theme.highlightColor : Theme.secondaryColor
-                        }
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width - 2 * Theme.paddingLarge
-                            height: Theme.paddingSmall / 2
-                            color: Theme.highlightColor
-                            visible: barTabItem.current
-                        }
-                    }
-                }
-            }
-
-            Item {
-                id: tabArea
-                width: parent.width
-                height: 5 * Theme.itemSizeSmall
-
-                ChapterList {
-                    width: parent.width
-                    visible: playerBar.currentTab === "chapters"
-                    visibleRows: 5
-                    expanded: playerBar.expanded && visible
-                }
-
-                // (167) Bookmarks of the episode; tap jumps there
-                SilicaListView {
-                    id: bookmarkView
-                    anchors.fill: parent
-                    visible: playerBar.currentTab === "bookmarks"
-                    clip: true
-                    interactive: contentHeight > height
-                    model: playerBar.bookmarkList
-                    // (182) A ListItem with the menu of the episode page (183:
-                    // without "Open episode" - the cover opens it)
-                    delegate: ListItem {
-                        id: bookmarkRow
-                        width: bookmarkView.width
-                        // (173) The note below the name, as on the bookmarks page
-                        readonly property bool hasNote: (modelData.note || "").length > 0
-                        contentHeight: hasNote ? Math.max(Theme.itemSizeMedium, bookmarkText.height + 2 * Theme.paddingSmall)
-                                               : Theme.itemSizeSmall
-                        onClicked: player.seek(modelData.position)
-                        menu: Component {
-                            ContextMenu {
-                                MenuItem {
-                                    text: qsTr("Rename / note")
-                                    onClicked: appWindow.editBookmark(modelData)
-                                }
-                                MenuItem {
-                                    text: qsTr("Delete bookmark")
-                                    onClicked: appWindow.remorseDeleteBookmark(modelData.bookmarkId)
-                                }
-                            }
-                        }
-                        Label {
-                            id: bookmarkTime
-                            x: Theme.horizontalPageMargin
-                            // (177) On the line of the name, not centred on name
-                            // and note (179: by y - anchors only reach
-                            // siblings, the name is inside the Column)
-                            y: bookmarkText.y + bookmarkName.baselineOffset - baselineOffset
-                            width: Theme.itemSizeMedium
-                            text: TimeFormat.clock(modelData.position)
-                            font.pixelSize: Theme.fontSizeExtraSmall
-                            color: bookmarkRow.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
-                        }
-                        Column {
-                            id: bookmarkText
-                            anchors {
-                                left: bookmarkTime.right
-                                leftMargin: Theme.paddingMedium
-                                right: parent.right
-                                rightMargin: Theme.horizontalPageMargin
-                                verticalCenter: parent.verticalCenter
-                            }
-                            Label {
-                                id: bookmarkName
-                                width: parent.width
-                                // (170) Numbered: not "Bookmark" under "Bookmarks"
-                                text: (modelData.title || "").length > 0 ? modelData.title
-                                                                         : qsTr("Bookmark %1").arg(index + 1)
-                                truncationMode: TruncationMode.Fade
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: bookmarkRow.highlighted ? Theme.highlightColor : Theme.primaryColor
-                            }
-                            Label {
-                                visible: bookmarkRow.hasNote
-                                width: parent.width
-                                text: modelData.note || ""
-                                wrapMode: Text.Wrap
-                                maximumLineCount: 2
-                                elide: Text.ElideRight
-                                font.pixelSize: Theme.fontSizeExtraSmall
-                                color: Theme.secondaryHighlightColor
-                            }
-                        }
-                    }
-                    VerticalScrollDecorator {}
-                }
-
-                // (167) The next playlist episodes in the order they will
-                // play; tap plays one
-                SilicaListView {
-                    id: upNextView
-                    anchors.fill: parent
-                    visible: playerBar.currentTab === "next"
-                    clip: true
-                    interactive: contentHeight > height
-                    model: playerBar.upNextList
-                    footer: BackgroundItem {
-                        width: upNextView.width
-                        height: Theme.itemSizeExtraSmall
-                        visible: playerBar.upNextList.length > 0
-                        onClicked: {
-                            playerBar.expanded = false
-                            appWindow.showPlaylist()
-                        }
-                        Label {
-                            anchors.right: parent.right
-                            anchors.rightMargin: Theme.horizontalPageMargin
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("Full playlist") + " \u203a"
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
-                        }
-                    }
-                    // (183) Menu: play next, remove; reordering on the
-                    // playlist page (footer)
-                    delegate: ListItem {
-                        id: nextRow
-                        width: upNextView.width
-                        contentHeight: Theme.itemSizeSmall
-                        onClicked: player.playOrToggle(modelData.episodeId, modelData.followUp !== true)
-                        // (207) The trailer's follow-up is not in the playlist
-                        menu: modelData.followUp === true ? null : queueMenu
-                        Component {
-                            id: queueMenu
-                            ContextMenu {
-                                MenuItem {
-                                    visible: index > (playerBar.upNextList.length > 0
-                                                      && playerBar.upNextList[0].followUp === true ? 1 : 0)
-                                    text: qsTr("Play next")
-                                    onClicked: core.queueAdd(modelData.episodeId, true)
-                                }
-                                MenuItem {
-                                    text: qsTr("Remove from playlist")
-                                    onClicked: core.queueRemove(modelData.episodeId)
-                                }
-                            }
-                        }
-                        EpisodeArt {
-                            id: nextArt
-                            x: Theme.horizontalPageMargin
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: Theme.iconSizeMedium
-                            height: Theme.iconSizeMedium
-                            episodeImageUrl: modelData.episodeImageUrl || ""
-                            coverUrl: modelData.coverUrl || ""
-                            fallbackText: modelData.podcastTitle || ""
-                            badgeFactor: 0.46
-                        }
-                        Column {
-                            anchors {
-                                left: nextArt.right
-                                leftMargin: Theme.paddingMedium
-                                right: parent.right
-                                rightMargin: Theme.horizontalPageMargin
-                                verticalCenter: parent.verticalCenter
-                            }
-                            Label {
-                                width: parent.width
-                                text: modelData.title
-                                truncationMode: TruncationMode.Fade
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: nextRow.highlighted ? Theme.highlightColor : Theme.primaryColor
-                            }
-                            Label {
-                                width: parent.width
-                                text: modelData.followUp === true
-                                      ? qsTr("After the trailer · %1").arg(modelData.podcastTitle)
-                                      : modelData.podcastTitle
-                                truncationMode: TruncationMode.Fade
-                                font.pixelSize: Theme.fontSizeTiny
-                                color: nextRow.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
-                            }
-                        }
-                    }
-                    VerticalScrollDecorator {}
-                }
+                height: playerBar.previousEpisode.episodeId ? Theme.itemSizeExtraSmall : 0
+                visible: playerBar.previousEpisode.episodeId !== undefined
+                onClicked: player.playOrToggle(playerBar.previousEpisode.episodeId, false)
                 Label {
                     x: Theme.horizontalPageMargin
                     width: parent.width - 2 * Theme.horizontalPageMargin
-                    height: Theme.itemSizeSmall
-                    visible: playerBar.currentTab === "next" && playerBar.upNextList.length === 0
-                    verticalAlignment: Text.AlignVCenter
-                    text: qsTr("The playlist is empty")
-                    color: Theme.secondaryHighlightColor
-                    font.pixelSize: Theme.fontSizeSmall
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "↶ " + qsTr("Previous: %1").arg(playerBar.previousEpisode.title || "")
                     truncationMode: TruncationMode.Fade
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                }
+            }
+
+            // (178) Chapters, bookmarks and the next playlist episodes as
+            // tabs over one area of fixed height; (256) Notes as well, and
+            // in its own component, shared with the landscape panel
+            PlayerTabs {
+                rows: 5
+                expanded: playerBar.expanded
+                bookmarkList: playerBar.bookmarkList
+                upNextList: playerBar.upNextList
+                // (268) Thomas: also close by swiping down over the tabs
+                onSwipedDown: {
+                    playerBar.expanded = false
+                    playerBar.speedChoicesOpen = false
+                }
+                onOpenPlaylist: {
+                    playerBar.expanded = false
+                    appWindow.showPlaylist()
                 }
             }
             Item { width: 1; height: Theme.paddingMedium }

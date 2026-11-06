@@ -12,6 +12,15 @@ BackgroundItem {
     property string text: ""
     property string label: ""
     property bool moon: false
+    // (254) Playlist symbol of our own: -1 none, 0 "+" (add), 1 check mark
+    // (in the playlist) - see PlaylistIcon
+    property int playlistMark: -1
+    // (255) Bookmark ribbon of our own: -1 none, 0 outline, 1 filled
+    // - see BookmarkIcon
+    property int bookmarkMark: -1
+    // (256) A small number at the bottom right of the symbol (bookmark count
+    // in the player bar, which has no caption row)
+    property string badge: ""
     property bool active: false
     // (181) Smaller symbol (player bar)
     property real symbolScale: 1.0
@@ -47,6 +56,36 @@ BackgroundItem {
             anchors.centerIn: parent
             text: button.text
             font.pixelSize: Theme.fontSizeLarge
+            color: button.tint
+        }
+
+        PlaylistIcon {
+            visible: button.playlistMark >= 0
+            anchors.centerIn: parent
+            width: Math.round(Theme.iconSizeMedium * 0.8)
+            checked: button.playlistMark === 1
+            color: button.tint
+        }
+
+        BookmarkIcon {
+            visible: button.bookmarkMark >= 0
+            anchors.centerIn: parent
+            width: Math.round(Theme.iconSizeMedium * 0.9)
+            filled: button.bookmarkMark === 1
+            color: button.tint
+        }
+
+        Label {
+            visible: button.badge.length > 0
+            anchors {
+                left: parent.right
+                leftMargin: -Theme.paddingSmall
+                bottom: parent.bottom
+                bottomMargin: -Theme.paddingSmall
+            }
+            text: button.badge
+            font.pixelSize: Theme.fontSizeTiny
+            font.bold: true
             color: button.tint
         }
 

@@ -79,7 +79,14 @@ Page {
 
             SettingsEntry {
                 title: qsTr("Synchronization")
-                summary: page.settingsVersion >= 0 && (!core.syncConfigured ? qsTr("no account")
+                // (254, usability audit #4) Before an account is set up,
+                // "no account" alone didn't say what this is for - "Nextcloud"
+                // or "gpodder.net" means nothing to a newcomer either. Once
+                // configured those names (and the user/last sync) are the
+                // useful summary, so only the unconfigured case gets the
+                // plain-words line.
+                summary: page.settingsVersion >= 0 && (!core.syncConfigured
+                         ? qsTr("Keeps subscriptions and listening progress the same on all your devices")
                          : page.join([core.setting("sync.backend", "nextcloud") === "nextcloud" ? "Nextcloud" : "gpodder.net",
                                       core.setting("sync.user", ""),
                                       core.syncing ? qsTr("synchronizing …")
@@ -118,7 +125,9 @@ Page {
 
             SettingsEntry {
                 title: qsTr("Import and export")
-                summary: qsTr("OPML, databases, archive folders")
+                // (254, usability audit pattern 5) "OPML" says nothing to a
+                // newcomer; the import page itself explains it
+                summary: qsTr("Subscription lists of other apps, databases, archive folders")
                 target: Qt.resolvedUrl("ImportExportPage.qml")
             }
 
@@ -127,14 +136,14 @@ Page {
             Label {
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                horizontalAlignment: Text.AlignHCenter
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryColor
                 text: "Sailcast " + core.version
             }
 
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 text: qsTr("About Sailcast")
                 onClicked: pageStack.push(Qt.resolvedUrl("AboutPage.qml"))
             }

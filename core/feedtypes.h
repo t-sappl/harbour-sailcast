@@ -17,6 +17,21 @@ struct ParsedChapter
     QString image;
 };
 
+// (244) podcast:alternateEnclosure: another version of the episode's media
+// (video, other bitrate, HLS stream); the first http(s) podcast:source
+struct ParsedAlternate
+{
+    QString url;
+    QString mimeType;
+    qint64 length = 0;
+    int bitrate = 0;
+    int height = 0;
+    QString title;
+    QString lang;
+    QString rel;
+    bool isDefault = false;
+};
+
 struct ParsedEpisode
 {
     QString guid;           // falls back to the media URL if the feed has none
@@ -35,6 +50,7 @@ struct ParsedEpisode
     int season = 0;         // itunes:season / podcast:season, 0 = none (83)
     int episodeNumber = 0;  // itunes:episode / podcast:episode, 0 = none (83)
     QString type;           // itunes:episodeType "trailer" or "bonus"; empty = "full" (193)
+    QList<ParsedAlternate> alternates; // podcast:alternateEnclosure with a source (244)
 };
 
 // podcast:funding (83): a link to support the podcast

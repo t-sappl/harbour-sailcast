@@ -3,9 +3,9 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 
 // Entry of the main settings page that opens a sub-page (88, as in
-// Sailfeed): title, a one-line summary of the current values below it and
-// an arrow on the right. The arrow is a theme image (Silica's Icon type is
-// avoided in Sailcast).
+// Sailfeed): title and a one-line summary of the current values below it.
+// (251) The big arrow went (Thomas: ugly); (265) a subtle one is back
+// (PageArrow, mockup m11), as on the other rows that open a page.
 BackgroundItem {
     id: root
 
@@ -22,8 +22,8 @@ BackgroundItem {
         anchors {
             left: parent.left
             leftMargin: Theme.horizontalPageMargin
-            right: arrow.left
-            rightMargin: Theme.paddingMedium
+            right: parent.right
+            rightMargin: Theme.horizontalPageMargin
             verticalCenter: parent.verticalCenter
         }
         Label {
@@ -45,13 +45,5 @@ BackgroundItem {
         }
     }
 
-    Image {
-        id: arrow
-        anchors {
-            right: parent.right
-            rightMargin: Theme.horizontalPageMargin
-            verticalCenter: parent.verticalCenter
-        }
-        source: "image://theme/icon-m-right?" + (root.highlighted ? Theme.highlightColor : Theme.primaryColor)
-    }
+    PageArrow {}
 }

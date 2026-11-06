@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.2
+Version:    1.3
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -59,6 +59,24 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Fri Nov 06 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.3-1
+- First release on OpenRepos.
+  Video podcasts: picture on the episode page, full screen, "sound only",
+  audio and video versions of a feed (podcast:alternateEnclosure), HLS
+  streams, a question before streaming video over mobile data, video
+  files in Videos/Podcasts.
+  Easier to use: one consistent style for all buttons, an arrow on every
+  row that opens a page, swipe the player bar up to open and down to
+  close, names of the player buttons on press and hold, "Previous" in the
+  player, show notes in the player, a playlist button in every episode
+  row, the global speed in the settings, Downloads reachable from every
+  main page, clearer wording throughout.
+  Also: sort the podcast list, press and hold the skip buttons for 1 min
+  steps, "Mark all as played ...", keep only the newest episode unplayed
+  after subscribing, duplicate subscriptions merged.
+  Fixed: the speed applies from the first second (next episode, video);
+  an episode skipped in the middle keeps its position.
+
 * Sun Nov 01 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.2-1
 - Released on GitHub; the first version for OpenRepos and the Jolla
   Store (1.1 was only on GitHub).

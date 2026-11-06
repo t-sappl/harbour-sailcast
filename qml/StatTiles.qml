@@ -9,6 +9,8 @@ import Sailfish.Silica 1.0
 Flow {
     id: grid
     property var tiles: []
+    // (253) A tile with "tappable: true" reacts to a tap (and shows "›")
+    signal tileClicked(int index)
     x: Theme.horizontalPageMargin
     width: (parent ? parent.width : 0) - 2 * Theme.horizontalPageMargin
     // (192) No gap: 2 or 4 tiles in two columns, otherwise three (five in
@@ -45,7 +47,13 @@ Flow {
             width: grid.widthAt(index)
             height: grid.tileHeight
             radius: Theme.paddingSmall
-            color: Theme.rgba(Theme.highlightBackgroundColor, 0.12)
+            color: Theme.rgba(Theme.highlightBackgroundColor, tileMouse.pressed ? 0.3 : 0.12)
+            MouseArea {
+                id: tileMouse
+                anchors.fill: parent
+                enabled: modelData.tappable === true
+                onClicked: grid.tileClicked(index)
+            }
             Column {
                 id: tileColumn
                 x: Theme.paddingMedium
@@ -60,7 +68,7 @@ Flow {
                 }
                 Label {
                     width: parent.width
-                    text: modelData.label
+                    text: modelData.label + (modelData.tappable === true ? " ›" : "")
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSizeTiny
                     color: Theme.secondaryHighlightColor

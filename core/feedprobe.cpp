@@ -282,6 +282,28 @@ void FeedProbe::onFinished(QNetworkReply *reply)
         m_result.link = feed.link;
         m_result.coverUrl = feed.coverUrl;
         m_result.episodes = feed.episodes.size();
+        // (245) A video podcast: most of its newest files are video, or an
+        // episode offers a video version
+        {
+            int videos = 0;
+            const int checked = qMin(feed.episodes.size(), 10);
+            m_result.video = false;
+            for (int i = 0; i < feed.episodes.size(); ++i) {
+                const ParsedEpisode &e = feed.episodes.at(i);
+                if (i < checked && e.mimeType.startsWith(QLatin1String("video/"))) {
+                    ++videos;
+                }
+                for (int a = 0; a < e.alternates.size(); ++a) {
+                    const QString type = e.alternates.at(a).mimeType.toLower();
+                    if (type.startsWith(QLatin1String("video/")) || type.contains(QLatin1String("mpegurl"))) {
+                        m_result.video = true;
+                    }
+                }
+            }
+            if (checked > 0 && videos * 2 > checked) {
+                m_result.video = true;
+            }
+        }
         m_result.description = feed.description;
         // The newest few, so the user sees what the podcast is about (50)
         QList<ParsedEpisode> sorted = feed.episodes;

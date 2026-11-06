@@ -800,6 +800,14 @@ int cmdParseFile(const QString &path)
         if (!e.description.isEmpty()) {
             out() << "      " << elide(e.description, 90) << nl;
         }
+        // (244) podcast:alternateEnclosure
+        for (int a = 0; a < e.alternates.size(); ++a) {
+            const ParsedAlternate &alt = e.alternates.at(a);
+            out() << "      alternate: " << alt.mimeType
+                  << (alt.height > 0 ? QStringLiteral(" %1p").arg(alt.height) : QString())
+                  << (alt.title.isEmpty() ? QString() : QStringLiteral(" \"%1\"").arg(alt.title))
+                  << "  " << alt.url << nl;
+        }
     }
     return feed.isEmpty() ? 1 : 0;
 }
@@ -837,11 +845,17 @@ int cmdAuth(Database &db, const QString &dbPath, qint64 id, const QString &user)
 int cmdStats(Database &db)
 {
     const DatabaseStats s = db.stats();
+    qint64 media = 0;
+    // Computed before the output (evaluation order of << is not fixed in C++11)
+    const qint64 wall = db.listenedSeconds(-1, &media);
     out() << "Podcasts:    " << s.podcasts << nl
           << "Episodes:    " << s.episodes << nl
           << "Played:      " << s.played << nl
           << "Unplayed:    " << s.unplayed << nl
-          << "In progress: " << s.inProgress << nl;
+          << "In progress: " << s.inProgress << nl
+          // (244) listening log
+          << "Listened:    " << formatDuration(int(wall)) << " (episode time "
+          << formatDuration(int(media)) << ")" << nl;
     return 0;
 }
 
@@ -1442,7 +1456,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("sailcast-cli"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.2 (build 240)"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.3 (build 269)"));
 
     const QString defaultDb = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
             + QStringLiteral("/sailcast-cli/sailcast.db");
@@ -1489,6 +1503,7 @@ int main(int argc, char *argv[])
             "  auth ID USER           set the login of a feed (asks for the password)\n"
             "  auth ID                remove the login of a feed\n"
             "  stats                  totals\n"
+            "  merge-duplicates       merge subscriptions whose addresses differ only in case\n"
             "\nSync:\n"
             "  sync-setup nextcloud|gpodder SERVER USER [DEVICE]\n"
             "                         set the sync account (asks for the password)\n"
@@ -1782,6 +1797,22 @@ int main(int argc, char *argv[])
     }
     if (command == QLatin1String("stats")) {
         return cmdStats(db);
+    }
+    // (248) As the app does once after its start (redirects are merged by
+    // the app during feed updates)
+    if (command == QLatin1String("merge-duplicates")) {
+        const QList<QPair<qint64, qint64>> pairs = db.caseDuplicates();
+        if (pairs.isEmpty()) {
+            out() << "No duplicate subscriptions" << nl;
+            return 0;
+        }
+        for (int i = 0; i < pairs.size(); ++i) {
+            const PodcastRow from = db.podcast(pairs.at(i).first);
+            const PodcastRow into = db.podcast(pairs.at(i).second);
+            out() << "Merging " << from.url << " into " << into.url << " (" << into.title << ") ... ";
+            out() << (db.mergePodcasts(from.id, into.id) ? "done" : "failed: " + db.lastError()) << nl;
+        }
+        return 0;
     }
 
     err() << "Unknown command: " << command << " (see --help)" << nl;

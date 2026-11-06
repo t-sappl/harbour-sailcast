@@ -37,9 +37,9 @@ Column {
 
     Item { width: 1; height: Theme.paddingSmall }
 
-    Button {
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: root.buttonWidth
+    ActionPill {
+        kind: "primary"
+        x: (parent.width - width) / 2
         text: qsTr("Discover podcasts")
         onClicked: pageStack.push(Qt.resolvedUrl("pages/SearchPage.qml"))
     }
@@ -48,9 +48,9 @@ Column {
         width: parent.width
         spacing: Theme.paddingSmall
 
-        Button {
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: root.buttonWidth
+        ActionPill {
+            kind: "secondary"
+            x: (parent.width - width) / 2
             enabled: !core.syncing
             text: !core.syncConfigured ? qsTr("Set up sync")
                                        : (core.syncing ? qsTr("Synchronizing …") : qsTr("Synchronize now"))
@@ -75,11 +75,23 @@ Column {
         }
     }
 
-    Button {
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: root.buttonWidth
+    ActionPill {
+        kind: "secondary"
+        x: (parent.width - width) / 2
         text: qsTr("Import OPML or gPodder")
         onClicked: pageStack.push(Qt.resolvedUrl("pages/ImportExportPage.qml"))
+    }
+
+    // (253, usability audit #3/#26) "OPML" and "gPodder" are insider words;
+    // one line under the button says what it actually does
+    Label {
+        x: Theme.horizontalPageMargin
+        width: parent.width - 2 * Theme.horizontalPageMargin
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.Wrap
+        font.pixelSize: Theme.fontSizeExtraSmall
+        color: Theme.secondaryHighlightColor
+        text: qsTr("Bring your subscription list (a file) from another podcast app")
     }
 
     // (228) The buttons go with the first podcast - where to find all

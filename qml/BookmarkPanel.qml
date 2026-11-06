@@ -86,7 +86,7 @@ DockedPanel {
             Label {
                 x: Theme.horizontalPageMargin
                 anchors.verticalCenter: parent.verticalCenter
-                text: "\u2605 " + qsTr("Bookmark at %1").arg(TimeFormat.clock(bookmarkPanel.seconds))
+                text: qsTr("Bookmark at %1").arg(TimeFormat.clock(bookmarkPanel.seconds))
                 color: Theme.highlightColor
             }
             IconButton {

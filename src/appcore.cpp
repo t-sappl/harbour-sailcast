@@ -24,6 +24,7 @@
 #include <QRegularExpression>
 #include <QSqlQuery>
 #include <QStandardPaths>
+#include <QDebug>
 #include <QTimer>
 #include <QUrl>
 #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
@@ -99,6 +100,8 @@ AppCore::AppCore(QObject *parent)
     m_sync = new SyncEngine(m_database, m_updater, this);
     m_archiver = new Archiver(m_database, m_updater, m_downloads, this);
     m_archiver->setArchiveRoot(archiveRoot());
+    m_archiver->setVideoRoot(videoRoot());
+    m_downloads->setVideoRoot(videoRoot());
     m_chapters = new ChaptersLoader(m_database, this);
     m_probe = new FeedProbe(this);
     connect(m_probe, &FeedProbe::finished, this, &AppCore::onFeedChecked);
@@ -441,6 +444,12 @@ AppCore::AppCore(QObject *parent)
         m_updateTotal = total;
         emit updatingChanged();
     });
+    // (248) The same podcast twice (a feed moved to another subscription's
+    // address): merged at once, the update goes on with the remaining one
+    connect(m_updater, &FeedUpdater::duplicateFound, this, &AppCore::mergeDuplicate, Qt::DirectConnection);
+    // (248) Subscriptions differing only in the case of the address: merged
+    // once after the start
+    QTimer::singleShot(3000, this, &AppCore::mergeCaseDuplicates);
     connect(m_updater, &FeedUpdater::podcastUpdated, this, [this](qint64 id, int newEpisodes) {
         emit podcastRefreshed(int(id), true);
         // Loaded for "Anhören ohne Abo" (147): not counted as new episodes
@@ -492,7 +501,8 @@ AppCore::AppCore(QObject *parent)
         emit dataChanged();
         if (!m_sync->isRunning() && m_updateRegular) {
             emitMessage(m_updateFailed > 0
-                         ? tr("%n new episodes, %1 feeds failed", "", m_updateNew).arg(m_updateFailed)
+                         ? tr("%n new episodes", "", m_updateNew) + QStringLiteral(", ")
+                           + tr("%n feeds failed", "", m_updateFailed)
                          : tr("%n new episodes", "", m_updateNew));
         }
         m_updateNew = 0;
@@ -613,8 +623,20 @@ void AppCore::openDatabase()
 bool AppCore::isKept(const EpisodeRow &e) const
 {
     // (209) In the archive folder and named there (kept by "Save in Music"
-    // or archived) - a file of "Downloads in Music" is a normal download
-    return e.downloaded && isInside(e.downloadPath, archiveRoot()) && !e.archiveFile.isEmpty();
+    // or archived) - a file of "Downloads in Music" is a normal download;
+    // (245) video files in the Videos folder likewise
+    return e.downloaded && !e.archiveFile.isEmpty()
+            && (isInside(e.downloadPath, archiveRoot()) || isInside(e.downloadPath, videoRoot()));
+}
+
+QString AppCore::videoRoot() const
+{
+    return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation) + QStringLiteral("/Podcasts");
+}
+
+QString AppCore::mediaRootFor(const EpisodeRow &e) const
+{
+    return e.mimeType.startsWith(QLatin1String("video/")) ? videoRoot() : archiveRoot();
 }
 
 QString AppCore::archiveRoot() const
@@ -627,7 +649,7 @@ QString AppCore::archiveRoot() const
 
 QString AppCore::version() const
 {
-    return QStringLiteral("1.2 (build 240)");
+    return QStringLiteral("1.3 (build 269)");
 }
 
 void AppCore::reloadQueue()
@@ -1773,6 +1795,7 @@ void AppCore::onFeedChecked(const FeedProbeResult &r)
         map.insert(QStringLiteral("next"), rhythm.value(QStringLiteral("next")));
     }
     map.insert(QStringLiteral("episodes"), r.episodes);
+    map.insert(QStringLiteral("video"), r.video);
     map.insert(QStringLiteral("description"), r.description);
     QVariantList latest;
     for (int i = 0; i < r.latest.size(); ++i) {
@@ -1992,7 +2015,37 @@ QVariantMap AppCore::episode(int episodeId) const
     for (int i = 0; i < list.size(); ++i) {
         sources.append(list.at(i).url.toString(QUrl::FullyEncoded));
     }
+    // (244) Video version preferred for the podcast: streamed first, the
+    // audio (download, original, archive) as the fallback
+    const ParsedAlternate video = videoAlternate(e);
+    if (!video.url.isEmpty()) {
+        sources.prepend(QUrl(video.url).toString(QUrl::FullyEncoded));
+    }
     map.insert(QStringLiteral("sources"), sources);
+    map.insert(QStringLiteral("videoVersion"), !video.url.isEmpty());
+    const QList<ParsedAlternate> alternates = m_database->alternates(e.id);
+    map.insert(QStringLiteral("hasAlternates"), !alternates.isEmpty());
+    // (245) A video or HLS version in the feed (camera symbol, switch)
+    bool videoAlternate = false;
+    for (int i = 0; i < alternates.size(); ++i) {
+        const QString type = alternates.at(i).mimeType.toLower();
+        if (type.startsWith(QLatin1String("video/")) || type.contains(QLatin1String("mpegurl"))) {
+            videoAlternate = true;
+        }
+    }
+    map.insert(QStringLiteral("hasVideoAlternate"), videoAlternate);
+    map.insert(QStringLiteral("mimeType"), e.mimeType);
+    map.insert(QStringLiteral("fileSize"), double(e.fileSize));
+    // (245) Size of the video that would be streamed (the version's length,
+    // else bitrate x duration; the file's for a video file), 0 = unknown
+    double videoBytes = 0;
+    if (!video.url.isEmpty()) {
+        videoBytes = video.length > 0 ? double(video.length)
+                   : (video.bitrate > 0 && e.duration > 0 ? double(video.bitrate) / 8.0 * e.duration : 0);
+    } else if (e.mimeType.startsWith(QLatin1String("video/"))) {
+        videoBytes = double(e.fileSize);
+    }
+    map.insert(QStringLiteral("videoBytes"), videoBytes);
 
     QVariantList chapters;
     const QList<ParsedChapter> parsed = m_database->chapters(e.id);
@@ -2017,6 +2070,8 @@ QVariantMap AppCore::podcast(int podcastId) const
     map.insert(QStringLiteral("title"), p.title);
     map.insert(QStringLiteral("feedTitle"), p.feedTitle);
     map.insert(QStringLiteral("customTitle"), p.customTitle);
+    // (245) "Video podcast" on the podcast page
+    map.insert(QStringLiteral("video"), m_database->isVideoPodcast(p.id));
     map.insert(QStringLiteral("language"), p.language);
     map.insert(QStringLiteral("categories"), p.categories);
     map.insert(QStringLiteral("author"), p.author);
@@ -2078,6 +2133,94 @@ void AppCore::markUnplayed(int episodeId)
     emit dataChanged();
 }
 
+void AppCore::removeFromNew(int episodeId)
+{
+    m_database->clearNew(episodeId);
+    emit episodeChanged(episodeId);
+    emit dataChanged();
+}
+
+bool AppCore::ensureMergeBackup()
+{
+    // Before the first merge a copy, as "before-restore.db" (restorable on
+    // Settings → Backup)
+    QDir().mkpath(backupDirectory());
+    const QString path = backupDirectory() + QStringLiteral("/before-merge.db");
+    return QFile::exists(path) || copyDatabaseTo(path);
+}
+
+void AppCore::mergeDuplicate(qint64 from, qint64 into)
+{
+    const EpisodeRow current = m_database->episode(m_currentEpisode);
+    // Not while an episode of it plays or downloads run - next update again
+    if ((current.id && current.podcastId == from) || m_downloads->isBusy() || m_archiver->isRunning()) {
+        qWarning() << "Duplicate subscription" << from << "of" << into << "left for later (busy)";
+        return;
+    }
+    if (!ensureMergeBackup()) {
+        qWarning() << "Duplicate subscription not merged: no backup copy";
+        return;
+    }
+    const QString title = m_database->podcast(into).title;
+    if (m_database->mergePodcasts(from, into)) {
+        qWarning() << "Duplicate subscription" << from << "merged into" << into << title;
+        emit dataChanged();
+        emitMessage(tr("Duplicate subscription merged: %1").arg(title));
+    }
+}
+
+void AppCore::mergeCaseDuplicates()
+{
+    const QList<QPair<qint64, qint64>> pairs = m_database->caseDuplicates();
+    for (int i = 0; i < pairs.size(); ++i) {
+        mergeDuplicate(pairs.at(i).first, pairs.at(i).second);
+    }
+}
+
+QVariantList AppCore::markablePodcasts(bool keepNewest) const
+{
+    QVariantList list;
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    for (int i = 0; i < podcasts.size(); ++i) {
+        const int count = m_database->markAllPlayedCount(podcasts.at(i).id, keepNewest);
+        if (count > 0) {
+            QVariantMap map;
+            map.insert(QStringLiteral("podcastId"), int(podcasts.at(i).id));
+            map.insert(QStringLiteral("title"), podcasts.at(i).title);
+            map.insert(QStringLiteral("count"), count);
+            map.insert(QStringLiteral("archived"), podcasts.at(i).archived);
+            list.append(map);
+        }
+    }
+    return list;
+}
+
+void AppCore::markEverythingPlayed(bool keepNewest, const QVariantList &podcastIds)
+{
+    // (248) Only the chosen podcasts (empty = all)
+    QSet<qint64> chosen;
+    for (int i = 0; i < podcastIds.size(); ++i) {
+        chosen.insert(podcastIds.at(i).toLongLong());
+    }
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    int count = 0;
+    for (int i = 0; i < podcasts.size(); ++i) {
+        if (podcasts.at(i).provisional || (!chosen.isEmpty() && !chosen.contains(podcasts.at(i).id))) {
+            continue;
+        }
+        count += m_database->markAllPlayed(podcasts.at(i).id, keepNewest);
+        if (!podcasts.at(i).archiveFolder.isEmpty()) {
+            m_metadataDirty.insert(podcasts.at(i).id);
+        }
+    }
+    if (!m_metadataDirty.isEmpty()) {
+        m_metadataTimer->start();
+    }
+    afterPlayed();
+    emit dataChanged();
+    emitMessage(tr("%n episodes marked as played", "", count));
+}
+
 void AppCore::markAllPlayed(int podcastId)
 {
     const int count = m_database->markAllPlayed(podcastId);
@@ -2094,6 +2237,8 @@ void AppCore::recordPlayback(int episodeId, int started, int position, int total
 {
     const bool wasPlayed = m_database->episode(episodeId).played;
     m_database->recordPlayback(episodeId, started, position, total);
+    // (254) The new position replaces the skip position (189)
+    clearSkipped(episodeId);
     archiveStateChanged(episodeId);
     emit episodeChanged(episodeId);
     // Played state changed: counts in the lists change too
@@ -2182,8 +2327,9 @@ void AppCore::keepEpisode(int episodeId)
         emitMessage(tr("Already saved in %1").arg(QFileInfo(e.downloadPath).absolutePath()));
         return;
     }
-    // (209) Already in Music ("Downloads in Music"): only marked as kept
-    if (e.downloaded && isInside(e.downloadPath, archiveRoot())) {
+    // (209) Already in Music ("Downloads in Music"): only marked as kept;
+    // (245) a video file in Videos
+    if (e.downloaded && isInside(e.downloadPath, mediaRootFor(e))) {
         m_database->setArchiveFile(e.id, QFileInfo(e.downloadPath).fileName());
         emit episodeChanged(episodeId);
         emit dataChanged();
@@ -2385,6 +2531,30 @@ int AppCore::queueSection(int podcastId, const QString &section)
     return added;
 }
 
+int AppCore::queuePodcastCount(int podcastId) const
+{
+    int count = 0;
+    const QList<EpisodeRow> episodes = m_database->episodes(podcastId, -1, Database::Unplayed, true);
+    for (const EpisodeRow &e : episodes) {
+        if (!m_queue.contains(int(e.id))) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int AppCore::queueDownloadedCount() const
+{
+    int count = 0;
+    const QList<EpisodeRow> episodes = m_database->episodes(-1, -1, Database::Downloaded);
+    for (const EpisodeRow &e : episodes) {
+        if (!e.played && !m_queue.contains(int(e.id)) && e.id != m_currentEpisode) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 int AppCore::queuePodcast(int podcastId)
 {
     int added = 0;
@@ -2447,7 +2617,6 @@ bool AppCore::podcastInMusic(qint64 podcastId) const
 QList<EpisodeRow> AppCore::misplacedEpisodes(qint64 podcastId) const
 {
     QList<EpisodeRow> result;
-    const QString root = archiveRoot();
     const QList<PodcastRow> podcasts = m_database->podcasts();
     QHash<qint64, bool> inMusic;
     for (int i = 0; i < podcasts.size(); ++i) {
@@ -2464,7 +2633,8 @@ QList<EpisodeRow> AppCore::misplacedEpisodes(qint64 podcastId) const
                 || m_downloads->isActive(e.id) || !QFile::exists(e.downloadPath)) {
             continue;
         }
-        if (isInside(e.downloadPath, root) != inMusic.value(e.podcastId)) {
+        // (245) Video files belong to the Videos folder
+        if (isInside(e.downloadPath, mediaRootFor(e)) != inMusic.value(e.podcastId)) {
             result.append(e);
         }
     }
@@ -2475,7 +2645,6 @@ QVariantList AppCore::misplacedDownloads(int podcastId) const
 {
     QHash<qint64, QVariantMap> byPodcast;
     QList<qint64> order;
-    const QString root = archiveRoot();
     const QList<EpisodeRow> episodes = misplacedEpisodes(podcastId);
     for (int i = 0; i < episodes.size(); ++i) {
         const EpisodeRow &e = episodes.at(i);
@@ -2484,13 +2653,18 @@ QVariantList AppCore::misplacedDownloads(int podcastId) const
             map.insert(QStringLiteral("podcastId"), int(e.podcastId));
             map.insert(QStringLiteral("title"), e.podcastTitle);
             map.insert(QStringLiteral("count"), 0);
+            map.insert(QStringLiteral("videos"), 0);
             map.insert(QStringLiteral("bytes"), 0.0);
-            map.insert(QStringLiteral("toMusic"), !isInside(e.downloadPath, root));
+            map.insert(QStringLiteral("toMusic"), !isInside(e.downloadPath, mediaRootFor(e)));
             byPodcast.insert(e.podcastId, map);
             order.append(e.podcastId);
         }
         QVariantMap &map = byPodcast[e.podcastId];
         map.insert(QStringLiteral("count"), map.value(QStringLiteral("count")).toInt() + 1);
+        // (246) video files go to Videos, not Music
+        if (e.mimeType.startsWith(QLatin1String("video/"))) {
+            map.insert(QStringLiteral("videos"), map.value(QStringLiteral("videos")).toInt() + 1);
+        }
         map.insert(QStringLiteral("bytes"), map.value(QStringLiteral("bytes")).toDouble()
                                             + double(QFileInfo(e.downloadPath).size()));
     }
@@ -2509,15 +2683,14 @@ QVariantList AppCore::misplacedDownloads(int podcastId) const
 
 int AppCore::moveDownloads(const QVariantList &podcastIds)
 {
-    const QString root = archiveRoot();
     int moved = 0;
     int failed = 0;
     for (int p = 0; p < podcastIds.size(); ++p) {
         const QList<EpisodeRow> episodes = misplacedEpisodes(podcastIds.at(p).toLongLong());
         for (int i = 0; i < episodes.size(); ++i) {
             const EpisodeRow &e = episodes.at(i);
-            const QString target = isInside(e.downloadPath, root) ? m_downloads->defaultTarget(e.id)
-                                                                  : m_archiver->musicTarget(e.id);
+            const QString target = isInside(e.downloadPath, mediaRootFor(e)) ? m_downloads->defaultTarget(e.id)
+                                                                             : m_archiver->musicTarget(e.id);
             if (m_archiver->relocate(e.id, target)) {
                 ++moved;
                 emit episodeChanged(int(e.id));
@@ -2550,8 +2723,8 @@ int AppCore::keepPodcastDownloads(int podcastId)
         if (!e.downloaded || isKept(e)) {
             continue;
         }
-        if (isInside(e.downloadPath, archiveRoot())) {
-            // (209) Already in Music: only marked as kept
+        if (isInside(e.downloadPath, mediaRootFor(e))) {
+            // (209) Already in Music: only marked as kept (245: or Videos)
             m_database->setArchiveFile(e.id, QFileInfo(e.downloadPath).fileName());
             folder = QFileInfo(e.downloadPath).absolutePath();
             ++saved;
@@ -2608,8 +2781,50 @@ QString AppCore::downloadPath(int episodeId) const
     return e.downloaded && QFile::exists(e.downloadPath) ? e.downloadPath : QString();
 }
 
+ParsedAlternate AppCore::videoAlternate(const EpisodeRow &e) const
+{
+    ParsedAlternate best;
+    if (m_database->setting(QStringLiteral("podcast.%1.version").arg(e.podcastId)) != QLatin1String("video")) {
+        return best;
+    }
+    const QList<ParsedAlternate> list = m_database->alternates(e.id);
+    for (int i = 0; i < list.size(); ++i) {
+        const ParsedAlternate &a = list.at(i);
+        const QString type = a.mimeType.toLower();
+        if (!type.startsWith(QLatin1String("video/")) && !type.contains(QLatin1String("mpegurl"))) {
+            continue;
+        }
+        // The default one, else the first; up to 1080 lines preferred
+        if (best.url.isEmpty() || (a.isDefault && !best.isDefault)
+                || (best.height > 1080 && a.height > 0 && a.height <= 1080)) {
+            best = a;
+        }
+    }
+    return best;
+}
+
+bool AppCore::podcastHasVideoVersion(int podcastId) const
+{
+    return m_database->hasVideoAlternates(podcastId);
+}
+
+void AppCore::logListening(int episodeId, int seconds, int mediaSeconds)
+{
+    // A stretch is at most a few minutes (the player sends every 30 s);
+    // (245) the episode time at most 4x the wall clock
+    if (seconds > 0 && seconds <= 3600) {
+        m_database->addListening(episodeId, seconds, qBound(0, mediaSeconds, 4 * seconds));
+    }
+}
+
 QString AppCore::mimeType(int episodeId) const
 {
+    // (244) Playing the video version: its type (HLS counts as video)
+    const ParsedAlternate alt = videoAlternate(m_database->episode(episodeId));
+    if (!alt.url.isEmpty()) {
+        return alt.mimeType.toLower().startsWith(QLatin1String("video/"))
+                ? alt.mimeType : QStringLiteral("video/x-mpegurl");
+    }
     const QString type = m_database->episode(episodeId).mimeType;
     return type.isEmpty() ? QStringLiteral("audio/mpeg") : type;
 }
@@ -2666,7 +2881,8 @@ QVariantMap AppCore::downloadStats() const
         if (info.exists()) {
             ++count;
             bytes += info.size();
-            if (isInside(downloads.at(i).downloadPath, root)) {
+            // (245) The Videos folder counts with Music (both shared folders)
+            if (isInside(downloads.at(i).downloadPath, root) || isInside(downloads.at(i).downloadPath, videoRoot())) {
                 ++music;
                 musicBytes += info.size();
             }
@@ -2690,14 +2906,19 @@ QVariantMap AppCore::downloadStats() const
     return map;
 }
 
-QVariantMap AppCore::queueStats() const
+QVariantMap AppCore::queueStats(int excludeId) const
 {
-    // (190) The playlist page tiles: episodes, time left, downloaded
+    // (190) The playlist page tiles: episodes, time left, downloaded;
+    // (246) the episode playing left out - the page adds it with its live
+    // position
     const QList<EpisodeRow> rows = m_database->episodes(-1, -1, Database::Queue);
     int count = 0;
     qint64 seconds = 0;
     int downloaded = 0;
     for (const EpisodeRow &e : rows) {
+        if (e.id == excludeId) {
+            continue;
+        }
         ++count;
         seconds += qMax(0, e.remaining());
         if (e.downloaded) {
@@ -2765,10 +2986,12 @@ void AppCore::setCurrentEpisode(int episodeId)
 {
     const int previous = m_currentEpisode;
     m_currentEpisode = episodeId;
-    // (189) Played again: the skip position has been used (or not wanted)
-    if (episodeId > 0 && episodeId != previous) {
-        clearSkipped(episodeId);
-    }
+    // (189) Played again: the skip position has been used (or not wanted) -
+    // (254) not here any more but when the new position is saved, see
+    // recordPlayback(): clearing it as soon as the episode was loaded lost it
+    // when nothing was saved afterwards (left again before it played, a
+    // stream that did not start, the app closed with the episode only
+    // restored) - the played episode then started from the beginning
     // (186) The episode playing is the first of the playlist: what the list
     // shows below "Now playing" is exactly what comes next
     if (episodeId > 0 && m_queue.contains(episodeId)) {
@@ -2858,6 +3081,7 @@ void AppCore::cleanupOnStart()
     m_downloads->cleanup(days, archiveRoot(), 0, podcastCleanupDays());
     // (209) Half downloads of failed attempts never tried again
     m_downloads->removeStaleParts(archiveRoot(), 7);
+    m_downloads->removeStaleParts(videoRoot(), 7);
     // Listened to without subscribing (147): gone after 30 days without use
     // (not the player's episode, not with an episode in the playlist)
     const qint64 last = m_database->setting(QStringLiteral("player.last"), QStringLiteral("0")).toLongLong();
@@ -3068,6 +3292,8 @@ void AppCore::archivePodcast(int podcastId)
         return;
     }
     m_archiver->setArchiveRoot(archiveRoot());
+    m_archiver->setVideoRoot(videoRoot());
+    m_downloads->setVideoRoot(videoRoot());
     m_archivingId = podcastId;
     m_archiveCancelled = false;
     emit archivingChanged();
@@ -3167,6 +3393,8 @@ bool AppCore::setArchiveDirectory(const QString &path)
     }
     m_database->setSetting(QStringLiteral("archive.dir"), folder);
     m_archiver->setArchiveRoot(archiveRoot());
+    m_archiver->setVideoRoot(videoRoot());
+    m_downloads->setVideoRoot(videoRoot());
     emit settingsChanged();
     return true;
 }
@@ -3363,6 +3591,8 @@ void AppCore::importDatabase(const QString &path, bool keepFolders)
         m_database->setSetting(QStringLiteral("downloads.dir"), QString());
     }
     m_archiver->setArchiveRoot(archiveRoot());
+    m_archiver->setVideoRoot(videoRoot());
+    m_downloads->setVideoRoot(videoRoot());
     reloadQueue();
     emit settingsChanged();
     emit dataChanged();
@@ -3538,7 +3768,8 @@ QVariantList AppCore::localBackups() const
     QVariantList list;
     const QDir dir(backupDirectory());
     const QFileInfoList files = dir.entryInfoList(QStringList() << QStringLiteral("sailcast-*.db")
-                                                  << QStringLiteral("before-restore.db"),
+                                                  << QStringLiteral("before-restore.db")
+                                                  << QStringLiteral("before-merge.db"),
                                                   QDir::Files, QDir::Name | QDir::Reversed);
     for (int i = 0; i < files.size(); ++i) {
         const QFileInfo &f = files.at(i);
@@ -3547,7 +3778,8 @@ QVariantList AppCore::localBackups() const
         map.insert(QStringLiteral("name"), f.fileName());
         map.insert(QStringLiteral("modified"), double(f.lastModified().toMSecsSinceEpoch()));
         map.insert(QStringLiteral("size"), double(f.size()));
-        map.insert(QStringLiteral("undo"), f.fileName() == QLatin1String("before-restore.db"));
+        map.insert(QStringLiteral("undo"), f.fileName() == QLatin1String("before-restore.db")
+                                           || f.fileName() == QLatin1String("before-merge.db"));
         list.append(map);
     }
     return list;

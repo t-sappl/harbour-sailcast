@@ -1,5 +1,100 @@
 # Changelog
 
+## 1.3 (2026-11-06)
+
+Two themes: video podcasts, and an app that is easier to use – a usability check with blind tests and the feedback from the forum.
+
+### Easier to use – the last round (6 Nov)
+
+- One style for all buttons: rounded pills – filled for the main action of a page, outlined for the others, red for deleting and unsubscribing
+- A subtle arrow on every row that opens a page of its own (settings entries, "Folders", "Device", "Move downloads" …)
+- Swipe the player bar up to open it, down to close it – also down over its tabs (chapters, show notes, bookmarks, up next); the arrow button stays
+- "Keep only the newest one unplayed?" after subscribing: clearer text, the two choices as buttons right below it
+- The menu of the last "Recently heard" entry in the playlist scrolls into view
+- Downloads page: "Download settings" in the pull-down menu; "Delete played downloads" as a red button
+- The legend on the Podcasts page says what the dot means: "new since you last opened the podcast"
+- The speed applies from the first second also to the first episode after the start and to video
+
+### Known issues in 1.3
+
+- While a video plays, changing to or from its episode page pauses picture and sound briefly: the picture is attached to or taken from the player, which loads the video again at the same position (since 257 after the page animation, so the screen no longer jerks).
+
+### Also in 1.3
+
+- One player view: the player bar and the landscape player show the same tabs (Chapters, Shownotes, Bookmarks, Up next); the episode page has the same tabs and always previous / next buttons (also in the video view)
+- Press and hold any symbol button to see its name
+- Folder headers as before, with a small explanation of the dot and the number under the first open folder
+- Podcast page: "Showing: all episodes / only unplayed" above the list; "Show podcast" in the episode menu
+- Fixes: the sleep row stays no longer open over the folded bar; "next" in the last chapter of the episode page goes to the next episode; played episodes no longer start at their end (the player ran through them); no more "−--:--" at the end
+- Clearer for newcomers (from a blind usability test): "Search my podcasts" in the pulleys, a small legend for the dots and numbers on the Podcasts page, "3110 unplayed" and a clear fold arrow in folder headers, "4 downloaded" in the list, "Bookmarks" also in the pulleys of New episodes and Podcasts
+- A bookmark ribbon instead of the star for bookmarks
+- The names of the neighbouring pages (swipe or tap) below the page header of the four main pages
+- "Archive" only means the folder with copies: the switch is now "Podcast has ended", the button "Copy podcast to archive folder"
+- Sleep timer: 5, 10, 20, 30, 45, 60 minutes and a clear "End of episode"; the speed button is also in the landscape player; "Previous" above the tabs of the player
+- Playlist button in every episode row (lines with "+": add at the end; with a check mark: in the playlist, tap to take it out) – also on the episode page, instead of the symbol that looked like a play button
+- "Show only unplayed" / "Show all episodes" as a button on the podcast page
+- Right after subscribing: "Keep only the newest one unplayed?" on the podcast page (once per podcast)
+- An episode skipped in the middle starts again where you left it (from "Recently heard"), also when you left it again before it started or closed the app
+- The next episode of the playlist now plays at the set speed from the start (it began at 1.0x until the first skip)
+- Settings → Playback: the global speed can be set there (before only in the player)
+- Plain words: what synchronization does, "Other podcasts" (= no folder), "Archive podcast", "Import and export", and that dragging in the playlist sets the play order
+- "Previous: …" in the player bar (tab "Up next"): one tap back to the episode heard before
+- "Remove from New episodes" in the episode menu – out of the list without counting as played
+- The dot on a podcast also goes away when its new episodes were heard elsewhere
+- Downloads easier to find: in the pulleys of New episodes and Podcasts, in the download settings, and by tapping the "downloaded" tile; "Delete played downloads" as a button on the Downloads page
+- Press and hold the bookmark or sleep timer button in the player bar to see its name
+- Clearer wording: "Hide folders" / "Show folders", "Skip the end (outro)", "Ends here", the search on Discover
+
+- Podcasts page: "Folders: on/off" shows all podcasts in one list in the chosen order (for example the newest subscriptions)
+- Camera on the covers of video episodes
+- New setting "Count as played when less remains" (Playback): pausing, switching or closing with the end almost reached marks the episode played
+- Video streams: no more start of the stream audible after a page change, the position is found reliably
+- "Sound only" tells when it saves no data
+
+- Duplicate subscriptions (feed addresses differing only in case, from sync) are merged automatically; a backup is made first
+- "Mark all as played …" (Settings → General) lets you choose the podcasts
+- Camera symbol on the cover in the podcast list
+- Correct English singular ("1 episode")
+- "Add unplayed to the playlist" shows the number and can be undone
+- Holding a skip button shows the running total
+- Folder export: the switches show what is exported
+
+### Video podcasts (new)
+
+- Video episodes show their picture on the episode page; tap for full
+  screen in landscape (✕ ends it); the display stays on while a video
+  plays, the episode image shows while it is paused
+- "Sound only" / "Video" switch on the picture
+- Feeds that offer an audio and a video version
+  (`podcast:alternateEnclosure`): choose per podcast ("Version") or with
+  the switch – the audio version is the one that really saves data;
+  downloads stay audio
+- HLS video streams (`.m3u8`)
+- Camera symbol on video episodes and video podcasts (list and grid),
+  "Video podcast" on the podcast page and in "Add podcast"
+- Mobile data: "Stream videos without Wi-Fi" – ask (with the size), always
+  or never (then the audio version, if there is one); video downloads
+  always ask without Wi-Fi
+- Video files of "Downloads in the Music folder" and "Save in …" go to
+  `~/Videos/Podcasts/<podcast>` (new permission "Videos")
+
+### More
+
+- Sort the podcast list: alphabetical, newest episode, last subscribed or
+  most unplayed episodes ("Sorted: … ›" at the top of the Podcasts page)
+- Press and hold the skip buttons for a larger step (1 min, adjustable),
+  repeated while held
+- Settings → General: "Mark all as played …" – all episodes or all but the
+  newest of each podcast (forum)
+- Playlist tiles count the episode playing in both numbers, follow the
+  playback and show the time left at the current speed
+- "All" / "None" chips in every list to choose from (move downloads,
+  download episodes, Music folder, never delete, podcasts in a folder,
+  folders to export)
+- Listening time is recorded per day (for the statistics of 1.4)
+- Fixes: space above the podcast statistics, "0 MB" without downloads, the
+  last line of "Move downloads" was covered, "1 download"
+
 ## 1.2 (2026-11-01)
 
 Released on GitHub (RPMs and source) on 1 Nov 2026 – the first version for

@@ -35,7 +35,29 @@ Item {
 
     property int episodeId: -1
     // The core never deletes the file of this episode (immediate clean-up)
-    onEpisodeIdChanged: core.setCurrentEpisode(episodeId)
+    onEpisodeIdChanged: {
+        core.setCurrentEpisode(episodeId)
+        // (243) Video from the feed's MIME type (see hasVideo)
+        _videoSeen = false
+        pictureOff = false
+        _refreshVideo()
+    }
+    // (245) Checked on every load, also of the same episode (the version
+    // chosen in the podcast settings changes the type)
+    function _refreshVideo() {
+        // The video version chosen and played, or a video file
+        // (249) HLS (application/x-mpegURL) counts as video from the start,
+        // so the picture area and its switch are there without waiting for
+        // a picture of the player
+        var mime = ("" + (info.mimeType || "")).toLowerCase()
+        hasVideo = episodeId > 0 && (info.videoVersion === true
+                                     || mime.indexOf("video/") === 0
+                                     || mime.indexOf("mpegurl") >= 0 || _videoSeen)
+    }
+    // (245) "Sound only" for this episode (switch on the episode page): the
+    // page takes its output away; with a video version in the feed the
+    // audio version is played instead (setVersion)
+    property bool pictureOff: false
     property var info: ({})
     readonly property bool hasEpisode: episodeId > 0
     // (231) The media player's own state - and "playing" as shown: not
@@ -46,6 +68,17 @@ Item {
     readonly property bool _playingState: player.playbackState === MediaPlayer.PlayingState
     readonly property bool playing: _playingState && !stuck
     property bool stuck: false
+    // (261) Diagnostic lines with a time (the device log has none) - for the
+    // video problems: speed, loading, crash
+    function _dlog(text) {
+        console.warn(new Date().toISOString().substr(11, 12) + " " + text)
+    }
+    function _state() {
+        return "ep=" + episodeId + " video=" + hasVideo + " outputs=" + videoOutputs
+                + " state=" + player.playbackState + " status=" + player.status
+                + " seekable=" + player.seekable + " pos=" + Math.round(player.position / 1000)
+                + "s dur=" + Math.round(player.duration / 1000) + "s rate=" + player.playbackRate
+    }
     property real _watchPos: -1
     property int _watchTicks: 0
     property bool _autoRetried: false
@@ -53,13 +86,64 @@ Item {
     // speed stayed at the old value, also for downloaded files): jump to
     // the position right after a change while playing
     onRateChanged: {
+        _dlog("Rate changed to " + rate + "x: " + _state())
         // Set here as well: the order of this handler and the binding is
         // not defined (the seek must come after the new rate)
+        // (258) Not while a video picture is attached: the extra rate set and
+        // the seek each start a flushing seek in the backend, three at once
+        // crashed with a video output (Thomas 6 Nov); there the binding
+        // alone sets the rate
+        // (260, log of 6 Nov: the speed did not change at all) the one seek
+        // follows after a pause, once
+        // (262, log of 6 Nov: "Rate changed to 2x ... rate=1" a second later)
+        // The binding "playbackRate: controller.rate" is gone once the
+        // handler below has assigned the rate (an assignment breaks a
+        // binding), and this branch assigned nothing - so the player never
+        // got the new rate. Assign it once here; the seek follows later.
+        if (hasVideo && videoOutputs > 0) {
+            player.playbackRate = rate
+            videoRateTimer.restart()
+            return
+        }
         player.playbackRate = rate
         // (240) Half a second back: a seek to the same position is ignored
         // (239), a real one applies the rate
         if (!_needsLoad && _playingState && player.seekable) {
             player.seek(Math.max(0, player.position - 500))
+        }
+    }
+    // (262) One small jump after a start at a speed other than 1x - the
+    // media player takes the rate only with a seek (239)
+    Timer {
+        id: rateKickTimer
+        interval: 1200
+        onTriggered: {
+            if (!controller._needsLoad && controller._playingState && player.seekable
+                    && controller._pendingSeek < 0
+                    && Math.abs(player.playbackRate - controller.rate) < 0.01
+                    && controller._kickedSource !== player.source.toString()) {
+                controller._kickedSource = player.source.toString()
+                controller._dlog("Rate kick: " + controller._state())
+                player.seek(player.position + 100)
+            }
+        }
+    }
+    property string _kickedSource: ""
+    Timer {
+        id: videoRateTimer
+        interval: 400
+        onTriggered: {
+            controller._dlog("Speed " + controller.rate + "x during a video: " + controller._state())
+            if (controller._needsLoad || !controller._playingState) {
+                return
+            }
+            if (player.seekable) {
+                player.seek(Math.max(0, player.position - 500))
+            } else {
+                // (261, log of 6 Nov: the speed stayed as at the start) a
+                // stream that cannot jump takes the rate with the next load
+                controller._restart()
+            }
         }
     }
     // (233) The last jump: when, from where, and whether a data error after
@@ -150,11 +234,22 @@ Item {
     function _startFor(data) {
         // (189) A skipped episode played again starts where it was left
         var seconds = data.played ? (data.skippedAt || 0) : (data.position || 0)
+        // (256, Thomas: played episodes at the end of the playlist ended at
+        // once and the player ran through them) a played episode never
+        // starts in its last 2 minutes - from the beginning instead
+        if (data.played && (data.duration || 0) > 0 && seconds > data.duration - 120) {
+            seconds = 0
+        }
         var intro = _podcastNumber(data.podcastId, "skipIntro")
         return intro > 0 && seconds < intro ? intro : seconds
     }
+    // (252) Counts as played when paused, left or closed with at most this
+    // many seconds left (0 = off); setting "player.countPlayedBelow"
+    property int countPlayedBelow: parseInt(core.setting("player.countPlayedBelow", "0"))
     property int skipBackSeconds: parseInt(core.setting("player.skipBack", "30"))
     property int skipForwardSeconds: parseInt(core.setting("player.skipForward", "30"))
+    // (246) Press and hold on the skip buttons
+    property int skipLargeSeconds: parseInt(core.setting("player.skipLarge", "60"))
     // Sleep timer option "end of episode"
     property bool stopAtEnd: false
     // Playback context: true while playing through the playlist (started on
@@ -205,15 +300,109 @@ Item {
 
     signal error(string message)
 
-    // For the sleep timer (fades the volume out)
+    // For the sleep timer (fades the volume out); (241) the VideoView
+    // attaches its output to it
     property alias mediaPlayer: player
+    // (241) The episode has a picture. (243) From the feed's MIME type,
+    // or once the media player reported one for this episode - not the
+    // player's flag alone: it drops while the source is loaded again,
+    // which would take the output away and load again in a loop
+    property bool hasVideo: false
+    property bool _videoSeen: false
+    Connections {
+        target: player
+        onHasVideoChanged: {
+            if (player.hasVideo && !controller._videoSeen) {
+                controller._videoSeen = true
+                controller.hasVideo = true
+            }
+        }
+    }
+
+    // (243) Video outputs attached to the media player (VideoView). The
+    // Sailfish media player hangs when an output is attached or detached
+    // while it plays (241/242: stopped, buffered for ever) - so when the
+    // number changes between none and some, the source is loaded again at
+    // the position (with or without picture) and plays on if it played.
+    // Moving the same output (full screen) is not a change.
+    property int videoOutputs: 0
+    property bool _outputsApplied: false
+    // (245) Every new output counts, also when one went and another came
+    // within the 400 ms (unlocking the screen: black picture, "neither
+    // renderer nor window control") - generation of the outputs at the
+    // last load
+    property int _outputGeneration: 0
+    property int _appliedGeneration: 0
+    function _markOutputsApplied() {
+        _outputsApplied = videoOutputs > 0
+        _appliedGeneration = _outputGeneration
+        _videoReloadPending = false
+    }
+    function videoOutputAdded() {
+        videoOutputs += 1
+        _outputGeneration += 1
+        videoReloadTimer.restart()
+    }
+    function videoOutputRemoved() {
+        videoOutputs = Math.max(0, videoOutputs - 1)
+        videoReloadTimer.restart()
+    }
+    // Several changes at once (a page closed, another opened) count once
+    Timer {
+        id: videoReloadTimer
+        interval: 400
+        // (257, Thomas: the screen jerked when changing to or from the
+        // episode page while a video played) not while a page animation
+        // runs - the reload (pipeline built again) blocked the animation;
+        // checked again until the animation has ended
+        onTriggered: {
+            if (appWindow.pageStack.busy) {
+                restart()
+                return
+            }
+            controller._applyVideoOutputs()
+        }
+    }
+    function _applyVideoOutputs() {
+        var want = videoOutputs > 0
+        var fresh = want && _outputGeneration !== _appliedGeneration
+        if (want === _outputsApplied && !fresh) {
+            return
+        }
+        // Nothing loaded (yet): the next load picks the outputs up
+        if (!hasEpisode || _needsLoad || !hasVideo || ("" + player.source) === ""
+                || player.status === MediaPlayer.NoMedia || player.status === MediaPlayer.UnknownStatus) {
+            _outputsApplied = want
+            _appliedGeneration = _outputGeneration
+            return
+        }
+        _outputsApplied = want
+        _appliedGeneration = _outputGeneration
+        if (!_playingState) {
+            // Paused: loaded again on the next "play" (loading paused left
+            // the player needing several presses, see the header)
+            console.warn("Video output " + (want ? "on" : "off") + " while paused, reloading on play")
+            _videoReloadPending = true
+            return
+        }
+        console.warn("Video output " + (want ? (fresh && videoOutputs > 0 ? "new" : "on") : "off")
+                     + ", reloading at " + Math.round((_pendingSeek >= 0 ? _pendingSeek : player.position) / 1000) + " s")
+        _restart()
+    }
+    property bool _videoReloadPending: false
 
     MediaPlayer {
         id: player
         autoPlay: false
         playbackRate: controller.rate
+        // (251) Silent while a reload is checked (the start of an HLS stream
+        // was audible until the jump); the check always ends (15 s at most)
+        muted: controller._verifyTarget >= 0 && controller._playingState && !controller._needsLoad
 
-        onSeekableChanged: controller._applyPendingSeek()
+        onSeekableChanged: {
+            controller._dlog("Seekable " + seekable + ": " + controller._state())
+            controller._applyPendingSeek()
+        }
         // Skip the outro (35): end the episode that many seconds early -
         // only for episodes clearly longer than intro + outro
         onPositionChanged: {
@@ -225,6 +414,7 @@ Item {
             }
         }
         onStatusChanged: {
+            controller._dlog("Status " + status + ": " + controller._state())
             if (status === MediaPlayer.Loaded || status === MediaPlayer.Buffered) {
                 controller._applyPendingSeek()
                 // (206) Started from the end of the previous one: play
@@ -234,6 +424,19 @@ Item {
                     player.play()
                 }
             } else if (status === MediaPlayer.EndOfMedia) {
+                // (260) A reload of a stream reported "end" while the jump
+                // to the old position was checked: the episode was marked
+                // played and the next one started (log of 6 Nov, video). Not
+                // the end when the target is far from the real end.
+                if (controller._verifyTarget >= 0 && controller._verifyTries < 4
+                        && controller._verifyTarget < (controller.duration - 15) * 1000) {
+                    controller._verifyTries += 1
+                    console.warn("End of media while the reload is checked - jumping to "
+                                 + Math.round(controller._verifyTarget / 1000) + " s instead of finishing")
+                    player.seek(controller._verifyTarget)
+                    player.play()
+                    return
+                }
                 controller._finished()
             }
         }
@@ -255,13 +458,21 @@ Item {
             controller._tryNextSource()
         }
         onPlaybackStateChanged: {
+            controller._dlog("State " + playbackState + ": " + controller._state())
             if (playbackState !== MediaPlayer.PlayingState) {
                 controller.stuck = false
                 controller._watchTicks = 0
             }
             // "started" of the sync action: where this stretch of listening
             // began (not before a pending seek has been applied)
+            // (262, Thomas 6 Nov: the first play ran at the wrong speed, only
+            // a jump applied it) The seek of _applyPendingSeek can come
+            // before the pipeline plays and is lost then; once more, shortly
+            // after the playback has really started
             if (playbackState === MediaPlayer.PlayingState && controller._pendingSeek < 0) {
+                if (Math.abs(controller.rate - 1.0) > 0.01) {
+                    rateKickTimer.restart()
+                }
                 controller._startedAt = controller.position
             }
         }
@@ -283,6 +494,47 @@ Item {
             controller._stillPos = -1
         }
         onTriggered: {
+            // (244) Listening log: a second really listened when the
+            // position moved (wall clock - at the speed; seeking and
+            // standing still do not count)
+            if (player.position !== controller._listenPos) {
+                // (245) also the episode time: the progress of the position
+                // (at 2x about 2 s per second; jumps left out)
+                var step = player.position - controller._listenPos
+                if (controller._listenPos >= 0 && step > 0 && step < 5000) {
+                    controller._listenSecs += 1
+                    controller._listenMediaMs += step
+                }
+                controller._listenPos = player.position
+            }
+            // (245) After a reload: playing at the target? Else jump again -
+            // the jump got lost now and then (243), an HLS stream starts at
+            // its beginning and ignores the first one.
+            // (251) The sound is off while this runs (the start of the
+            // stream was audible for a moment); it waits for a seekable
+            // stream and jumps up to 4 times, 15 s at most (before: gave up
+            // after 2 s / 2 jumps and stayed at the beginning)
+            if (controller._verifyTarget >= 0) {
+                controller._verifyTicks += 1
+                controller._verifyTotal += 1
+                if (controller._verifyTicks >= 2) {
+                    var off = Math.abs(player.position - controller._verifyTarget)
+                    if (off <= 5000) {
+                        controller._verifyTarget = -1
+                    } else if (controller._verifyTries < 4 && player.seekable) {
+                        controller._verifyTries += 1
+                        console.warn("Reload landed at " + Math.round(player.position / 1000) + " s instead of "
+                                     + Math.round(controller._verifyTarget / 1000) + " s - jumping again ("
+                                     + controller._verifyTries + ")")
+                        player.seek(controller._verifyTarget)
+                        controller._verifyTicks = 0
+                    } else if (controller._verifyTotal >= 15 || controller._verifyTries >= 4) {
+                        console.warn("Reload: position " + Math.round(controller._verifyTarget / 1000)
+                                     + " s not reached, giving up")
+                        controller._verifyTarget = -1
+                    }
+                }
+            }
             // (232) Standing still at all (also while "buffering")
             if (player.position !== controller._stillPos) {
                 controller._stillPos = player.position
@@ -319,9 +571,17 @@ Item {
         _watchPos = -1
         _stillTicks = 0
         _stillPos = -1
+        player.playbackRate = rate
         player.stop()
         player.source = ""
         _pendingSeek = ms > 0 ? ms : -1
+        _markOutputsApplied()
+        // (245) Check where it really starts (the jump got lost now and then)
+        _verifyTarget = _pendingSeek
+        _verifyTries = 0
+        _verifyTotal = 0
+        _verifyTicks = 0
+        _rateApplied = false
         player.source = src
         player.play()
     }
@@ -345,8 +605,18 @@ Item {
         if (_pendingSeek >= 0 && player.seekable) {
             player.seek(_pendingSeek)
             _pendingSeek = -1
+            _rateApplied = true
+        } else if (!_rateApplied && player.seekable && Math.abs(rate - 1.0) > 0.01) {
+            // (254) An episode that starts at 0:00 has no jump, and the media
+            // player takes a new source's rate only with a seek (239): the
+            // next episode of the playlist played at 1.0x until the first
+            // skip (forum, 5 Nov). A tiny jump forward applies it.
+            _rateApplied = true
+            player.seek(player.position + 100)
         }
     }
+    // The current source has had a seek (or the rate was applied otherwise)
+    property bool _rateApplied: false
 
     // Feed update after a failed playback: once per episode and load
     property bool _refreshTried: false
@@ -376,6 +646,13 @@ Item {
             _refreshTried = false
             _refreshPodcastId = -1
         }
+        // (260) The check of a reload belongs to the source it was made for:
+        // a stale target jumped the next episode to the old position (log of
+        // 6 Nov: "landed at 986 s instead of 415 s")
+        _verifyTarget = -1
+        _verifyTries = 0
+        _verifyTotal = 0
+        _verifyTicks = 0
         var data = core.episode(id)
         if (!data.episodeId) {
             return false
@@ -384,20 +661,71 @@ Item {
             error(qsTr("No source to play this episode"))
             return false
         }
+        // (245) A video stream without Wi-Fi: setting "video.mobile" -
+        // ask (default), always, never; asked once per episode
+        var firstIsStream = ("" + data.sources[0]).indexOf("file:") !== 0
+        var videoStream = firstIsStream && (data.videoVersion === true
+                                            || ("" + (data.mimeType || "")).indexOf("video/") === 0)
+        if (autoPlay && videoStream && _mobileVideoOk !== id && !core.onWifi()) {
+            var mode = core.setting("video.mobile", "ask")
+            if (mode === "never" || (mode === "ask" && Qt.application.state !== Qt.ApplicationActive)) {
+                if (data.videoVersion === true && data.sources.length > 1) {
+                    // The audio version instead (no question in the background)
+                    data.sources = data.sources.slice(1)
+                    data.videoVersion = false
+                    appWindow.showMessage(qsTr("No Wi-Fi: playing the audio version"))
+                } else {
+                    error(qsTr("Videos only on Wi-Fi – download it or watch it later"))
+                    return false
+                }
+            } else if (mode === "ask") {
+                appWindow.askMobileVideo(Math.round((data.videoBytes || 0) / 1048576), function() {
+                    controller._mobileVideoOk = id
+                    controller._load(id, startSeconds, autoPlay, isRetry)
+                })
+                return false
+            }
+        }
         if (hasEpisode && id !== episodeId) {
             save()
+            countAsPlayedIfNearEnd()
+            // (253) The episode left goes into "Recently heard" at once
+            // (before only at its end or when skipped) - "Previous" in the
+            // player bar comes back to it
+            core.noteHeard(episodeId)
         }
         _needsLoad = false
+        _rateApplied = false
+        _playedEnd = false
         _outroDone = false
         _autoRetried = false
         stuck = false
         _setInfo(data)
         episodeId = id
+        _refreshVideo()
         _sources = data.sources
         _sourceIndex = 0
         _pendingSeek = startSeconds > 0 ? startSeconds * 1000 : -1
         _startedAt = Math.max(0, startSeconds)
+        _markOutputsApplied()
+        _logSource()
+        // (261, log of 6 Nov: the app died right after loading a video
+        // stream over a playing file, GStreamer pad assertions before) As in
+        // _restart: stop and clear the old source first
+        // (262, Thomas 6 Nov: only a podcast's own speed was taken, not the
+        // global one) The player gets the rate with every load, not only when
+        // it changes: the global rate stays the same between two episodes,
+        // so no change event came, and the binding is gone after the first
+        // assignment
+        player.playbackRate = rate
+        _dlog("Load " + id + " (" + (videoStream ? "video stream" : "file/audio") + "), old: " + _state())
+        if (("" + player.source) !== "") {
+            player.stop()
+            player.source = ""
+            _dlog("Old source cleared")
+        }
         player.source = _sources[0]
+        _dlog("New source set")
         core.setSetting("player.last", "" + id)
         if (autoPlay) {
             player.play()
@@ -414,6 +742,11 @@ Item {
                 _setQueueMode(true)
             }
             if (!_needsLoad) {
+                // (256) Standing at its end (played, "0 left"): play starts
+                // it from the beginning instead of ending again at once
+                if (!playing && player.duration > 0 && player.duration - player.position < 2000) {
+                    seek(0)
+                }
                 toggle()
                 return
             }
@@ -473,11 +806,24 @@ Item {
             _restart()
             return
         }
+        // (243) The video output changed while paused: load again here
+        if (_videoReloadPending && !_needsLoad) {
+            _videoReloadPending = false
+            var rewind = _rewindSeconds(_pausedAt > 0 && Date.now() - _pausedAt > 5 * 60000)
+            _pausedAt = 0
+            if (rewind > 0 && player.position > 0) {
+                _pendingSeek = Math.max(0, player.position - rewind * 1000)
+            }
+            _restart()
+            return
+        }
         var longPause = _pausedAt > 0 && Date.now() - _pausedAt > 5 * 60000
         _pausedAt = 0
         if (_needsLoad) {
             // Restored or prepared: always a long pause
-            _load(episodeId, Math.max(0, _restoreSeconds - _rewindSeconds(_restoreSeconds > 0)), true)
+            var from = _playedEnd ? 0 : Math.max(0, _restoreSeconds - _rewindSeconds(_restoreSeconds > 0))
+            _playedEnd = false
+            _load(episodeId, from, true)
         } else {
             var back = _rewindSeconds(longPause)
             if (back > 0 && player.position > 0) {
@@ -494,12 +840,42 @@ Item {
             _pausedAt = Date.now()
         }
         save()
+        // (253) Counted as played: the bar shows the end (0 left) like a
+        // played episode; the next "play" starts it again from the beginning
+        if (countAsPlayedIfNearEnd()) {
+            var end = duration
+            player.stop()
+            _pendingSeek = -1
+            _restoreSeconds = end
+            _playedEnd = true
+            _needsLoad = true
+        }
+    }
+    property bool _playedEnd: false
+
+    // (252) "Count as played when less than … remains": the episode is
+    // marked played (and leaves the playlist) without the next one following.
+    // Only for episodes clearly longer than the limit; the real end goes
+    // through _finished()
+    function countAsPlayedIfNearEnd() {
+        var limit = countPlayedBelow * 1000
+        if (limit <= 0 || !hasEpisode || _needsLoad || player.duration <= 0 || player.position <= 0) {
+            return false
+        }
+        if (player.duration <= 4 * limit || player.duration - player.position > limit) {
+            return false
+        }
+        console.warn("Episode " + episodeId + " counts as played (" + Math.round((player.duration - player.position) / 1000) + " s left)")
+        core.noteHeard(episodeId)
+        core.markPlayed(episodeId)
+        return true
     }
 
     function seek(seconds) {
         if (!hasEpisode) {
             return
         }
+        _dlog("Seek to " + Math.round(seconds) + " s: " + _state())
         if (_needsLoad) {
             _restoreSeconds = Math.max(0, duration > 0 ? Math.min(seconds, duration - 1) : seconds)
             return
@@ -690,6 +1066,73 @@ Item {
         if (hasEpisode && !_needsLoad && player.duration > 0 && player.position > 0) {
             core.recordPlayback(episodeId, _startedAt, position, duration)
         }
+        // (244) Listening log; (245) with the episode time
+        if (hasEpisode && _listenSecs > 0) {
+            core.logListening(episodeId, _listenSecs, Math.round(_listenMediaMs / 1000))
+        }
+        _listenSecs = 0
+        _listenMediaMs = 0
+    }
+    // (245) Episode allowed to stream video over mobile data (asked once)
+    property int _mobileVideoOk: -1
+    property int _listenSecs: 0
+    property real _listenMediaMs: 0
+    property real _listenPos: -1
+    // (245) Position check after a reload (watchdog)
+    property real _verifyTarget: -1
+    property int _verifyTries: 0
+    property int _verifyTotal: 0
+    property int _verifyTicks: 0
+
+    // (245) Which source plays (log): video version, download, original, archive
+    function _logSource() {
+        var src = "" + (_sources[_sourceIndex] || "")
+        var kind = src.indexOf("file:") === 0 ? "download"
+                 : (_sourceIndex === 0 && info.videoVersion ? "video version"
+                 : (_sourceIndex === _sources.length - 1 && _sources.length > 2 ? "archive" : "original"))
+        console.warn("Playing source " + (_sourceIndex + 1) + "/" + _sources.length + " (" + kind + ")")
+    }
+
+    // (245) The version (podcast settings or the switch) changed: the
+    // episode playing loads again at its position in the other version
+    function reloadVersion(podcastId) {
+        if (!hasEpisode || _needsLoad || (podcastId > 0 && info.podcastId !== podcastId)) {
+            return
+        }
+        var data = core.episode(episodeId)
+        if (!data.episodeId) {
+            return
+        }
+        _setInfo(data)
+        _videoSeen = false
+        _refreshVideo()
+        var wasPlaying = _playingState
+        var ms = _pendingSeek >= 0 ? _pendingSeek : player.position
+        if (!wasPlaying) {
+            // Paused: loaded in the new version on the next "play", as a
+            // restored episode (loading paused needed several presses)
+            console.warn("Version changed while paused, loading on play")
+            player.stop()
+            _pendingSeek = -1
+            _restoreSeconds = Math.floor(ms / 1000)
+            _needsLoad = true
+            return
+        }
+        _sources = data.sources
+        _sourceIndex = 0
+        console.warn("Version changed, reloading at " + Math.round(ms / 1000) + " s")
+        _logSource()
+        player.stop()
+        player.source = ""
+        _pendingSeek = ms > 0 ? ms : -1
+        _verifyTarget = _pendingSeek
+        _verifyTries = 0
+        _verifyTotal = 0
+        _verifyTicks = 0
+        _markOutputsApplied()
+        _rateApplied = false
+        player.source = _sources[0]
+        player.play()
     }
 
     function _finished() {
@@ -748,6 +1191,7 @@ Item {
         _pendingSeek = -1
         _setInfo(data)
         _restoreSeconds = _startFor(data)
+        _playedEnd = false
         _needsLoad = true
         episodeId = id
         core.setSetting("player.last", "" + id)
@@ -757,6 +1201,9 @@ Item {
         if (_sourceIndex + 1 < _sources.length) {
             _pendingSeek = player.position > 0 ? player.position : _pendingSeek
             _sourceIndex += 1
+            _markOutputsApplied()
+            _logSource()
+            _rateApplied = false
             player.source = _sources[_sourceIndex]
             player.play()
         } else if (!_refreshTried && info.podcastId > 0) {

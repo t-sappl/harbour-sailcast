@@ -813,13 +813,19 @@ Page {
 
         PageHeader {
             title: qsTr("Discover")
-            description: core.searchAvailable ? qsTr("Search, enter a feed address or browse") : qsTr("Feed address or browse")
+            // (256) No description line any more: the search field below
+            // says the same, and a second grey line under the title was
+            // mixed up with the neighbours line (Thomas on the device)
         }
+        // (255) Neighbours of the ring, below the header
+        RingNeighbours { kind: "discover"; ringMember: page.ringMember }
 
         SearchField {
             id: searchField
             width: parent.width
-            placeholderText: core.searchAvailable ? qsTr("Title, topic, author or address") : qsTr("Feed address")
+            // (253, usability audit #2) shorter and says plainly that a
+            // feed address works too, not just a search term
+            placeholderText: core.searchAvailable ? qsTr("Name, feed, episode link") : qsTr("Feed address")
             focus: true
             inputMethodHints: Qt.ImhNoPredictiveText
             EnterKey.iconSource: "image://theme/icon-m-enter-accept"

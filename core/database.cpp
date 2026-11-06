@@ -5,6 +5,7 @@
 
 #include <QCollator>
 #include <QCryptographicHash>
+#include <QDate>
 #include <QDateTime>
 #include <QHash>
 #include <QJsonArray>
@@ -25,7 +26,7 @@ namespace {
 // Must be raised with every new SchemaV* step (130: was left at 8 in 123 -
 // a migrated database was refused as "from a newer Sailcast" on the next
 // start; tools/sqlcheck.py checks it now)
-const int SchemaVersion = 11;
+const int SchemaVersion = 13;
 
 // Schema version 1. Text columns are NOT NULL with '' as default so that
 // the code never has to tell NULL and empty apart (exception: last_error,
@@ -225,6 +226,43 @@ const char *const SchemaV11[] = {
     nullptr
 };
 
+// Schema version 12 (244): podcast:alternateEnclosure - other versions of an
+// episode's media (video, HLS), written with the episode on the next feed
+// update; and the listening log - seconds really listened (wall clock, so
+// at the speed) per day and episode, kept when the episode or podcast goes
+// (title stored) for the statistics of 1.4.
+const char *const SchemaV12[] = {
+    "CREATE TABLE episode_alternates ("
+    " episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,"
+    " position INTEGER NOT NULL DEFAULT 0,"
+    " url TEXT NOT NULL DEFAULT '',"
+    " mime_type TEXT NOT NULL DEFAULT '',"
+    " length INTEGER NOT NULL DEFAULT 0,"
+    " bitrate INTEGER NOT NULL DEFAULT 0,"
+    " height INTEGER NOT NULL DEFAULT 0,"
+    " title TEXT NOT NULL DEFAULT '',"
+    " lang TEXT NOT NULL DEFAULT '',"
+    " rel TEXT NOT NULL DEFAULT '',"
+    " is_default INTEGER NOT NULL DEFAULT 0)",
+    "CREATE INDEX episode_alternates_episode ON episode_alternates(episode_id)",
+    "CREATE TABLE listening_log ("
+    " day INTEGER NOT NULL,"
+    " episode_id INTEGER NOT NULL,"
+    " podcast_id INTEGER NOT NULL DEFAULT 0,"
+    " podcast_title TEXT NOT NULL DEFAULT '',"
+    " seconds INTEGER NOT NULL DEFAULT 0,"
+    " PRIMARY KEY (day, episode_id))",
+    nullptr
+};
+
+// Schema version 13 (245): the listening log also keeps the episode time
+// (position progress, so 1 h of episode at 2x = 1 h) next to the wall
+// clock - the statistics page of 1.4 decides how to show them.
+const char *const SchemaV13[] = {
+    "ALTER TABLE listening_log ADD COLUMN media_seconds INTEGER NOT NULL DEFAULT 0",
+    nullptr
+};
+
 // Same rule as gPodder's is_finished(): within the last 10 seconds or 99 %
 bool isFinishedPosition(int position, int total)
 {
@@ -287,6 +325,11 @@ QString metaHash(const ParsedEpisode &e)
     // (193) Likewise the type: only "trailer" and "bonus" count
     if (!e.type.isEmpty()) {
         hash.addData(QStringLiteral("t%1").arg(e.type).toUtf8());
+    }
+    // (244) Alternative versions, only when there are any
+    for (int i = 0; i < e.alternates.size(); ++i) {
+        const ParsedAlternate &a = e.alternates.at(i);
+        hash.addData(QStringLiteral("a%1|%2|%3|%4").arg(a.url, a.mimeType).arg(a.height).arg(a.title).toUtf8());
     }
     for (int i = 0; i < e.chapters.size(); ++i) {
         const ParsedChapter &c = e.chapters.at(i);
@@ -533,7 +576,33 @@ bool Database::migrate()
             return fail(QStringLiteral("migrate v11"), db.lastError().text());
         }
     }
-    // Future steps: if (version < 12) { ... PRAGMA user_version = 12 ... }
+    if (version < 12) {
+        db.transaction();
+        for (int i = 0; SchemaV12[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV12[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 12"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v12"), db.lastError().text());
+        }
+    }
+    if (version < 13) {
+        db.transaction();
+        for (int i = 0; SchemaV13[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV13[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 13"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v13"), db.lastError().text());
+        }
+    }
+    // Future steps: if (version < 14) { ... PRAGMA user_version = 14 ... }
     return true;
 }
 
@@ -664,6 +733,249 @@ bool Database::removePodcast(qint64 id, bool queueForSync)
     return removed;
 }
 
+QList<QPair<qint64, qint64>> Database::caseDuplicates() const
+{
+    QList<QPair<qint64, qint64>> pairs;
+    const QList<PodcastRow> rows = podcasts();
+    QHash<QString, int> seen;     // lower-case URL -> index in rows
+    QSet<qint64> used;
+    for (int i = 0; i < rows.size(); ++i) {
+        const QString key = rows.at(i).url.trimmed().toLower();
+        if (!seen.contains(key)) {
+            seen.insert(key, i);
+            continue;
+        }
+        const PodcastRow &a = rows.at(seen.value(key));
+        const PodcastRow &b = rows.at(i);
+        if (used.contains(a.id) || used.contains(b.id)) {
+            continue;
+        }
+        const bool keepA = a.listenedSeconds > b.listenedSeconds
+                || (a.listenedSeconds == b.listenedSeconds && a.id < b.id);
+        pairs.append(keepA ? qMakePair(b.id, a.id) : qMakePair(a.id, b.id));
+        used.insert(a.id);
+        used.insert(b.id);
+    }
+    return pairs;
+}
+
+bool Database::mergePodcasts(qint64 from, qint64 into)
+{
+    if (from <= 0 || into <= 0 || from == into) {
+        return false;
+    }
+    const PodcastRow source = podcast(from);
+    const PodcastRow target = podcast(into);
+    if (!source.id || !target.id) {
+        return fail(QStringLiteral("mergePodcasts"), QStringLiteral("podcast not found"));
+    }
+    QSqlDatabase db = handle();
+
+    struct Ep {
+        qint64 id; QString guid; QString url; bool played; int position; qint64 positionUpdated;
+        qint64 lastPlayed; bool isNew; int downloadState; QString downloadPath; QString archiveFile; int duration;
+    };
+    const auto load = [&](qint64 podcastId) {
+        QList<Ep> list;
+        QSqlQuery q(db);
+        q.setForwardOnly(true);
+        q.prepare(QStringLiteral("SELECT id, guid, url, played, position, position_updated, last_played, is_new,"
+                                 " download_state, download_path, archive_file, duration FROM episodes WHERE podcast_id = ?"));
+        q.addBindValue(podcastId);
+        if (q.exec()) {
+            while (q.next()) {
+                Ep e;
+                e.id = q.value(0).toLongLong();
+                e.guid = q.value(1).toString();
+                e.url = q.value(2).toString();
+                e.played = q.value(3).toInt() != 0;
+                e.position = q.value(4).toInt();
+                e.positionUpdated = q.value(5).toLongLong();
+                e.lastPlayed = q.value(6).toLongLong();
+                e.isNew = q.value(7).toInt() != 0;
+                e.downloadState = q.value(8).toInt();
+                e.downloadPath = q.value(9).toString();
+                e.archiveFile = q.value(10).toString();
+                e.duration = q.value(11).toInt();
+                list.append(e);
+            }
+        }
+        return list;
+    };
+    const QList<Ep> sourceEps = load(from);
+    const QList<Ep> targetEps = load(into);
+    QHash<QString, int> byGuid;
+    QHash<QString, int> byUrl;
+    for (int i = 0; i < targetEps.size(); ++i) {
+        byGuid.insert(targetEps.at(i).guid, i);
+        byUrl.insert(withoutQuery(targetEps.at(i).url), i);
+    }
+
+    QList<qint64> changed;      // target episodes whose listening state changed
+    db.transaction();
+    const auto run = [&](QSqlQuery &q) {
+        if (!q.exec()) {
+            fail(QStringLiteral("mergePodcasts"), q.lastError().text());
+            return false;
+        }
+        return true;
+    };
+    for (int i = 0; i < sourceEps.size(); ++i) {
+        const Ep &s = sourceEps.at(i);
+        int t = byGuid.value(s.guid, -1);
+        if (t < 0) {
+            t = byUrl.value(withoutQuery(s.url), -1);
+        }
+        if (t < 0) {
+            // Only in the old subscription: the episode moves over (guid
+            // not in the target, so the unique key holds)
+            QSqlQuery move(db);
+            move.prepare(QStringLiteral("UPDATE episodes SET podcast_id = ? WHERE id = ?"));
+            move.addBindValue(into);
+            move.addBindValue(s.id);
+            if (!run(move)) {
+                db.rollback();
+                return false;
+            }
+            continue;
+        }
+        const Ep &m = targetEps.at(t);
+        // Listening state: played wins; else the newer position
+        const bool takePlayed = s.played && !m.played;
+        const bool takePosition = !m.played && !s.played && s.positionUpdated > m.positionUpdated;
+        if (takePlayed || takePosition) {
+            QSqlQuery up(db);
+            up.prepare(QStringLiteral("UPDATE episodes SET played = ?, position = ?, position_updated = ?,"
+                                      " last_played = MAX(last_played, ?), is_new = 0 WHERE id = ?"));
+            up.addBindValue(takePlayed ? 1 : 0);
+            up.addBindValue(takePlayed ? 0 : s.position);
+            up.addBindValue(qMax(s.positionUpdated, m.positionUpdated));
+            up.addBindValue(s.lastPlayed);
+            up.addBindValue(m.id);
+            if (!run(up)) {
+                db.rollback();
+                return false;
+            }
+            changed.append(m.id);
+        } else if (!s.isNew && m.isNew) {
+            QSqlQuery up(db);
+            up.prepare(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE id = ?"));
+            up.addBindValue(m.id);
+            run(up);
+        }
+        // Download: taken over when the target has none
+        if (s.downloadState == 2 && m.downloadState != 2) {
+            QSqlQuery dl(db);
+            dl.prepare(QStringLiteral("UPDATE episodes SET download_state = ?, download_path = ?, archive_file = ?"
+                                      " WHERE id = ?"));
+            dl.addBindValue(s.downloadState);
+            dl.addBindValue(sqlText(s.downloadPath));
+            dl.addBindValue(sqlText(s.archiveFile));
+            dl.addBindValue(m.id);
+            if (!run(dl)) {
+                db.rollback();
+                return false;
+            }
+        }
+        // Bookmarks and the listening log follow the episode
+        QSqlQuery bm(db);
+        bm.prepare(QStringLiteral("UPDATE bookmarks SET episode_id = ? WHERE episode_id = ?"));
+        bm.addBindValue(m.id);
+        bm.addBindValue(s.id);
+        run(bm);
+        QSqlQuery log(db);
+        log.prepare(QStringLiteral("SELECT day, seconds, media_seconds FROM listening_log WHERE episode_id = ?"));
+        log.addBindValue(s.id);
+        if (log.exec()) {
+            QList<QVariantList> rows;
+            while (log.next()) {
+                rows.append(QVariantList() << log.value(0) << log.value(1) << log.value(2));
+            }
+            for (int r = 0; r < rows.size(); ++r) {
+                QSqlQuery add(db);
+                add.prepare(QStringLiteral("UPDATE listening_log SET seconds = seconds + ?, media_seconds = media_seconds + ?"
+                                           " WHERE day = ? AND episode_id = ?"));
+                add.addBindValue(rows.at(r).at(1));
+                add.addBindValue(rows.at(r).at(2));
+                add.addBindValue(rows.at(r).at(0));
+                add.addBindValue(m.id);
+                if (add.exec() && add.numRowsAffected() > 0) {
+                    QSqlQuery del(db);
+                    del.prepare(QStringLiteral("DELETE FROM listening_log WHERE day = ? AND episode_id = ?"));
+                    del.addBindValue(rows.at(r).at(0));
+                    del.addBindValue(s.id);
+                    del.exec();
+                } else {
+                    QSqlQuery mv(db);
+                    mv.prepare(QStringLiteral("UPDATE listening_log SET episode_id = ? WHERE day = ? AND episode_id = ?"));
+                    mv.addBindValue(m.id);
+                    mv.addBindValue(rows.at(r).at(0));
+                    mv.addBindValue(s.id);
+                    mv.exec();
+                }
+            }
+        }
+        // Playlist place, when the target episode is not queued
+        QSqlQuery qu(db);
+        qu.prepare(QStringLiteral("UPDATE queue SET episode_id = ? WHERE episode_id = ?"
+                                  " AND NOT EXISTS (SELECT 1 FROM queue WHERE episode_id = ?)"));
+        qu.addBindValue(m.id);
+        qu.addBindValue(s.id);
+        qu.addBindValue(m.id);
+        run(qu);
+    }
+    // The listening log keeps the podcast (title for gone podcasts)
+    QSqlQuery logPodcast(db);
+    logPodcast.prepare(QStringLiteral("UPDATE listening_log SET podcast_id = ?, podcast_title = ? WHERE podcast_id = ?"));
+    logPodcast.addBindValue(into);
+    logPodcast.addBindValue(sqlText(target.title));
+    logPodcast.addBindValue(from);
+    run(logPodcast);
+    // Podcast: folder, own name, archive folder where the target has none
+    QSqlQuery pod(db);
+    pod.prepare(QStringLiteral("UPDATE podcasts SET"
+                               " folder_id = COALESCE(folder_id, (SELECT folder_id FROM podcasts WHERE id = ?)),"
+                               " custom_title = CASE WHEN custom_title = '' THEN (SELECT custom_title FROM podcasts WHERE id = ?) ELSE custom_title END,"
+                               " archive_folder = CASE WHEN archive_folder = '' THEN (SELECT archive_folder FROM podcasts WHERE id = ?) ELSE archive_folder END"
+                               " WHERE id = ?"));
+    pod.addBindValue(from);
+    pod.addBindValue(from);
+    pod.addBindValue(from);
+    pod.addBindValue(into);
+    if (!run(pod)) {
+        db.rollback();
+        return false;
+    }
+    // Per-podcast settings (podcast.<id>.*) where the target has none
+    QSqlQuery sets(db);
+    sets.prepare(QStringLiteral("INSERT OR IGNORE INTO settings (key, value)"
+                                " SELECT 'podcast.' || ? || substr(key, length('podcast.' || ?) + 1), value"
+                                " FROM settings WHERE key LIKE 'podcast.' || ? || '.%'"));
+    sets.addBindValue(into);
+    sets.addBindValue(from);
+    sets.addBindValue(from);
+    run(sets);
+    QSqlQuery dropSets(db);
+    dropSets.prepare(QStringLiteral("DELETE FROM settings WHERE key LIKE 'podcast.' || ? || '.%'"));
+    dropSets.addBindValue(from);
+    run(dropSets);
+    if (!db.commit()) {
+        db.rollback();
+        return fail(QStringLiteral("mergePodcasts"), db.lastError().text());
+    }
+    // The old subscription goes (episodes left there go with it) and is
+    // removed on the sync server
+    removePodcast(from, true);
+    // The changed states for the sync, under the new address
+    const qint64 timestamp = now();
+    for (int i = 0; i < changed.size(); ++i) {
+        const EpisodeRow e = episode(changed.at(i));
+        const int position = e.played ? e.duration : e.position;
+        queueAction(e.id, QStringLiteral("play"), 0, qMax(0, position), qMax(0, e.duration), timestamp);
+    }
+    return true;
+}
+
 QStringList Database::podcastUrls() const
 {
     QStringList urls;
@@ -687,10 +999,15 @@ static const char *const PodcastColumns =
         " SUM(CASE WHEN e.download_state = 2 THEN 1 ELSE 0 END),"
         " SUM(CASE WHEN e.played = 1 THEN e.duration WHEN e.position > 0 THEN e.position ELSE 0 END),"
         " p.paused, COALESCE(p.folder_id, 0),"
-        // New episodes arrived after the podcast page was last opened (50)
-        " COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.newAt'), 0)"
-        " > COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.seenAt'), 0),"
-        " p.funding, p.title, p.custom_title, p.language, p.categories, p.provisional, MAX(e.published)"
+        // New episodes arrived after the podcast page was last opened (50).
+        // (253) Only while at least one of them is still new and unplayed:
+        // before, the dot stayed after those episodes were heard from the
+        // New episodes page (forum: zero unplayed but marked); the setting
+        // podcast.ID.newAt is no longer needed for it
+        " SUM(CASE WHEN e.played = 0 AND e.is_new = 1 AND e.added >"
+        " COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.seenAt'), 0)"
+        " THEN 1 ELSE 0 END) > 0,"
+        " p.funding, p.title, p.custom_title, p.language, p.categories, p.provisional, MAX(e.published), p.added"
         " FROM podcasts p LEFT JOIN episodes e ON e.podcast_id = p.id";
 
 static PodcastRow podcastFromQuery(const QSqlQuery &q)
@@ -728,6 +1045,7 @@ static PodcastRow podcastFromQuery(const QSqlQuery &q)
     }
     row.provisional = q.value(25).toInt() != 0;
     row.newestPublished = q.value(26).toLongLong();
+    row.added = q.value(27).toLongLong();
     return row;
 }
 
@@ -817,9 +1135,16 @@ bool Database::changeUrl(qint64 id, const QString &newUrl)
     }
     const qint64 other = findPodcast(trimmed);
     if (other >= 0 && other != id) {
-        // Another subscription already has this URL - keep both as they are
+        // Another subscription already has this URL - keep both as they are.
+        // (245) Logged once per session (a duplicate subscription repeats it
+        // on every update)
+        static QSet<QString> reported;
+        if (reported.contains(trimmed)) {
+            return false;
+        }
+        reported.insert(trimmed);
         return fail(QStringLiteral("changeUrl"),
-                    QStringLiteral("%1 is already subscribed").arg(trimmed));
+                    QStringLiteral("%1 is already subscribed (duplicate subscription)").arg(trimmed));
     }
     QSqlQuery q(handle());
     q.prepare(QStringLiteral("UPDATE podcasts SET url = ?, etag = '', last_modified = '' WHERE id = ?"));
@@ -1056,6 +1381,146 @@ QList<ParsedChapter> Database::chapters(qint64 episodeId) const
     return result;
 }
 
+QList<ParsedAlternate> Database::alternates(qint64 episodeId) const
+{
+    QList<ParsedAlternate> result;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    q.prepare(QStringLiteral("SELECT url, mime_type, length, bitrate, height, title, lang, rel, is_default"
+                             " FROM episode_alternates WHERE episode_id = ? ORDER BY position"));
+    q.addBindValue(episodeId);
+    if (q.exec()) {
+        while (q.next()) {
+            ParsedAlternate a;
+            a.url = q.value(0).toString();
+            a.mimeType = q.value(1).toString();
+            a.length = q.value(2).toLongLong();
+            a.bitrate = q.value(3).toInt();
+            a.height = q.value(4).toInt();
+            a.title = q.value(5).toString();
+            a.lang = q.value(6).toString();
+            a.rel = q.value(7).toString();
+            a.isDefault = q.value(8).toInt() != 0;
+            result.append(a);
+        }
+    }
+    return result;
+}
+
+bool Database::isVideoPodcast(qint64 podcastId) const
+{
+    if (hasVideoAlternates(podcastId)) {
+        return true;
+    }
+    // Most of the newest 10 episodes are video files
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT COUNT(*), SUM(CASE WHEN mime_type LIKE 'video/%' THEN 1 ELSE 0 END) FROM"
+                             " (SELECT mime_type FROM episodes WHERE podcast_id = ? ORDER BY published DESC LIMIT 10)"));
+    q.addBindValue(podcastId);
+    if (q.exec() && q.next()) {
+        const int all = q.value(0).toInt();
+        return all > 0 && q.value(1).toInt() * 2 > all;
+    }
+    return false;
+}
+
+QSet<qint64> Database::videoPodcasts() const
+{
+    QSet<qint64> ids;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (q.exec(QStringLiteral(
+            "SELECT podcast_id FROM episodes GROUP BY podcast_id"
+            " HAVING SUM(CASE WHEN mime_type LIKE 'video/%' THEN 1 ELSE 0 END) * 2 > COUNT(*)"
+            " UNION SELECT e.podcast_id FROM episode_alternates a JOIN episodes e ON e.id = a.episode_id"
+            " WHERE a.mime_type LIKE 'video/%' OR a.mime_type LIKE '%mpegurl%'"))) {
+        while (q.next()) {
+            ids.insert(q.value(0).toLongLong());
+        }
+    }
+    return ids;
+}
+
+bool Database::hasVideoAlternates(qint64 podcastId) const
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT 1 FROM episode_alternates a JOIN episodes e ON e.id = a.episode_id"
+                             " WHERE e.podcast_id = ? AND (a.mime_type LIKE 'video/%'"
+                             " OR a.mime_type LIKE '%mpegurl%') LIMIT 1"));
+    q.addBindValue(podcastId);
+    return q.exec() && q.next();
+}
+
+bool Database::addListening(qint64 episodeId, int seconds, int mediaSeconds)
+{
+    if (episodeId <= 0 || (seconds <= 0 && mediaSeconds <= 0)) {
+        return true;
+    }
+    seconds = qMax(0, seconds);
+    mediaSeconds = qMax(0, mediaSeconds);
+    const int day = QDate::currentDate().toString(QStringLiteral("yyyyMMdd")).toInt();
+    QSqlQuery up(handle());
+    up.prepare(QStringLiteral("UPDATE listening_log SET seconds = seconds + ?, media_seconds = media_seconds + ?"
+                              " WHERE day = ? AND episode_id = ?"));
+    up.addBindValue(seconds);
+    up.addBindValue(mediaSeconds);
+    up.addBindValue(day);
+    up.addBindValue(episodeId);
+    if (!up.exec()) {
+        return fail(QStringLiteral("addListening"), up.lastError().text());
+    }
+    if (up.numRowsAffected() > 0) {
+        return true;
+    }
+    const EpisodeRow e = episode(episodeId);
+    QSqlQuery in(handle());
+    in.prepare(QStringLiteral("INSERT INTO listening_log (day, episode_id, podcast_id, podcast_title, seconds,"
+                              " media_seconds) VALUES (?, ?, ?, ?, ?, ?)"));
+    in.addBindValue(day);
+    in.addBindValue(episodeId);
+    in.addBindValue(e.podcastId);
+    in.addBindValue(sqlText(e.podcastTitle));
+    in.addBindValue(seconds);
+    in.addBindValue(mediaSeconds);
+    if (!in.exec()) {
+        return fail(QStringLiteral("addListening"), in.lastError().text());
+    }
+    return true;
+}
+
+QSet<qint64> Database::videoAlternateEpisodes() const
+{
+    QSet<qint64> ids;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (q.exec(QStringLiteral("SELECT DISTINCT episode_id FROM episode_alternates"
+                              " WHERE mime_type LIKE 'video/%' OR mime_type LIKE '%mpegurl%'"))) {
+        while (q.next()) {
+            ids.insert(q.value(0).toLongLong());
+        }
+    }
+    return ids;
+}
+
+qint64 Database::listenedSeconds(qint64 podcastId, qint64 *mediaSeconds) const
+{
+    QSqlQuery q(handle());
+    if (podcastId > 0) {
+        q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0)"
+                                 " FROM listening_log WHERE podcast_id = ?"));
+        q.addBindValue(podcastId);
+    } else {
+        q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log"));
+    }
+    if (q.exec() && q.next()) {
+        if (mediaSeconds) {
+            *mediaSeconds = q.value(1).toLongLong();
+        }
+        return q.value(0).toLongLong();
+    }
+    return 0;
+}
+
 DatabaseStats Database::stats() const
 {
     DatabaseStats s;
@@ -1201,6 +1666,12 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
     QSqlQuery insertChapter(db);
     insertChapter.prepare(QStringLiteral(
             "INSERT INTO chapters (episode_id, start_ms, title, href, image) VALUES (?, ?, ?, ?, ?)"));
+    QSqlQuery deleteAlternates(db);
+    deleteAlternates.prepare(QStringLiteral("DELETE FROM episode_alternates WHERE episode_id = ?"));
+    QSqlQuery insertAlternate(db);
+    insertAlternate.prepare(QStringLiteral(
+            "INSERT INTO episode_alternates (episode_id, position, url, mime_type, length, bitrate, height,"
+            " title, lang, rel, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
 
     int newEpisodes = 0;
     QSet<QString> seen;
@@ -1279,6 +1750,27 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
             episodeId = insert.lastInsertId().toLongLong();
             writeChapters = !e.chapters.isEmpty();
             ++newEpisodes;
+        }
+
+        // (244) Alternative versions: written whenever the episode was
+        // written (its hash covers them - only when there are any, so
+        // episodes with alternatives are written once after the update)
+        deleteAlternates.addBindValue(episodeId);
+        deleteAlternates.exec();
+        for (int a = 0; a < e.alternates.size(); ++a) {
+            const ParsedAlternate &alt = e.alternates.at(a);
+            insertAlternate.addBindValue(episodeId);
+            insertAlternate.addBindValue(a);
+            insertAlternate.addBindValue(sqlText(alt.url));
+            insertAlternate.addBindValue(sqlText(alt.mimeType));
+            insertAlternate.addBindValue(alt.length);
+            insertAlternate.addBindValue(alt.bitrate);
+            insertAlternate.addBindValue(alt.height);
+            insertAlternate.addBindValue(sqlText(alt.title));
+            insertAlternate.addBindValue(sqlText(alt.lang));
+            insertAlternate.addBindValue(sqlText(alt.rel));
+            insertAlternate.addBindValue(alt.isDefault ? 1 : 0);
+            insertAlternate.exec();
         }
 
         if (writeChapters) {
@@ -1362,6 +1854,20 @@ bool Database::markUnplayed(qint64 episodeId)
         return fail(QStringLiteral("markUnplayed"), QStringLiteral("no episode with id %1").arg(episodeId));
     }
     queueAction(episodeId, QStringLiteral("new"), -1, -1, -1, timestamp);
+    return true;
+}
+
+// (253) "Remove from New episodes": only the "new" flag, the listening
+// state stays as it is (unplayed, its position). Local only - the sync
+// services know no "new" flag, so nothing is queued.
+bool Database::clearNew(qint64 episodeId)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE id = ?"));
+    q.addBindValue(episodeId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("clearNew"), q.lastError().text());
+    }
     return true;
 }
 
@@ -2472,15 +2978,36 @@ int Database::markAllButNewestPlayed(qint64 podcastId)
     return count;
 }
 
-int Database::markAllPlayed(qint64 podcastId)
+int Database::markAllPlayedCount(qint64 podcastId, bool keepNewest) const
 {
-    // Marked like markPlayed() one by one, so the sync gets every change
+    QSqlQuery q(handle());
+    q.prepare(keepNewest
+              ? QStringLiteral("SELECT COUNT(*) FROM episodes WHERE podcast_id = ? AND played = 0 AND id <>"
+                               " (SELECT id FROM episodes WHERE podcast_id = ? ORDER BY published DESC, id DESC LIMIT 1)")
+              : QStringLiteral("SELECT COUNT(*) FROM episodes WHERE podcast_id = ? AND played = 0"));
+    q.addBindValue(podcastId);
+    if (keepNewest) {
+        q.addBindValue(podcastId);
+    }
+    return q.exec() && q.next() ? q.value(0).toInt() : 0;
+}
+
+int Database::markAllPlayed(qint64 podcastId, bool keepNewest)
+{
+    // Marked like markPlayed() one by one, so the sync gets every change;
+    // (246) keepNewest: the newest episode of the podcast stays unplayed
     QList<qint64> ids;
     {
         QSqlQuery q(handle());
         q.setForwardOnly(true);
-        q.prepare(QStringLiteral("SELECT id FROM episodes WHERE podcast_id = ? AND played = 0"));
+        q.prepare(keepNewest
+                  ? QStringLiteral("SELECT id FROM episodes WHERE podcast_id = ? AND played = 0 AND id <>"
+                                   " (SELECT id FROM episodes WHERE podcast_id = ? ORDER BY published DESC, id DESC LIMIT 1)")
+                  : QStringLiteral("SELECT id FROM episodes WHERE podcast_id = ? AND played = 0"));
         q.addBindValue(podcastId);
+        if (keepNewest) {
+            q.addBindValue(podcastId);
+        }
         if (q.exec()) {
             while (q.next()) {
                 ids.append(q.value(0).toLongLong());

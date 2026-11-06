@@ -256,6 +256,21 @@ Dialog {
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.secondaryHighlightColor
                     }
+                    // (245) Video podcast
+                    Row {
+                        visible: dialog.result.video === true
+                        spacing: Theme.paddingSmall
+                        VideoIcon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Theme.iconSizeExtraSmall
+                            color: Theme.secondaryHighlightColor
+                        }
+                        Label {
+                            text: qsTr("Video podcast")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.secondaryHighlightColor
+                        }
+                    }
                 }
             }
 
@@ -600,20 +615,19 @@ Dialog {
 
                 // (163) As on the podcast page: side by side, with space
                 Item { width: 1; height: Theme.paddingMedium }
-                // (192) Centred, equally wide (one alone: half width)
-                Row {
+                Flow {
                     id: dialogLinkButtons
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
                     spacing: Theme.paddingMedium
-                    readonly property real cell: (parent.width - 2 * Theme.horizontalPageMargin - spacing) / 2
-                    Button {
-                        width: dialogLinkButtons.cell
+                    ActionPill {
+                        kind: "secondary"
                         visible: (dialog.info.link || "").length > 0
                         text: qsTr("Website")
                         onClicked: Qt.openUrlExternally(dialog.info.link)
                     }
-                    Button {
-                        width: dialogLinkButtons.cell
+                    ActionPill {
+                        kind: "secondary"
                         visible: (dialog.info.fundingUrl || "").length > 0
                         text: (dialog.info.fundingMessage || "").length > 0 && dialog.info.fundingMessage.length < 30
                               ? dialog.info.fundingMessage : qsTr("Support the podcast")

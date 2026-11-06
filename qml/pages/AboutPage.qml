@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // About Sailcast (40): icon, version, what the app is, license, source
 // code, privacy and credits. Links open in the browser.
@@ -71,14 +72,16 @@ Page {
                 text: qsTr("© 2026 Thomas Sappl. Free software under the GNU General Public License, version 3 or later.")
             }
 
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 text: qsTr("Source code")
                 onClicked: Qt.openUrlExternally(page.sourceUrl)
             }
 
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 text: qsTr("Privacy")
                 onClicked: Qt.openUrlExternally(page.privacyUrl)
             }

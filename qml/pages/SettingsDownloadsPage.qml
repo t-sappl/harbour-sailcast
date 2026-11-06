@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 import "../TimeFormat.js" as TimeFormat
 
 // Settings → Downloads and archive (88): Wi-Fi only, automatic downloads,
@@ -72,6 +73,14 @@ Page {
                 title: qsTr("Downloads and archive")
             }
 
+            // (253, usability audit #10) The downloaded episodes themselves -
+            // whoever looks for "Downloads" in the settings finds them here
+            SettingsEntry {
+                title: qsTr("Show downloaded episodes")
+                summary: core.downloadedCount() > 0 ? qsTr("%n episodes", "", core.downloadedCount()) : ""
+                target: Qt.resolvedUrl("DownloadsPage.qml")
+            }
+
             SectionHeader { text: qsTr("Downloads") }
 
             TextSwitch {
@@ -82,6 +91,28 @@ Page {
                 onClicked: {
                     checked = !checked
                     core.setSetting("downloads.wifiOnly", checked ? "1" : "0")
+                }
+            }
+
+            // (245) Video streams are large: own rule for the mobile connection
+            ComboBox {
+                label: qsTr("Stream videos without Wi-Fi")
+                description: qsTr("Video downloads always ask without Wi-Fi. \"Never\": with an audio version in the feed that one plays.")
+                currentIndex: core.setting("video.mobile", "ask") === "always" ? 1
+                            : (core.setting("video.mobile", "ask") === "never" ? 2 : 0)
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("Ask")
+                        onClicked: core.setSetting("video.mobile", "ask")
+                    }
+                    MenuItem {
+                        text: qsTr("Always")
+                        onClicked: core.setSetting("video.mobile", "always")
+                    }
+                    MenuItem {
+                        text: qsTr("Never")
+                        onClicked: core.setSetting("video.mobile", "never")
+                    }
                 }
             }
 
@@ -100,7 +131,7 @@ Page {
             // "Save in Music"); cleaned up as in the app's folder
             TextSwitch {
                 text: qsTr("Downloads in the Music folder")
-                description: qsTr("New downloads go to Music/Podcasts/<podcast> - visible to other apps, also the music player. They are cleaned up as set below; \"Save in Music\" keeps an episode for good. Can be changed for each podcast in its settings.")
+                description: qsTr("New downloads go to Music/Podcasts/<podcast> (video episodes to Videos/Podcasts/<podcast>) - visible to other apps, also the music player. They are cleaned up as set below; \"Save in Music\" keeps an episode for good. Can be changed for each podcast in its settings.")
                 checked: core.setting("downloads.inMusic", "0") === "1"
                 automaticCheck: false
                 onClicked: {
@@ -125,6 +156,7 @@ Page {
                     })
                     dialog.accepted.connect(function() { page.pendingMove = true })
                 }
+                PageArrow {}
             }
 
             // (217) Downloads still in the old place (also after a change in
@@ -135,6 +167,7 @@ Page {
                 value: qsTr("%n downloads", "", page.misplacedTotal.count) + " · "
                        + TimeFormat.size(page.misplacedTotal.bytes, qsTr("%1 MB"), qsTr("%1 GB"))
                 onClicked: pageStack.push(Qt.resolvedUrl("MoveDownloadsDialog.qml"))
+                PageArrow {}
             }
 
             ComboBox {
@@ -171,6 +204,7 @@ Page {
                     firstTitle: qsTr("Downloads in the Music folder"),
                     restTitle: qsTr("Downloads on the phone")
                 })
+                PageArrow {}
             }
 
             Label {
@@ -184,8 +218,9 @@ Page {
 
             Item { width: 1; height: Theme.paddingMedium }
 
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
+            ActionPill {
+                kind: "destructive"
+                x: Theme.horizontalPageMargin
                 visible: page.cleanupOptions[cleanupBox.currentIndex] >= 0
                 text: qsTr("Clean up now")
                 onClicked: core.cleanupDownloads(-1)

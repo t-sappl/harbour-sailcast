@@ -475,12 +475,34 @@ ApplicationWindow {
     // Downloads started by the user: without Wi-Fi (setting "only on
     // Wi-Fi") the user is asked first
     function requestDownload(episodeId) {
-        if (core.downloadAllowed()) {
+        // (245) A video file without Wi-Fi: always asked, with its size
+        var e = core.episode(episodeId)
+        var video = ("" + (e.mimeType || "")).indexOf("video/") === 0
+        // (246) A video version in the feed: the download is the audio
+        if (e.hasVideoAlternate === true && !video) {
+            showMessage(qsTr("Downloads the audio version – the video is only streamed"))
+        }
+        if (core.downloadAllowed() && !(video && !core.onWifi())) {
             core.download(episodeId)
             return
         }
         var dialog = pageStack.push(Qt.resolvedUrl("pages/MobileDataDialog.qml"))
+        if (video && !core.onWifi()) {
+            dialog.message = e.fileSize > 0
+                    ? qsTr("Download this video over the mobile connection? (about %1 MB)").arg(Math.round(e.fileSize / 1048576))
+                    : qsTr("Download this video over the mobile connection?")
+        }
         dialog.accepted.connect(function() { core.download(episodeId) })
+    }
+
+    // (245) Before streaming a video without Wi-Fi ("video.mobile" = ask)
+    function askMobileVideo(megabytes, onAccept) {
+        var dialog = pageStack.push(Qt.resolvedUrl("pages/MobileDataDialog.qml"))
+        dialog.acceptLabel = qsTr("Play")
+        dialog.message = megabytes > 0
+                ? qsTr("Play the video over the mobile connection? (about %1 MB)").arg(megabytes)
+                : qsTr("Play the video over the mobile connection?")
+        dialog.accepted.connect(onAccept)
     }
 
     // --- Feeds with login: passwords in Sailfish Secrets ("feed-<id>"),
@@ -787,7 +809,10 @@ ApplicationWindow {
 
     // The core outlives the QML engine (see main), so the position can
     // still be saved here
-    Component.onDestruction: playerController.save()
+    Component.onDestruction: {
+        playerController.save()
+        playerController.countAsPlayedIfNearEnd()
+    }
 
     // --- First-use hints (52) ---
     // Set once the swipe hint was started or found unnecessary (56)
@@ -912,6 +937,9 @@ ApplicationWindow {
             width: appWindow.playerPanelFullWidth
             shown: appWindow.playerPanelWidth > 0
             barColor: playerBar.color
+            previousEpisode: playerBar.previousEpisode
+            bookmarkList: playerBar.bookmarkList
+            upNextList: playerBar.upNextList
             z: 100
         }
 

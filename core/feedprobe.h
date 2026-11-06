@@ -27,6 +27,7 @@ struct FeedProbeResult
     QString link;           // (157) the podcast's web page
     QList<qint64> dates;    // (163) publishing times of the newest episodes (≤ 30)
     int episodes = 0;       // episodes with a media file
+    bool video = false;     // (245) video files or a video version (alternateEnclosure)
     QString description;    // of the podcast (50)
     // The newest episodes (50, at most 5): title, published, duration
     // guid (147): to play it without subscribing

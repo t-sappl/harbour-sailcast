@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // Settings → General (88): what happens at app start (43).
 Page {
@@ -79,6 +80,19 @@ Page {
                         onClicked: core.setSetting("ui.startPage", "playlist")
                     }
                 }
+            }
+
+            // (246) Rarely needed, so here and not in a pulley (Thomas);
+            // (248) a row as the other entries instead of a lone button
+            SectionHeader {
+                visible: core.podcastCount > 0
+                text: qsTr("Episodes")
+            }
+            SettingsEntry {
+                visible: core.podcastCount > 0
+                title: qsTr("Mark podcasts as played …")
+                summary: qsTr("Of all or chosen podcasts – all episodes, or all but the newest of each")
+                target: Qt.resolvedUrl("MarkAllPlayedDialog.qml")
             }
         }
 

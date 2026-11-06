@@ -52,7 +52,7 @@ CoverBackground {
         Label {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
-            text: player.duration > 0 ? "-" + Math.ceil((player.duration - player.position) / 60) + " min" : ""
+            text: player.duration > 0 ? "-" + Math.ceil(Math.max(0, player.duration - player.position) / 60) + " min" : ""
             font.pixelSize: Theme.fontSizeExtraSmall
             color: Theme.secondaryColor
         }
@@ -94,7 +94,7 @@ CoverBackground {
                     // the cover shows it for a moment
                     var seconds = player.position
                     if (core.addBookmark(player.episodeId, seconds) > 0) {
-                        feedbackText = "\u2605 " + TimeFormat.clock(seconds)
+                        feedbackText = qsTr("Bookmark") + " " + TimeFormat.clock(seconds)
                         feedbackTimer.restart()
                     }
                 } else if (player.coverButton === "sleep") {

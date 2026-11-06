@@ -54,3 +54,33 @@ if missing:
 else:
     open(ts, 'w', encoding='utf-8').write('\n'.join(out) + '\n')
     print('written', sum(len(v) for v in contexts.values()), 'messages')
+
+# (248) English plural forms: no English translation exists, so Qt showed
+# "1 episodes". harbour-sailcast-en.ts holds only the messages with a count
+# (singular from tools/plurals_en.json, plural = the source); all other
+# texts stay the source text.
+plurals_path = os.path.join(root, 'tools/plurals_en.json')
+plurals = json.load(open(plurals_path, encoding='utf-8'))
+missing_en = []
+en = ['<?xml version="1.0" encoding="utf-8"?>', '<!DOCTYPE TS>', '<TS version="2.1" language="en">']
+for ctx in sorted(contexts):
+    msgs = [(src, n) for src, n in contexts[ctx] if n]
+    if not msgs:
+        continue
+    en.append('<context>'); en.append('    <name>%s</name>' % ctx)
+    for src, _ in msgs:
+        one = plurals.get(src)
+        if one is None:
+            missing_en.append((ctx, src)); one = src
+        en.append('    <message numerus="yes">'); en.append('        <source>%s</source>' % escape(src))
+        en.append('        <translation>')
+        en.append('            <numerusform>%s</numerusform>' % escape(one))
+        en.append('            <numerusform>%s</numerusform>' % escape(src))
+        en.append('        </translation>'); en.append('    </message>')
+    en.append('</context>')
+en.append('</TS>')
+if missing_en:
+    print('MISSING EN SINGULAR (tools/plurals_en.json):'); [print(' ', c, '|', s) for c, s in missing_en]
+elif not missing:
+    open(os.path.join(root, 'translations/harbour-sailcast-en.ts'), 'w', encoding='utf-8').write('\n'.join(en) + '\n')
+    print('written English plural forms:', sum(1 for l in en if 'numerus="yes"' in l))

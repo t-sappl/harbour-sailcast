@@ -20,6 +20,7 @@ ListItem {
     property bool archived: false
     property bool manualUpdate: false
     property bool fresh: false      // new episodes since last opened (50)
+    property bool video: false      // (247) video podcast: camera after the counts
     property string lastError: ""
 
     contentHeight: Math.max(Theme.itemSizeLarge, textColumn.height + 2 * Theme.paddingMedium)
@@ -52,6 +53,26 @@ ListItem {
         height: width
         source: row.coverUrl
         fallbackText: row.title
+
+        // (248) Video podcast: camera bottom left on a dark spot, as in the
+        // grid (the symbol after the counts was hardly visible)
+        Rectangle {
+            visible: row.video
+            anchors {
+                left: parent.left
+                bottom: parent.bottom
+                margins: Theme.paddingSmall / 2
+            }
+            width: Math.round(parent.width * 0.38)
+            height: width
+            radius: width / 2
+            color: Qt.rgba(0, 0, 0, 0.55)
+            VideoIcon {
+                anchors.centerIn: parent
+                width: Math.round(parent.width * 0.62)
+                color: "white"
+            }
+        }
     }
 
     Column {
@@ -82,13 +103,15 @@ ListItem {
                     parts[i] = parts[i].replace(/ /g, "\u00a0")
                 }
                 // (191) An arrow instead of "downloaded": the line fits more
-                // often in one row; (194) kept with the part before it, so
-                // it never stands alone on the second line
+                // often in one row; (255, usability check 254: "↓ 4" was
+                // not understood) the word again, "4 downloaded"; (194)
+                // kept with the part before it, so it never stands alone on
+                // the second line
                 if (row.downloadedCount > 0) {
-                    parts[parts.length - 1] += "\u00a0·\u00a0\u2193\u00a0" + row.downloadedCount
+                    parts[parts.length - 1] += "\u00a0·\u00a0" + qsTr("%1 downloaded").arg(row.downloadedCount).replace(/ /g, "\u00a0")
                 }
                 if (row.archived) {
-                    parts.push(qsTr("archived").replace(/ /g, "\u00a0"))
+                    parts.push(qsTr("ended").replace(/ /g, "\u00a0"))
                 } else if (row.manualUpdate) {
                     parts.push(("⏸ " + qsTr("manual update")).replace(/ /g, "\u00a0"))
                 }

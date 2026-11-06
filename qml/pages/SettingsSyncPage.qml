@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // Settings → Synchronization (88): sync account (password in Sailfish
 // Secrets), Nextcloud sign-in in the browser (44), gpodder.net device (51),
@@ -155,12 +156,10 @@ Page {
             }
 
             // Nextcloud: sign in in the browser, no app password to type (44)
-            Button {
+            ActionPill {
+                kind: "primary"
+                x: Theme.horizontalPageMargin
                 visible: page.nextcloud && !core.browserLoginActive
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (193) As wide as the buttons below (ButtonLayout; 194:
-                // the medium width - the large one was wider than those)
-                width: Theme.buttonWidthMedium
                 text: qsTr("Sign in with the browser")
                 enabled: serverField.text.trim().length > 0 && !core.syncing
                 onClicked: core.startBrowserLogin(serverField.text)
@@ -181,10 +180,9 @@ Page {
                     font.pixelSize: Theme.fontSizeSmall
                 }
             }
-            Button {
+            ActionPill {
+                kind: "secondary"
                 visible: page.nextcloud && core.browserLoginActive
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: Theme.buttonWidthMedium
                 text: qsTr("Cancel")
                 onClicked: core.cancelBrowserLogin()
             }
@@ -228,6 +226,7 @@ Page {
                          && passwordField.text.length > 0
                 onClicked: pageStack.push(Qt.resolvedUrl("GpodderDeviceDialog.qml"),
                                           { server: serverField.text, user: userField.text, password: passwordField.text })
+                PageArrow {}
             }
 
             Label {
@@ -241,10 +240,26 @@ Page {
             }
 
             Item { width: 1; height: Theme.paddingMedium }
+Flow {
 
-            ButtonLayout {
+                x: Theme.horizontalPageMargin
+
+                width: parent.width - 2 * Theme.horizontalPageMargin
+
+                spacing: Theme.paddingMedium
+                ActionPill {
+                    kind: "primary"
+                    text: qsTr("Save and synchronize")
+                    enabled: !core.syncing && serverField.text.trim().length > 0
+                             && userField.text.trim().length > 0 && passwordField.text.length > 0
+                    onClicked: {
+                        passwordField.focus = false
+                        page.saveAccount(serverField.text, userField.text, passwordField.text)
+                    }
+                }
                 // Synchronize with the stored account (86) - without saving
-                Button {
+                ActionPill {
+                    kind: "secondary"
                     visible: core.syncConfigured
                     text: qsTr("Synchronize now")
                     enabled: !core.syncing
@@ -256,16 +271,8 @@ Page {
                         }
                     }
                 }
-                Button {
-                    text: qsTr("Save and synchronize")
-                    enabled: !core.syncing && serverField.text.trim().length > 0
-                             && userField.text.trim().length > 0 && passwordField.text.length > 0
-                    onClicked: {
-                        passwordField.focus = false
-                        page.saveAccount(serverField.text, userField.text, passwordField.text)
-                    }
-                }
-                Button {
+                ActionPill {
+                    kind: "destructive"
                     visible: core.syncConfigured
                     text: qsTr("Remove account")
                     enabled: !core.syncing

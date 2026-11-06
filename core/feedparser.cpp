@@ -74,6 +74,8 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
     QStringList stack;          // local names of the open elements
     bool inItem = false;
     ParsedEpisode item;
+    bool inAlternate = false;   // inside podcast:alternateEnclosure (244)
+    ParsedAlternate pendingAlternate;
     QString channelImageUrl;    // <image><url> - fallback for the cover
     QString channelSummary;     // itunes:summary - fallback for the description
     QString topCategory;        // the itunes:category a subcategory belongs to (123)
@@ -86,6 +88,9 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                 stack.removeLast();
             }
             const QStringRef name = xml.name();
+            if (name == QLatin1String("alternateEnclosure")) {
+                inAlternate = false;
+            }
             if (inItem && (name == QLatin1String("item") || name == QLatin1String("entry"))) {
                 inItem = false;
                 if (!item.url.isEmpty()) {
@@ -110,6 +115,7 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
         if ((isPlain(ns) && name == QLatin1String("item"))
                 || (ns == NsAtom && name == QLatin1String("entry"))) {
             inItem = true;
+            inAlternate = false;
             item = ParsedEpisode();
             stack.append(name.toString());
             continue;
@@ -181,6 +187,29 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                 stack.append(name.toString());
             } else if (ns == NsPodcast && name == QLatin1String("chapters")) {
                 setIfEmpty(item.chaptersUrl, attrs.value(QLatin1String("url")).toString());
+                stack.append(name.toString());
+            } else if (ns == NsPodcast && name == QLatin1String("alternateEnclosure")) {
+                // (244) Other versions of the media (video, HLS); kept once
+                // a podcast:source with an http(s) address follows
+                ParsedAlternate alt;
+                alt.mimeType = attrs.value(QLatin1String("type")).toString().trimmed();
+                alt.length = attrs.value(QLatin1String("length")).toLongLong();
+                alt.bitrate = int(attrs.value(QLatin1String("bitrate")).toDouble());
+                alt.height = attrs.value(QLatin1String("height")).toInt();
+                alt.title = attrs.value(QLatin1String("title")).toString();
+                alt.lang = attrs.value(QLatin1String("lang")).toString();
+                alt.rel = attrs.value(QLatin1String("rel")).toString();
+                alt.isDefault = attrs.value(QLatin1String("default")).toString() == QLatin1String("true");
+                pendingAlternate = alt;
+                inAlternate = true;
+                stack.append(name.toString());
+            } else if (ns == NsPodcast && name == QLatin1String("source") && inAlternate) {
+                const QString uri = attrs.value(QLatin1String("uri")).toString().trimmed();
+                if (pendingAlternate.url.isEmpty() && uri.startsWith(QLatin1String("http"), Qt::CaseInsensitive)
+                        && !pendingAlternate.mimeType.isEmpty() && item.alternates.size() < 10) {
+                    pendingAlternate.url = uri;
+                    item.alternates.append(pendingAlternate);
+                }
                 stack.append(name.toString());
             } else if (itemChild && (isPlain(ns) || ns == NsAtom) && name == QLatin1String("title")) {
                 item.title = readText(xml);

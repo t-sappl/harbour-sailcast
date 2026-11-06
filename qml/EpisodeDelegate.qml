@@ -4,11 +4,12 @@ import Sailfish.Silica 1.0
 import "TimeFormat.js" as TimeFormat
 
 // One episode row in all lists (start page, podcast, playlist):
-//   [image]  Title (up to 2 lines)                        [play]
+//   [image]  Title (up to 2 lines)                  [≡+]  [play]
 //            Podcast · date
 //            ======-----  33 min left · 21 chapters · [downloaded]
 // The image is the episode's own image, else the podcast cover. Tap: episode
-// page, play button: play/pause directly, long press: context menu.
+// page, play button: play/pause directly, ≡+ (254): add to / take out of
+// the playlist, long press: context menu.
 // Uses the roles of EpisodeListModel. The episode playing right now shows
 // its live progress.
 //
@@ -19,6 +20,9 @@ ListItem {
     id: item
 
     property bool showPodcastTitle: true
+    // (259, Thomas: made no sense in the playlist) "Remove from New episodes"
+    // only on the New episodes page itself
+    property bool newEpisodesList: false
     // In the playlist: "Remove from playlist" instead of "Add"
     property bool inPlaylist: false
     property bool dragHandle: false
@@ -54,13 +58,13 @@ ListItem {
     menu: menuEnabled ? contextMenu : null
 
     property Component contextMenu: Component {
+        // (259, Thomas 6 Nov: "same items same order, group by use") Order:
+        // playlist, file, status, other. No "Play" (the row has the play
+        // button), no "Save in Music/Videos" (episode page menu)
         ContextMenu {
+            // Playlist
             MenuItem {
-                text: item.isPlaying ? qsTr("Pause") : qsTr("Play")
-                onClicked: appWindow.player.playOrToggle(model.episodeId, item.playlistContext)
-            }
-            MenuItem {
-                visible: !item.inPlaylist
+                visible: !item.inPlaylist && !model.queued
                 text: qsTr("Play next")
                 onClicked: core.queueAdd(model.episodeId, true)
             }
@@ -74,6 +78,7 @@ ListItem {
                 text: qsTr("Remove from playlist")
                 onClicked: core.queueRemove(model.episodeId)
             }
+            // File
             MenuItem {
                 visible: !model.downloaded && !model.downloading
                 text: qsTr("Download")
@@ -93,7 +98,8 @@ ListItem {
                 // but nothing was deleted (25)
                 onClicked: appWindow.remorseDeleteDownload(model.episodeId)
             }
-            // Started episodes offer both: finish them or start over (22)
+            // Status; started episodes offer both: finish them or start
+            // over (22)
             MenuItem {
                 visible: !model.played
                 text: qsTr("Mark as played")
@@ -103,12 +109,6 @@ ListItem {
                     }
                     core.markPlayed(model.episodeId)
                 }
-            }
-            // Catching up in the middle of a podcast (53); countdown in the
-            // app window (not in this menu)
-            MenuItem {
-                text: qsTr("Mark older ones as played")
-                onClicked: appWindow.remorseMarkOlderPlayed(model.episodeId)
             }
             MenuItem {
                 visible: model.played || model.inProgress
@@ -121,27 +121,35 @@ ListItem {
                     core.markUnplayed(model.episodeId)
                 }
             }
-            // (156) Its podcast is not subscribed (147)
+            // Catching up in the middle of a podcast (53); countdown in the
+            // app window (not in this menu)
+            MenuItem {
+                text: qsTr("Mark older ones as played")
+                onClicked: appWindow.remorseMarkOlderPlayed(model.episodeId)
+            }
+            // (253, usability audit #35) Out of "New episodes" without
+            // pretending it was heard: only the "new" flag goes
+            MenuItem {
+                visible: item.newEpisodesList && model.isNew === true && !model.played
+                text: qsTr("Remove from New episodes")
+                onClicked: core.removeFromNew(model.episodeId)
+            }
+            // Other. (156) Its podcast is not subscribed (147)
             MenuItem {
                 visible: model.provisional === true
                 text: qsTr("Subscribe to the podcast")
                 onClicked: appWindow.subscribeWithFolder(core.podcast(model.podcastId).url || "", model.podcastTitle || "")
             }
-            // (83) Opened from the window, not from this menu (25)
+            // (256) Where the podcast name is shown - not on its own page
             MenuItem {
-                text: qsTr("Share")
-                onClicked: appWindow.shareEpisode(model.episodeId, 0)
+                visible: item.showPodcastTitle
+                text: qsTr("Show podcast")
+                onClicked: pageStack.push(Qt.resolvedUrl("pages/EpisodesPage.qml"), { podcastId: model.podcastId })
             }
-            // (120) The file itself; from the window (25)
+            // (83, 259) Link, file or download: the share page
             MenuItem {
-                visible: model.downloaded
-                text: qsTr("Share file")
-                onClicked: appWindow.shareEpisodeFile(model.episodeId)
-            }
-            MenuItem {
-                visible: model.downloaded && !model.kept
-                text: qsTr("Save in Music")
-                onClicked: core.keepEpisode(model.episodeId)
+                text: qsTr("Share...")
+                onClicked: pageStack.push(Qt.resolvedUrl("pages/ShareChoicePage.qml"), { episodeId: model.episodeId })
             }
         }
     }
@@ -203,7 +211,28 @@ ListItem {
             fallbackText: model.podcastTitle
             opacity: model.played && !item.isCurrent ? 0.6 : 1.0
 
-            // The episode has bookmarks (50): small star bottom right
+            // (251) Video episode (or one with a video version): camera
+            // bottom left on a dark spot as on the Podcasts page - behind
+            // the other symbols of the status line it was hardly seen
+            Rectangle {
+                visible: model.video === true
+                anchors {
+                    left: parent.left
+                    bottom: parent.bottom
+                    margins: Theme.paddingSmall / 2
+                }
+                width: Math.round(parent.width * 0.38)
+                height: width
+                radius: width / 2
+                color: Qt.rgba(0, 0, 0, 0.55)
+                VideoIcon {
+                    anchors.centerIn: parent
+                    width: Math.round(parent.width * 0.62)
+                    color: "white"
+                }
+            }
+
+            // The episode has bookmarks (50): small bookmark ribbon bottom right (star until 254)
             Rectangle {
                 visible: model.bookmarkCount > 0
                 anchors {
@@ -215,13 +244,11 @@ ListItem {
                 height: width
                 radius: width / 2
                 color: Theme.rgba("black", 0.55)
-                Image {
+                BookmarkIcon {
                     anchors.centerIn: parent
                     width: Theme.iconSizeExtraSmall
-                    height: width
-                    sourceSize.width: width
-                    sourceSize.height: height
-                    source: "image://theme/icon-m-favorite-selected?" + Theme.highlightColor
+                    filled: true
+                    color: Theme.highlightColor
                 }
             }
         }
@@ -231,7 +258,7 @@ ListItem {
             anchors {
                 left: art.right
                 leftMargin: Theme.paddingMedium
-                right: playButton.left
+                right: queueButton.visible ? queueButton.left : playButton.left
                 verticalCenter: parent.verticalCenter
             }
             spacing: Theme.paddingSmall / 2
@@ -306,21 +333,12 @@ ListItem {
                     color: item.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
                     truncationMode: TruncationMode.Fade
                     width: Math.min(implicitWidth, parent.width - (progressTrack.visible ? progressTrack.width + parent.spacing : 0)
-                                    - (downloadIcon.visible ? downloadIcon.width + parent.spacing : 0)
-                                    - (queueIcon.visible ? queueIcon.width + parent.spacing : 0))
+                                    - (downloadIcon.visible ? downloadIcon.width + parent.spacing : 0))
                 }
 
-                // (191) In the playlist (not on the playlist page itself)
-                Image {
-                    id: queueIcon
-                    visible: model.queued && !item.inPlaylist
-                    anchors.verticalCenter: parent.verticalCenter
-                    source: "image://theme/icon-m-media-playlists?" + Theme.secondaryHighlightColor
-                    width: Theme.iconSizeExtraSmall
-                    height: width
-                    sourceSize.width: width
-                    sourceSize.height: height
-                }
+                // (191-253 a small playlist symbol here when queued; since
+                // 254 the playlist button beside ▶ shows that with its check
+                // mark)
 
                 Image {
                     id: downloadIcon
@@ -373,6 +391,34 @@ ListItem {
             }
         }
 
+        // (254, usability audit #6) Playlist without the long press: "+"
+        // adds the episode at the end, the check mark (in the playlist)
+        // takes it out again - as the toolbar button of the episode page.
+        // "Play next" stays in the context menu. Not in the playlist's own
+        // rows (handle and removal area there).
+        MouseArea {
+            id: queueButton
+            visible: !item.inPlaylist
+            anchors {
+                right: playButton.left
+                verticalCenter: parent.verticalCenter
+            }
+            width: Theme.iconSizeMedium
+            height: width
+            onClicked: {
+                if (queueBubble.takeHeld()) return
+                model.queued ? core.queueRemove(model.episodeId) : core.queueAdd(model.episodeId, false)
+            }
+            HoldNameBubble { id: queueBubble; attached: true; name: model.queued ? qsTr("Remove from playlist") : qsTr("Add to end of playlist") }
+
+            PlaylistIcon {
+                anchors.centerIn: parent
+                width: Theme.iconSizeSmallPlus
+                checked: model.queued === true
+                color: queueButton.pressed || model.queued ? Theme.highlightColor : Theme.secondaryColor
+            }
+        }
+
         RowPlayButton {
             id: playButton
             anchors {
@@ -382,7 +428,11 @@ ListItem {
             }
             icon.source: item.isPlaying ? "image://theme/icon-m-pause" : "image://theme/icon-m-play"
             highlighted: item.isCurrent || down
-            onClicked: appWindow.player.playOrToggle(model.episodeId, item.playlistContext)
+            HoldNameBubble { id: playBubble; attached: true; name: item.isPlaying ? qsTr("Pause") : qsTr("Play") }
+            onClicked: {
+                if (playBubble.takeHeld()) return
+                appWindow.player.playOrToggle(model.episodeId, item.playlistContext)
+            }
         }
     }
 

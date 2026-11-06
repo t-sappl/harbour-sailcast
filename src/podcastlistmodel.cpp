@@ -13,6 +13,8 @@ PodcastListModel::PodcastListModel(QObject *parent)
 {
     if (AppCore *core = AppCore::instance()) {
         connect(core, &AppCore::dataChanged, this, &PodcastListModel::scheduleReload);
+        // (246) the sort order is a setting
+        connect(core, &AppCore::settingsChanged, this, &PodcastListModel::scheduleReload);
     }
     reload();
 }
@@ -44,6 +46,26 @@ void PodcastListModel::reload()
         }
         rows = filtered;
     }
+    // (246) Order of the Podcasts page ("podcasts.sort"): alphabetical (as
+    // the database returns them), newest episode, last subscribed, most
+    // unplayed episodes (as AntennaPod) - stable, so equal ones stay
+    // alphabetical. Lists with an own order (first ids/folder) keep theirs.
+    if (m_sorted) {
+        const QString order = core->database()->setting(QStringLiteral("podcasts.sort"));
+        if (order == QLatin1String("newest")) {
+            std::stable_sort(rows.begin(), rows.end(), [](const PodcastRow &a, const PodcastRow &b) {
+                return a.newestPublished > b.newestPublished;
+            });
+        } else if (order == QLatin1String("added")) {
+            std::stable_sort(rows.begin(), rows.end(), [](const PodcastRow &a, const PodcastRow &b) {
+                return a.added > b.added;
+            });
+        } else if (order == QLatin1String("unplayed")) {
+            std::stable_sort(rows.begin(), rows.end(), [](const PodcastRow &a, const PodcastRow &b) {
+                return a.unplayedCount > b.unplayedCount;
+            });
+        }
+    }
     if (m_firstFolderId >= 0) {
         // Stable: both groups stay alphabetical
         std::stable_partition(rows.begin(), rows.end(), [this](const PodcastRow &row) {
@@ -55,6 +77,7 @@ void PodcastListModel::reload()
             return m_firstIds.contains(row.id);
         });
     }
+    m_videoIds = core->database()->videoPodcasts();
     int fresh = 0;
     for (int i = 0; i < rows.size(); ++i) {
         if (rows.at(i).freshEpisodes) {
@@ -137,6 +160,7 @@ QVariant PodcastListModel::data(const QModelIndex &index, int role) const
     case FolderIdRole: return int(p.folderId);
     case FreshRole: return p.freshEpisodes;
     case FirstRole: return m_firstIds.contains(p.id);
+    case VideoRole: return m_videoIds.contains(p.id);
     default: return QVariant();
     }
 }
@@ -159,6 +183,7 @@ QHash<int, QByteArray> PodcastListModel::roleNames() const
     names.insert(FolderIdRole, "folderId");
     names.insert(FreshRole, "fresh");
     names.insert(FirstRole, "first");
+    names.insert(VideoRole, "video");
     return names;
 }
 

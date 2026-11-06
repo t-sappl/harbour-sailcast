@@ -202,6 +202,7 @@ void EpisodeListModel::reload()
             emit countChanged();
         }
     }
+    m_videoIds = db->videoAlternateEpisodes();
     if (applyRows(rows)) {
         emit countChanged();
     }
@@ -305,6 +306,8 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case ChapterCountRole: return e.chapterCount;
     case BookmarkCountRole: return e.bookmarkCount;
     case ProvisionalRole: return e.provisional;
+    case VideoRole: return e.mimeType.startsWith(QLatin1String("video/")) || m_videoIds.contains(e.id);
+    case VideoFileRole: return e.mimeType.startsWith(QLatin1String("video/"));
     case SectionRole: return m_sections ? sectionOf(e) : QString();
     case SectionStartRole:
         return m_sections && (index.row() == 0 || sectionOf(m_rows.at(index.row() - 1)) != sectionOf(e));
@@ -343,6 +346,8 @@ QHash<int, QByteArray> EpisodeListModel::roleNames() const
     names.insert(EpisodeNumberRole, "episodeNumber");
     names.insert(KeptRole, "kept");
     names.insert(ProvisionalRole, "provisional");
+    names.insert(VideoRole, "video");
+    names.insert(VideoFileRole, "videoFile");
     names.insert(SectionRole, "section");
     names.insert(SectionStartRole, "sectionStart");
     names.insert(DownloadedRole, "downloaded");

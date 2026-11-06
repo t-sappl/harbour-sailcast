@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // Pull-down menu of the podcast page (shared by the grid and the list view)
 PullDownMenu {
@@ -8,6 +9,8 @@ PullDownMenu {
     signal toggleView()
 
     busy: core.updating || core.syncing
+    // (253) The download count is read when the menu opens
+    onActiveChanged: if (active) podcastsDownloads.refresh()
 
     MenuItem {
         text: qsTr("Settings")
@@ -21,13 +24,24 @@ PullDownMenu {
         text: qsTr("Import and export")
         onClicked: pageStack.push(Qt.resolvedUrl("ImportExportPage.qml"))
     }
+    // (255) Bookmarks list here too (usability check 254: it was only in
+    // the playlist pulley)
+    MenuItem {
+        visible: core.bookmarkCount > 0
+        text: qsTr("Bookmarks (%1)").arg(core.bookmarkCount)
+        onClicked: pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"))
+    }
+    // (253) Downloads here too (usability audit #10)
+    DownloadsMenuItem {
+        id: podcastsDownloads
+    }
     // (237) Search on the device here too - Discover is a swipe page by
     // default (229), so the pulley entry is only needed without the ring
     // (then both: whoever took it out knows the two). Before 237 only
     // "Discover" here, to keep the two apart (86/99).
     MenuItem {
         visible: core.podcastCount > 0
-        text: qsTr("Search")
+        text: qsTr("Search my podcasts")
         onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
     }
     // Search and feed address in one page (51); only for adding

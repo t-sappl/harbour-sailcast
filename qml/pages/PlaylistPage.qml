@@ -86,11 +86,37 @@ Page {
     }
 
     // (190) Tiles below the header: time left, episodes, downloaded
-    property var queueStats: core.queueStats()
+    // (246) The other playlist episodes from the core; the one playing
+    // added here with its live position - counted in both tiles, the time
+    // at the current speed, updated every 5 s while it plays
+    readonly property int playingId: appWindow.player.hasEpisode ? appWindow.player.episodeId : -1
+    property var queueStats: core.queueStats(playingId)
+    onPlayingIdChanged: queueStats = core.queueStats(playingId)
     Connections {
         target: core
-        onQueueChanged: page.queueStats = core.queueStats()
-        onDataChanged: page.queueStats = core.queueStats()
+        onQueueChanged: page.queueStats = core.queueStats(page.playingId)
+        onDataChanged: page.queueStats = core.queueStats(page.playingId)
+    }
+    property int livePosition: appWindow.player.position
+    Timer {
+        interval: 5000
+        repeat: true
+        running: appWindow.player.playing && page.status === PageStatus.Active
+        onTriggered: page.livePosition = appWindow.player.position
+    }
+    Connections {
+        target: appWindow.player
+        onEpisodeIdChanged: page.livePosition = appWindow.player.position
+        onPlayingChanged: page.livePosition = appWindow.player.position
+    }
+    readonly property bool playingCounts: playingId > 0 && appWindow.player.info.played !== true
+    readonly property int tileCount: (queueStats.count || 0) + (playingCounts ? 1 : 0)
+    readonly property int tileDownloaded: (queueStats.downloaded || 0)
+                                          + (playingCounts && appWindow.player.info.downloaded === true ? 1 : 0)
+    readonly property real tileSeconds: {
+        var rest = playingCounts ? Math.max(0, appWindow.player.duration - livePosition) : 0
+        var rate = appWindow.player.rate > 0 ? appWindow.player.rate : 1
+        return ((queueStats.seconds || 0) + rest) / rate
     }
 
     EpisodeListModel {
@@ -101,9 +127,13 @@ Page {
 
     // Two or more episodes in the playlist for the first time: sorting and
     // removing (52)
+    // (254, usability audit #7) "sort" alone didn't say *what* it sorts -
+    // forum feedback echoed this. Now says it directly: the play order.
+    // New key ("playlist2"): existing users already dismissed the old,
+    // vaguer wording, so they get the clearer one once too.
     function _playlistHint() {
         if (queue.count >= 2) {
-            appWindow.showHint("playlist", qsTr("Drag an episode by its handle to sort, below the list to remove it"), page)
+            appWindow.showHint("playlist2", qsTr("Drag an episode by its handle to set the play order, below the list to remove it"), page)
         }
     }
     Connections {
@@ -186,6 +216,32 @@ Page {
         }
     }
 
+    // (264, Thomas 6 Nov: the menu under "Recently heard" darkened the row
+    // but nothing showed) The rows of the footer are no delegates of the
+    // list, so Silica does not scroll their menu into view - it opened below
+    // the visible area (behind the player bar). Scrolled by hand once the
+    // menu has opened.
+    function revealRow(row) {
+        revealTimer.row = row
+        revealTimer.restart()
+    }
+    Timer {
+        id: revealTimer
+        interval: 300
+        property Item row: null
+        onTriggered: {
+            if (!row || !row.menuOpen) {
+                return
+            }
+            var bottom = row.mapToItem(list.contentItem, 0, 0).y + row.height + Theme.paddingLarge
+            var viewBottom = list.contentY + list.height
+            if (bottom > viewBottom) {
+                var maxY = list.originY + list.contentHeight - list.height
+                list.contentY = Math.min(list.contentY + (bottom - viewBottom), Math.max(list.contentY, maxY))
+            }
+        }
+    }
+
     SilicaListView {
         id: list
         anchors.fill: parent
@@ -224,19 +280,23 @@ Page {
                 title: qsTr("Playlist")
                 // (190) The number is in the tiles now
             }
+            // (255) Neighbours of the ring, below the header
+            RingNeighbours { kind: "playlist"; ringMember: page.ringMember }
 
             // (190) Is it enough for the trip? Only with a playlist
             StatTiles {
-                visible: (page.queueStats.count || 0) > 0
+                visible: page.tileCount > 0
                 tiles: [
-                    { value: TimeFormat.length(page.queueStats.seconds || 0, qsTr("%1 h %2 min"), qsTr("%1 min")),
+                    { value: TimeFormat.length(Math.round(page.tileSeconds), qsTr("%1 h %2 min"), qsTr("%1 min")),
                       label: qsTr("left to listen") },
                     // (231) "1 episodes": singular (no English .ts, so no %n plural form)
-                    { value: "" + (page.queueStats.count || 0), label: (page.queueStats.count || 0) === 1 ? qsTr("episode") : qsTr("episodes") },
-                    { value: "" + (page.queueStats.downloaded || 0), label: qsTr("downloaded") }
+                    { value: "" + page.tileCount, label: page.tileCount === 1 ? qsTr("episode") : qsTr("episodes") },
+                    // (253, usability audit #10) Tap: the Downloads page
+                    { value: "" + page.tileDownloaded, label: qsTr("downloaded"), tappable: true }
                 ]
+                onTileClicked: if (index === 2) pageStack.push(Qt.resolvedUrl("DownloadsPage.qml"))
             }
-            Item { width: 1; height: Theme.paddingMedium; visible: (page.queueStats.count || 0) > 0 }
+            Item { width: 1; height: Theme.paddingMedium; visible: page.tileCount > 0 }
 
             // --- Now playing ---
             SectionHeader {
@@ -277,40 +337,28 @@ Page {
         // everything waiting to be listened to. Countdown entry on top.
         PullDownMenu {
             visible: queue.count > 0 || core.podcastCount > 0 || core.bookmarkCount > 0
-            // (218) Number of downloads like the bookmarks - read when the
-            // menu opens (cheap, always current)
+            // (259) Same order as the other pulleys: Bookmarks, Downloads
+            // (shared item; the count is read when the menu opens, 218),
+            // Search; "Clear playlist" far at the top, "Play playlist" last
             id: playlistMenu
-            property int downloaded: 0
-            onActiveChanged: if (active) downloaded = core.downloadedCount()
+            onActiveChanged: if (active) playlistDownloads.refresh()
             MenuItem {
                 visible: queue.count > 0
                 text: qsTr("Clear playlist")
                 onClicked: remorse.execute(qsTr("Clearing playlist"), function() { core.queueClear() })
             }
             MenuItem {
-                visible: core.podcastCount > 0
-                // "Downloads (12)", running ones as "↓ 2" (as in the podcast list)
-                text: {
-                    var parts = []
-                    if (playlistMenu.downloaded > 0) {
-                        parts.push(playlistMenu.downloaded)
-                    }
-                    if (core.downloadCount > 0) {
-                        parts.push("↓ " + core.downloadCount)
-                    }
-                    return parts.length > 0 ? qsTr("Downloads (%1)").arg(parts.join(" · ")) : qsTr("Downloads")
-                }
-                onClicked: pageStack.push(Qt.resolvedUrl("DownloadsPage.qml"))
-            }
-            MenuItem {
                 visible: core.bookmarkCount > 0
                 text: qsTr("Bookmarks (%1)").arg(core.bookmarkCount)
                 onClicked: pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"))
             }
+            DownloadsMenuItem {
+                id: playlistDownloads
+            }
             // Search on the device (86)
             MenuItem {
                 visible: core.podcastCount > 0
-                text: qsTr("Search")
+                text: qsTr("Search my podcasts")
                 onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
             }
             MenuItem {
@@ -324,6 +372,9 @@ Page {
             inPlaylist: true
             playlistContext: true
             dragHandle: true
+            // (259) An opening menu ends "keep the top" (else the list is
+            // pulled back up and the menu runs behind the player bar)
+            onMenuOpenChanged: if (menuOpen) list._keepTop = false
             dragged: page.dragIndex === index
             onDragStarted: page.startDrag(index, viewY)
             onDragMoved: page.moveDraggedTo(viewY)
@@ -416,8 +467,10 @@ Page {
                 model: continuing
                 delegate: EpisodeDelegate {
                     // The extra row only tells that there are more
+                    id: continueRow
                     visible: page.continueExpanded && index < page.collapsedRows
                     width: list.width
+                    onMenuOpenChanged: if (menuOpen) { list._keepTop = false; page.revealRow(continueRow) }
                 }
             }
 
@@ -475,8 +528,10 @@ Page {
             Repeater {
                 model: recent
                 delegate: EpisodeDelegate {
+                    id: recentRow
                     visible: page.recentExpanded
                     width: list.width
+                    onMenuOpenChanged: if (menuOpen) { list._keepTop = false; page.revealRow(recentRow) }
                 }
             }
 

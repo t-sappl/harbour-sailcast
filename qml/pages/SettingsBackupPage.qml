@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // Settings → Backup (83, own page since 88): automatic database backup into
 // Downloads and the Nextcloud of the sync account, "Back up now",
@@ -146,15 +147,22 @@ Page {
             }
 
             Item { width: 1; height: Theme.paddingLarge }
+Flow {
 
-            ButtonLayout {
-                Button {
+                x: Theme.horizontalPageMargin
+
+                width: parent.width - 2 * Theme.horizontalPageMargin
+
+                spacing: Theme.paddingMedium
+                ActionPill {
+                    kind: "primary"
                     text: qsTr("Back up now")
                     enabled: page.pendingAction.length === 0
                     onClicked: page.start("backup")
                 }
                 // (93) Local and Nextcloud backups
-                Button {
+                ActionPill {
+                    kind: "secondary"
                     text: qsTr("Restore …")
                     enabled: page.pendingAction.length === 0
                     onClicked: page.start("restore")

@@ -12,6 +12,8 @@
 #include "episodeaction.h"
 #include "feedtypes.h"
 
+#include <QSet>
+
 // One subscription as shown in lists. The counts are computed by the
 // query (see podcasts()), not stored.
 struct PodcastRow
@@ -25,6 +27,7 @@ struct PodcastRow
     QStringList categories; // itunes:category, "Science" / "Science/Astronomy" (123)
     bool provisional = false; // (147) listened to without subscribing
     qint64 newestPublished = 0; // (158) newest episode, 0 = none
+    qint64 added = 0;           // (246) subscribed at (seconds), for sorting
     QString link;
     QString description;
     QString author;
@@ -211,6 +214,23 @@ public:
     // (158) Number of different seasons (> 0) of a podcast's episodes
     int seasonCount(qint64 podcastId) const;
     QList<ParsedChapter> chapters(qint64 episodeId) const;
+    // (244) podcast:alternateEnclosure versions of an episode, in feed order
+    QList<ParsedAlternate> alternates(qint64 episodeId) const;
+    // (244) Some episode of the podcast has a video version (video/* or HLS)
+    bool hasVideoAlternates(qint64 podcastId) const;
+    // (245) "Video podcast": a video version, or most newest files are video
+    bool isVideoPodcast(qint64 podcastId) const;
+    // (247) All video podcasts at once (Podcasts page): a video version, or
+    // most of the episodes are video files
+    QSet<qint64> videoPodcasts() const;
+    // (244) Listening log: seconds really listened (wall clock) added to
+    // today's entry of the episode; (245) mediaSeconds: the episode time
+    // (position progress) listened in the same stretch
+    bool addListening(qint64 episodeId, int seconds, int mediaSeconds);
+    // Total wall-clock seconds in the log, the episode time in mediaSeconds (CLI check)
+    qint64 listenedSeconds(qint64 podcastId = -1, qint64 *mediaSeconds = nullptr) const;
+    // (245) Episodes with a video or HLS version (camera symbol in lists)
+    QSet<qint64> videoAlternateEpisodes() const;
     DatabaseStats stats() const;
 
     // --- Local playback state (each change is queued for the sync) ---
@@ -219,6 +239,8 @@ public:
     bool recordPlayback(qint64 episodeId, int started, int position, int total);
     bool markPlayed(qint64 episodeId);
     bool markUnplayed(qint64 episodeId);
+    // (253) Out of "New episodes" without counting as played (is_new only)
+    bool clearNew(qint64 episodeId);
 
     // --- Downloads and archive (stage 3) ---
     bool setArchived(qint64 podcastId, bool archived);
@@ -287,7 +309,9 @@ public:
     void queueClear();
     QList<qint64> queueIds() const;
     // Marks all unplayed episodes of a podcast as played; returns the number
-    int markAllPlayed(qint64 podcastId);
+    int markAllPlayed(qint64 podcastId, bool keepNewest = false);
+    // (248) How many markAllPlayed would mark
+    int markAllPlayedCount(qint64 podcastId, bool keepNewest) const;
     // (168) After an import: all but the newest episode as played; episodes
     // with a position (e.g. from the sync) are left alone
     int markAllButNewestPlayed(qint64 podcastId);
@@ -305,6 +329,18 @@ public:
     bool setSetting(const QString &key, const QString &value);
     // Removes all settings whose key starts with prefix (per-podcast settings)
     bool removeSettings(const QString &prefix);
+
+    // (248) Duplicate subscriptions: `from` merged into `into` - episodes
+    // paired by guid (else the URL without query), per episode the newer
+    // listening state, download, bookmarks, playlist place and listening
+    // log moved; folder, own name, archive folder and per-podcast settings
+    // taken over where `into` has none; then `from` removed (and removed on
+    // the sync server). Changed states are queued for the sync. Returns
+    // false on a database error (nothing changed then).
+    bool mergePodcasts(qint64 from, qint64 into);
+    // (248) Pairs of subscriptions whose addresses differ only in case:
+    // (from, into) - into = the one with more listened time (else the older)
+    QList<QPair<qint64, qint64>> caseDuplicates() const;
     bool isSyncConfigured() const;
 
     // --- Sync (used by SyncEngine) ---

@@ -17,6 +17,8 @@ ListItem {
     // New episodes since the podcast page was last opened (50)
     property bool fresh: false
     property string lastError: ""
+    // (247) Video podcast: camera bottom left on a dark spot
+    property bool video: false
 
     onClicked: pageStack.push(Qt.resolvedUrl("pages/EpisodesPage.qml"), { podcastId: cell.podcastId })
 
@@ -58,6 +60,26 @@ ListItem {
             font.pixelSize: Theme.fontSizeExtraSmall
             font.bold: true
             color: Theme.primaryColor
+        }
+    }
+
+    // (247) Video podcast (mockup 2 Nov): bottom left, free of the badge
+    // (top right) and the new dot (top left), readable on any cover
+    Rectangle {
+        visible: cell.video
+        anchors {
+            left: parent.left
+            bottom: parent.bottom
+            margins: Theme.paddingSmall * 2
+        }
+        width: Theme.iconSizeSmall
+        height: width
+        radius: width / 2
+        color: Qt.rgba(0, 0, 0, 0.55)
+        VideoIcon {
+            anchors.centerIn: parent
+            width: Math.round(parent.width * 0.62)
+            color: "white"
         }
     }
 

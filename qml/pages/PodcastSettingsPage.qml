@@ -196,6 +196,31 @@ Page {
                 }
             }
 
+            // (244) The feed offers a video version (podcast:alternateEnclosure)
+            ComboBox {
+                visible: core.podcastHasVideoVersion(page.podcastId)
+                label: qsTr("Version")
+                description: qsTr("The feed offers the episodes also as video. Video is streamed; downloads stay audio.")
+                currentIndex: core.setting("podcast." + page.podcastId + ".version", "") === "video" ? 1 : 0
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("Audio")
+                        onClicked: {
+                            core.setSetting("podcast." + page.podcastId + ".version", "")
+                            // (245) The episode playing switches at once
+                            appWindow.player.reloadVersion(page.podcastId)
+                        }
+                    }
+                    MenuItem {
+                        text: qsTr("Video")
+                        onClicked: {
+                            core.setSetting("podcast." + page.podcastId + ".version", "video")
+                            appWindow.player.reloadVersion(page.podcastId)
+                        }
+                    }
+                }
+            }
+
             SectionHeader { text: qsTr("Update") }
 
             TextSwitch {
@@ -209,11 +234,24 @@ Page {
                 }
             }
 
+            // (255) Was "Stop updates (archived)" in the Archive section:
+            // "archived" now only means the folder with copies
+            TextSwitch {
+                text: qsTr("Podcast has ended")
+                description: qsTr("For a podcast that has ended: no more updates and no error messages. Episodes, downloads and the listening state are kept.")
+                checked: page.podcast.archived === true
+                automaticCheck: false
+                onClicked: core.setArchived(page.podcastId, !checked)
+            }
+
             SectionHeader { text: qsTr("Downloads") }
 
             ComboBox {
                 label: qsTr("Download new episodes")
-                description: qsTr("After a feed update, up to 3 new episodes")
+                // (245) Video podcasts: the files are large
+                description: core.podcast(page.podcastId).video === true
+                             ? qsTr("After a feed update, up to 3 new episodes – this is a video podcast, its files are large")
+                             : qsTr("After a feed update, up to 3 new episodes")
                 currentIndex: page.autoDownload === "1" ? 1 : (page.autoDownload === "0" ? 2 : 0)
                 menu: ContextMenu {
                     MenuItem {
@@ -234,7 +272,7 @@ Page {
             // (211) Download location per podcast, as the global switch
             ComboBox {
                 label: qsTr("Download location")
-                description: qsTr("For new downloads. Music/Podcasts/<podcast> is visible to other apps, also the music player. To keep the episodes there, set \"Delete played downloads\" below to \"Never\".")
+                description: qsTr("For new downloads. Music/Podcasts/<podcast> (video episodes: Videos/Podcasts/<podcast>) is visible to other apps, also the music player. To keep the episodes there, set \"Delete played downloads\" below to \"Never\".")
                 currentIndex: page.inMusic === "0" ? 1 : (page.inMusic === "1" ? 2 : 0)
                 menu: ContextMenu {
                     MenuItem {
@@ -253,15 +291,15 @@ Page {
             }
 
             // (217) Existing downloads in the other place: move them
-            Button {
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 property var entry: {
                     page.locationRevision
                     var list = core.misplacedDownloads(page.podcastId)
                     return list.length > 0 ? list[0] : null
                 }
                 visible: entry !== null
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: page.buttonWidth
                 text: entry === null ? ""
                       : (entry.toMusic ? qsTr("Move %n downloads to Music", "", entry.count)
                                        : qsTr("Move %n downloads to the phone", "", entry.count))
@@ -291,10 +329,9 @@ Page {
             }
 
             // (143) All episodes at once - all or only the unplayed ones
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 // (159) with a choice of episodes
                 text: qsTr("Download episodes …")
                 onClicked: pageStack.push(Qt.resolvedUrl("DownloadAllDialog.qml"),
@@ -305,11 +342,10 @@ Page {
             Item { width: 1; height: Theme.paddingMedium }
 
             // (121, from the pulley since 143) Keep the downloads in Music
-            Button {
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 visible: (page.podcast.downloadedCount || 0) > 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
                 text: qsTr("Save downloads in Music")
                 onClicked: core.keepPodcastDownloads(page.podcastId)
             }
@@ -347,7 +383,10 @@ Page {
             }
 
             ComboBox {
-                label: qsTr("Skip outro")
+                // (253, usability audit #15) "Skip outro" read as "skip over
+                // the outro while it still plays" - it actually ends the
+                // episode early, the hint text below says so
+                label: qsTr("Skip the end (outro)")
                 currentIndex: page.indexOf(page.skipTimes, page.number("skipOutro"))
                 menu: ContextMenu {
                     Repeater {
@@ -371,20 +410,25 @@ Page {
 
             SectionHeader { text: qsTr("Archive") }
 
-            TextSwitch {
-                text: qsTr("Stop updates (archived)")
-                description: qsTr("For a podcast that has ended: no more updates and no error messages. Episodes, downloads and the listening state are kept.")
-                checked: page.podcast.archived === true
-                automaticCheck: false
-                onClicked: core.setArchived(page.podcastId, !checked)
+            // (254, usability audit #4/jargon) "Archive podcast" is a
+            // different thing from "archived" above (that one only stops
+            // updates) - this one copies the episodes out to a folder, e.g.
+            // for the rclone/cloud backup described in DESIGN.md.
+            Label {
+                visible: page.archiving || core.archivingPodcastId === 0
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.fontSizeExtraSmall
+                color: Theme.secondaryHighlightColor
+                text: qsTr("Copies the episodes, feed and cover into a folder you can back up elsewhere (e.g. with rclone)")
             }
 
-            Button {
+            ActionPill {
+                kind: page.archiving ? "destructive" : "secondary"
+                x: Theme.horizontalPageMargin
                 visible: page.archiving || core.archivingPodcastId === 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
-                text: page.archiving ? qsTr("Cancel archiving") : qsTr("Archive podcast")
+                text: page.archiving ? qsTr("Cancel copying") : qsTr("Copy podcast to archive folder")
                 onClicked: {
                     if (page.archiving) {
                         core.cancelArchive()
@@ -412,13 +456,12 @@ Page {
                 text: qsTr("Login")
             }
 
-            Button {
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 id: loginButton
                 visible: (page.podcast.authUser || "").length > 0
                          || /HTTP 40[13]/.test(page.podcast.lastError || "")
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
                 text: (page.podcast.authUser || "").length > 0 ? qsTr("Change login") : qsTr("Login")
                 onClicked: {
                     var dialog = pageStack.push(Qt.resolvedUrl("FeedLoginDialog.qml"),
@@ -437,22 +480,20 @@ Page {
                 text: qsTr("Support")
             }
 
-            Button {
+            ActionPill {
+                kind: "secondary"
+                x: Theme.horizontalPageMargin
                 id: supportButton
                 visible: (page.podcast.funding || []).length > 0
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
                 text: qsTr("Support the podcast")
                 onClicked: Qt.openUrlExternally(page.podcast.funding[0].url)
             }
 
             SectionHeader { text: qsTr("Subscription") }
 
-            Button {
-                anchors.horizontalCenter: parent.horizontalCenter
-                // (192) All buttons of the page equally wide
-                width: page.buttonWidth
+            ActionPill {
+                kind: "destructive"
+                x: Theme.horizontalPageMargin
                 text: qsTr("Unsubscribe")
                 onClicked: page.unsubscribe()
             }

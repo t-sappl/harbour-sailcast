@@ -286,6 +286,16 @@ void FeedUpdater::onParsed(int jobId)
     }
     QString etag = job->responseEtag;
     QString lastModified = job->responseLastModified;
+    // (248) Moved to the address of another subscription: the same podcast
+    // twice - the receiver merges them (AppCore), the update goes on with
+    // the remaining one
+    const qint64 other = newUrl.isEmpty() ? -1 : m_database->findPodcast(newUrl);
+    if (other > 0 && other != job->podcastId) {
+        emit duplicateFound(job->podcastId, other);
+        if (!m_database->podcast(job->podcastId).id) {
+            job->podcastId = other;
+        }
+    }
     if (!newUrl.isEmpty() && newUrl != m_database->feedState(job->podcastId).url) {
         if (m_database->changeUrl(job->podcastId, newUrl)) {
             // Validators belong to the old URL when itunes:new-feed-url moved it

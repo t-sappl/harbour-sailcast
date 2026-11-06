@@ -61,7 +61,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         width: widthProbe.implicitWidth
         horizontalAlignment: Text.AlignRight
-        text: "−" + TimeFormat.clock(bar.duration - bar._value)
+        text: "−" + TimeFormat.clock(Math.max(0, bar.duration - bar._value))
         font.pixelSize: Theme.fontSizeExtraSmall
         color: Theme.secondaryHighlightColor
     }
@@ -135,7 +135,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             visible: bar.duration > 0 && !bar.compact
-            text: "−" + TimeFormat.clock(bar.duration - bar._value)
+            text: "−" + TimeFormat.clock(Math.max(0, bar.duration - bar._value))
             font.pixelSize: Theme.fontSizeExtraSmall
             color: Theme.secondaryHighlightColor
         }

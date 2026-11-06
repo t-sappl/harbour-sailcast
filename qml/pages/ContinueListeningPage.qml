@@ -40,7 +40,11 @@ Page {
             description: qsTr("%n episodes", "", episodes.count)
         }
 
-        delegate: EpisodeDelegate {}
+        // (258) An opening menu ends "keep the top" (else it is pulled back
+        // up and never scrolled into view, see HomePage)
+        delegate: EpisodeDelegate {
+            onMenuOpenChanged: if (menuOpen) list._keepTop = false
+        }
 
         ViewPlaceholder {
             enabled: episodes.count === 0

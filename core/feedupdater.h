@@ -69,6 +69,10 @@ signals:
     // The feed was stored, but its XML broke off: episodes after the
     // broken spot are missing. The warning is also stored as last_error.
     void podcastWarning(qint64 podcastId, const QString &warning);
+    // (248) The feed of `from` moved to the address of the subscription
+    // `into` - the same podcast twice; a receiver may merge them (directly,
+    // the update then goes on with `into`)
+    void duplicateFound(qint64 from, qint64 into);
     void progress(int done, int total);
     void finished();
 

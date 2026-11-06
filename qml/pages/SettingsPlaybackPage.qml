@@ -9,9 +9,17 @@ Page {
     objectName: "settingsPlaybackPage"
 
     readonly property var skipOptions: [10, 15, 20, 30, 45, 60, 90]
+    // (254) Same steps as the player's speed choices
+    readonly property var speedOptions: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0]
+    function speedText(value) {
+        var decimals = Math.round(value * 100) % 10 === 0 ? 1 : 2
+        return Number(value).toLocaleString(Qt.locale(), "f", decimals) + "×"
+    }
     // After an episode that was not started from the playlist (24)
     readonly property var afterSingleOptions: ["load", "play", "stop"]
     readonly property var smartResumeOptions: [0, 5, 10, 20, 30]
+    // (252) Count as played when that little is left
+    readonly property var countPlayedOptions: [0, 15, 30, 60, 120]
     // The two lock screen / headset buttons (99)
     readonly property var remotePrevOptions: ["chapter", "back"]
     readonly property var remoteNextOptions: ["chapters", "episodes", "forward"]
@@ -48,6 +56,28 @@ Page {
 
             PageHeader {
                 title: qsTr("Playback")
+            }
+
+            // (254, forum 5 Nov: "I cannot find where I set 2x") The global
+            // speed was only in the player; the podcast settings say "as set
+            // globally (2.0×)" and pointed nowhere. Same setting (player.rate)
+            // as the player's speed button; a podcast with its own speed keeps it.
+            ComboBox {
+                label: qsTr("Speed")
+                description: qsTr("For all podcasts without their own speed (podcast settings)")
+                currentIndex: page.indexOf(page.speedOptions, appWindow.player.globalRate, 2)
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.speedOptions
+                        MenuItem {
+                            text: page.speedText(modelData)
+                            onClicked: {
+                                appWindow.player.globalRate = modelData
+                                core.setSetting("player.rate", "" + modelData)
+                            }
+                        }
+                    }
+                }
             }
 
             ComboBox {
@@ -94,6 +124,26 @@ Page {
                 }
             }
 
+            // (252) Almost finished counts as played
+            ComboBox {
+                label: qsTr("Count as played when less remains")
+                description: qsTr("When you pause, switch or close the app with less than this left, the episode counts as played. The next one does not start.")
+                currentIndex: page.indexOf(page.countPlayedOptions, appWindow.player.countPlayedBelow, 0)
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.countPlayedOptions
+                        MenuItem {
+                            text: modelData === 0 ? qsTr("Off")
+                                  : (modelData >= 60 ? qsTr("%n min", "", modelData / 60) : qsTr("%n s", "", modelData))
+                            onClicked: {
+                                appWindow.player.countPlayedBelow = modelData
+                                core.setSetting("player.countPlayedBelow", String(modelData))
+                            }
+                        }
+                    }
+                }
+            }
+
             // Skip times side by side (44)
             Row {
                 width: parent.width
@@ -129,6 +179,26 @@ Page {
                                     appWindow.player.skipForwardSeconds = modelData
                                     core.setSetting("player.skipForward", String(modelData))
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // (246) Second step: press and hold the skip buttons
+            ComboBox {
+                readonly property var options: [30, 60, 120, 300]
+                label: qsTr("Press and hold to skip")
+                description: qsTr("Repeated every half second while held – player bar, player column and episode page")
+                currentIndex: page.indexOf(options, appWindow.player.skipLargeSeconds, 1)
+                menu: ContextMenu {
+                    Repeater {
+                        model: [30, 60, 120, 300]
+                        MenuItem {
+                            text: modelData % 60 === 0 ? qsTr("%n min", "", modelData / 60) : qsTr("%n s", "", modelData)
+                            onClicked: {
+                                appWindow.player.skipLargeSeconds = modelData
+                                core.setSetting("player.skipLarge", String(modelData))
                             }
                         }
                     }
