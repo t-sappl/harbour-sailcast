@@ -3,7 +3,8 @@ TARGET = harbour-sailcast
 
 CONFIG += sailfishapp sailfishapp_i18n
 TRANSLATIONS += translations/harbour-sailcast-de.ts \
-    translations/harbour-sailcast-en.ts
+    translations/harbour-sailcast-en.ts \
+    translations/harbour-sailcast-fr.ts
 
 QT += network sql multimedia dbus
 
