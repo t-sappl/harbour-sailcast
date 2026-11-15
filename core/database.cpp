@@ -7,6 +7,8 @@
 #include <QCryptographicHash>
 #include <QDate>
 #include <QDateTime>
+#include <QFile>
+#include <QFileInfo>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -26,7 +28,7 @@ namespace {
 // Must be raised with every new SchemaV* step (130: was left at 8 in 123 -
 // a migrated database was refused as "from a newer Sailcast" on the next
 // start; tools/sqlcheck.py checks it now)
-const int SchemaVersion = 13;
+const int SchemaVersion = 17;
 
 // Schema version 1. Text columns are NOT NULL with '' as default so that
 // the code never has to tell NULL and empty apart (exception: last_error,
@@ -263,6 +265,44 @@ const char *const SchemaV13[] = {
     nullptr
 };
 
+// Schema version 14 (274): when a download was completed (the Downloads page
+// sorts by it; the migration fills it for existing downloads with the file's
+// modification time), and the channel's podcast:guid and podcast:medium,
+// stored only for now (duplicate detection, podroll, Discover filters). The
+// validators are cleared so the next update reads every feed in full once.
+const char *const SchemaV14[] = {
+    "ALTER TABLE episodes ADD COLUMN downloaded_at INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE podcasts ADD COLUMN podcast_guid TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE podcasts ADD COLUMN medium TEXT NOT NULL DEFAULT ''",
+    "UPDATE podcasts SET etag = '', last_modified = ''",
+    nullptr
+};
+
+// Schema version 15 (275): playlist pins - an episode the user dragged to a
+// place by hand keeps it when the playlist is sorted
+const char *const SchemaV15[] = {
+    "ALTER TABLE queue ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0",
+    nullptr
+};
+
+// Schema version 16 (286): the playlist entry knows that Auto-Add put it
+// there (symbol at the handle); cleared when the user moves, pins or adds
+// the episode again by hand
+const char *const SchemaV16[] = {
+    "ALTER TABLE queue ADD COLUMN auto_added INTEGER NOT NULL DEFAULT 0",
+    nullptr
+};
+
+// Schema version 17 (325): since when an episode is in the playlist (Unix
+// seconds; 0 = before 325, unknown) - only collected for now, for the
+// "fill my time" suggestions after 1.4 ("on the playlist for a long time").
+// Set when the episode is added; moving, sorting, pins and adding it again
+// while it is in the playlist keep it
+const char *const SchemaV17[] = {
+    "ALTER TABLE queue ADD COLUMN added_at INTEGER NOT NULL DEFAULT 0",
+    nullptr
+};
+
 // Same rule as gPodder's is_finished(): within the last 10 seconds or 99 %
 bool isFinishedPosition(int position, int total)
 {
@@ -433,6 +473,19 @@ bool Database::migrate()
     }
 
     QSqlDatabase db = handle();
+    // (320, code review) An existing database going to a newer schema gets a
+    // copy first (once per old version): a failing step leaves the app
+    // unusable otherwise, with only the weekly backup behind it
+    if (version >= 1 && version < SchemaVersion) {
+        const QString file = db.databaseName();
+        const QString copy = file + QStringLiteral(".before-v%1").arg(version);
+        if (!file.isEmpty() && !QFile::exists(copy)) {
+            exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE)"));
+            if (!QFile::copy(file, copy)) {
+                qWarning("[Database] No copy before the migration from schema %d", version);
+            }
+        }
+    }
     if (version < 1) {
         db.transaction();
         for (int i = 0; SchemaV1[i]; ++i) {
@@ -602,7 +655,80 @@ bool Database::migrate()
             return fail(QStringLiteral("migrate v13"), db.lastError().text());
         }
     }
-    // Future steps: if (version < 14) { ... PRAGMA user_version = 14 ... }
+    if (version < 14) {
+        db.transaction();
+        for (int i = 0; SchemaV14[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV14[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        // Existing downloads: the file's modification time
+        {
+            QSqlQuery files(db);
+            files.setForwardOnly(true);
+            QList<QPair<qint64, qint64> > times;
+            if (files.exec(QStringLiteral("SELECT id, download_path FROM episodes WHERE download_state = 2"
+                                          " AND download_path != ''"))) {
+                while (files.next()) {
+                    const QFileInfo info(files.value(1).toString());
+                    times.append(qMakePair(files.value(0).toLongLong(),
+                                           info.exists() ? qint64(info.lastModified().toMSecsSinceEpoch() / 1000) : qint64(0)));
+                }
+            }
+            for (int i = 0; i < times.size(); ++i) {
+                QSqlQuery set(db);
+                set.prepare(QStringLiteral("UPDATE episodes SET downloaded_at = ? WHERE id = ?"));
+                set.addBindValue(times.at(i).second);
+                set.addBindValue(times.at(i).first);
+                set.exec();
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 14"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v14"), db.lastError().text());
+        }
+    }
+    if (version < 15) {
+        db.transaction();
+        for (int i = 0; SchemaV15[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV15[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 15"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v15"), db.lastError().text());
+        }
+    }
+    if (version < 16) {
+        db.transaction();
+        for (int i = 0; SchemaV16[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV16[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 16"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v16"), db.lastError().text());
+        }
+    }
+    if (version < 17) {
+        db.transaction();
+        for (int i = 0; SchemaV17[i]; ++i) {
+            if (!exec(QString::fromLatin1(SchemaV17[i]))) {
+                db.rollback();
+                return false;
+            }
+        }
+        exec(QStringLiteral("PRAGMA user_version = 17"));
+        if (!db.commit()) {
+            return fail(QStringLiteral("migrate v17"), db.lastError().text());
+        }
+    }
+    // Future steps: if (version < 18) { ... PRAGMA user_version = 18 ... }
     return true;
 }
 
@@ -670,8 +796,20 @@ qint64 Database::addPodcast(const QString &url, const QString &title, bool queue
         }
         return existing;
     }
+    // (320, code review) No id of a removed podcast again (INTEGER PRIMARY KEY
+    // without AUTOINCREMENT takes max+1 - the listening log, "hidden" and
+    // "mark older" entries of the removed one would belong to the new one).
+    // No schema step: the highest id ever given is noted in a setting.
+    qint64 highest = setting(QStringLiteral("ids.podcastMax")).toLongLong();
+    {
+        QSqlQuery m(handle());
+        if (m.exec(QStringLiteral("SELECT MAX(id) FROM podcasts")) && m.next()) {
+            highest = qMax(highest, m.value(0).toLongLong());
+        }
+    }
     QSqlQuery q(handle());
-    q.prepare(QStringLiteral("INSERT INTO podcasts (url, title, added, provisional) VALUES (?, ?, ?, ?)"));
+    q.prepare(QStringLiteral("INSERT INTO podcasts (id, url, title, added, provisional) VALUES (?, ?, ?, ?, ?)"));
+    q.addBindValue(highest + 1);
     q.addBindValue(sqlText(trimmed));
     q.addBindValue(sqlText(title));
     q.addBindValue(now());
@@ -680,7 +818,8 @@ qint64 Database::addPodcast(const QString &url, const QString &title, bool queue
         fail(QStringLiteral("addPodcast"), q.lastError().text());
         return -1;
     }
-    const qint64 id = q.lastInsertId().toLongLong();
+    const qint64 id = highest + 1;
+    setSetting(QStringLiteral("ids.podcastMax"), QString::number(id));
     if (queueForSync && !provisional) {
         queueSubscription(QStringLiteral("add"), trimmed);
     }
@@ -702,7 +841,13 @@ QList<qint64> Database::staleProvisional(int days, qint64 keepEpisodeId) const
             "SELECT p.id FROM podcasts p WHERE p.provisional = 1 AND p.added < ?"
             " AND COALESCE((SELECT MAX(e.last_played) FROM episodes e WHERE e.podcast_id = p.id), 0) < ?"
             " AND NOT EXISTS (SELECT 1 FROM episodes e JOIN queue q ON q.episode_id = e.id WHERE e.podcast_id = p.id)"
-            " AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.podcast_id = p.id AND e.id = ?)"));
+            " AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.podcast_id = p.id AND e.id = ?)"
+            // (315) A downloaded episode not heard to the end keeps the
+            // podcast (it was removed with its file before)
+            " AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.podcast_id = p.id"
+            " AND e.download_state = 2 AND e.played = 0)"
+            // (320, code review) Bookmarks are the user's own work
+            " AND NOT EXISTS (SELECT 1 FROM episodes e JOIN bookmarks b ON b.episode_id = e.id WHERE e.podcast_id = p.id)"));
     const qint64 limit = now() - qint64(days) * 86400;
     q.addBindValue(limit);
     q.addBindValue(limit);
@@ -1091,11 +1236,8 @@ QList<PodcastRow> Database::podcasts() const
         result.append(podcastFromQuery(q));
     }
     // Sorted here instead of in SQL: QCollator sorts umlauts correctly
-    QCollator collator;
-    collator.setCaseSensitivity(Qt::CaseInsensitive);
-    collator.setNumericMode(true);
-    std::sort(result.begin(), result.end(), [&collator](const PodcastRow &a, const PodcastRow &b) {
-        return collator.compare(a.title, b.title) < 0;
+    std::sort(result.begin(), result.end(), [](const PodcastRow &a, const PodcastRow &b) {
+        return comparePodcastTitles(a.title, b.title) < 0;
     });
     return result;
 }
@@ -1178,7 +1320,7 @@ static const char *const EpisodeColumns =
         " e.mime_type, e.link, e.chapters_url, e.file_size, e.position_updated, e.download_state,"
         " e.download_path, e.archive_file,"
         " (SELECT COUNT(*) FROM bookmarks b WHERE b.episode_id = e.id),"
-        " e.season, e.episode_number, p.provisional, e.episode_type"
+        " e.season, e.episode_number, p.provisional, e.episode_type, e.downloaded_at, p.cover_url"
         " FROM episodes e JOIN podcasts p ON p.id = e.podcast_id";
 
 static EpisodeRow episodeFromQuery(const QSqlQuery &q)
@@ -1212,18 +1354,22 @@ static EpisodeRow episodeFromQuery(const QSqlQuery &q)
     row.episodeNumber = q.value(25).toInt();
     row.provisional = q.value(26).toInt() != 0;
     row.type = q.value(27).toString();
+    row.downloadedAt = q.value(28).toLongLong();
+    row.podcastCoverUrl = q.value(29).toString();
     return row;
 }
 
 QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter filter,
-                                     bool oldestFirst, const QString &search) const
+                                     bool oldestFirst, const QString &search, int sortMode) const
 {
     QList<EpisodeRow> result;
     QString sql = QString::fromLatin1(EpisodeColumns);
     QStringList where;
+    // (275) The Downloads page shows the archived downloads in a section of their own
+    const bool downloadedAny = filter == Downloaded || filter == DownloadedActive || filter == DownloadedArchived;
     if (podcastId >= 0) {
         where << QStringLiteral("e.podcast_id = ?");
-    } else if (filter != Queue && filter != Downloaded) {
+    } else if (filter != Queue && !downloadedAny) {
         // All podcasts (147): not the ones listened to without subscribing -
         // the playlist and the downloads show what the user put there
         where << QStringLiteral("p.provisional = 0");
@@ -1232,8 +1378,27 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         where << QStringLiteral("e.played = 0");
     } else if (filter == InProgress) {
         where << QStringLiteral("e.played = 0 AND e.position > 0");
-    } else if (filter == Downloaded) {
+    } else if (downloadedAny) {
         where << QStringLiteral("e.download_state = 2");
+        if (filter == DownloadedActive) {
+            where << QStringLiteral("p.archived = 0 AND e.archive_file = ''");
+        } else if (filter == DownloadedArchived) {
+            where << QStringLiteral("(p.archived = 1 OR e.archive_file != '')");
+        }
+    } else if (filter == HomeUnplayed || filter == HomeNew) {
+        // (302) Without the podcasts hidden on this page
+        where << QStringLiteral("e.played = 0");
+        if (filter == HomeNew) {
+            where << QStringLiteral("e.is_new = 1");
+        }
+        const QList<qint64> hidden = hiddenFromNew();
+        if (!hidden.isEmpty()) {
+            QStringList ids;
+            for (qint64 id : hidden) {
+                ids << QString::number(id);
+            }
+            where << QStringLiteral("e.podcast_id NOT IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+        }
     } else if (filter == NewEpisodes) {
         where << QStringLiteral("e.played = 0 AND e.is_new = 1");
     } else if (filter == Queue) {
@@ -1244,6 +1409,8 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
     // first letter (101: "öffentlich" finds "Öffentlich", "MÜNCHEN" "München")
     const QString needle = search.trimmed();
     QStringList variants;
+    // (274) The Downloads page filters by the podcast's title too
+    const bool withPodcast = downloadedAny;
     if (!needle.isEmpty()) {
         const QString lower = needle.toLower();
         variants << needle << lower << needle.toUpper()
@@ -1252,6 +1419,9 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         QStringList likes;
         for (int i = 0; i < variants.size(); ++i) {
             likes << QStringLiteral("e.title LIKE ? ESCAPE '\\'");
+            if (withPodcast) {
+                likes << QStringLiteral("COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url) LIKE ? ESCAPE '\\'");
+            }
         }
         where << QStringLiteral("(") + likes.join(QStringLiteral(" OR ")) + QStringLiteral(")");
     }
@@ -1264,6 +1434,17 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         sql += QStringLiteral(" ORDER BY e.position_updated DESC, e.id DESC LIMIT ?");
     } else if (filter == Queue) {
         sql += QStringLiteral(" ORDER BY q.position, q.episode_id LIMIT ?");
+    } else if (downloadedAny && sortMode == 0) {
+        sql += QStringLiteral(" ORDER BY e.downloaded_at DESC, e.id DESC LIMIT ?");
+    } else if (downloadedAny && sortMode == 2) {
+        sql += QStringLiteral(" ORDER BY e.published ASC, e.id ASC LIMIT ?");
+    } else if (downloadedAny && sortMode == 3) {
+        sql += QStringLiteral(" ORDER BY COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url) COLLATE NOCASE,"
+                              " e.published ASC, e.id ASC LIMIT ?");
+    } else if (sortMode == 4) {
+        // (293) New episodes grouped by podcast: newest of the podcast first
+        sql += QStringLiteral(" ORDER BY COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url) COLLATE NOCASE,"
+                              " e.published DESC, e.id DESC LIMIT ?");
     } else {
         sql += oldestFirst ? QStringLiteral(" ORDER BY e.published ASC, e.id ASC LIMIT ?")
                            : QStringLiteral(" ORDER BY e.published DESC, e.id DESC LIMIT ?");
@@ -1281,6 +1462,9 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         pattern.replace(QLatin1Char('%'), QStringLiteral("\\%"));
         pattern.replace(QLatin1Char('_'), QStringLiteral("\\_"));
         q.addBindValue(QLatin1Char('%') + pattern + QLatin1Char('%'));
+        if (withPodcast) {
+            q.addBindValue(QLatin1Char('%') + pattern + QLatin1Char('%'));
+        }
     }
     q.addBindValue(limit < 0 ? -1 : limit);
     if (!q.exec()) {
@@ -1521,6 +1705,189 @@ qint64 Database::listenedSeconds(qint64 podcastId, qint64 *mediaSeconds) const
     return 0;
 }
 
+ListeningSummary Database::listeningSummary() const
+{
+    ListeningSummary r;
+    QSqlQuery q(handle());
+    if (q.exec(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log")) && q.next()) {
+        r.seconds = q.value(0).toLongLong();
+        r.mediaSeconds = q.value(1).toLongLong();
+    }
+    if (q.exec(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log"
+                              " GROUP BY episode_id HAVING SUM(seconds) >= 60)")) && q.next()) {
+        r.episodes = q.value(0).toInt();
+    }
+    if (q.exec(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"))) {
+        QDate previous;
+        int streak = 0;
+        while (q.next()) {
+            const QDate date = QDate::fromString(QString::number(q.value(0).toInt()), QStringLiteral("yyyyMMdd"));
+            if (!date.isValid()) {
+                continue;
+            }
+            if (r.firstDay == 0) {
+                r.firstDay = q.value(0).toInt();
+            }
+            ++r.days;
+            streak = (previous.isValid() && previous.daysTo(date) == 1) ? streak + 1 : 1;
+            r.longestStreak = qMax(r.longestStreak, streak);
+            previous = date;
+            r.weekdays[date.dayOfWeek() - 1] += q.value(1).toLongLong();
+        }
+    }
+    if (q.exec(QStringLiteral("SELECT MAX(podcast_title), SUM(seconds) FROM listening_log"
+                              " GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 5"))) {
+        while (q.next()) {
+            r.top.append(qMakePair(q.value(0).toString(), q.value(1).toLongLong()));
+        }
+    }
+    return r;
+}
+
+ListeningTotals Database::listeningTotals(int fromDay) const
+{
+    ListeningTotals r;
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0),"
+                             " COALESCE(SUM(MAX(0, media_seconds - seconds)), 0) FROM listening_log WHERE day >= ?"));
+    q.addBindValue(fromDay);
+    if (q.exec() && q.next()) {
+        r.seconds = q.value(0).toLongLong();
+        r.mediaSeconds = q.value(1).toLongLong();
+        r.savedSeconds = q.value(2).toLongLong();
+    }
+    QSqlQuery e(handle());
+    e.prepare(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log WHERE day >= ?"
+                             " GROUP BY episode_id HAVING SUM(seconds) >= 60)"));
+    e.addBindValue(fromDay);
+    if (e.exec() && e.next()) {
+        r.episodes = e.value(0).toInt();
+    }
+    return r;
+}
+
+QList<QPair<int, qint64>> Database::listeningPerDay(int fromDay) const
+{
+    QList<QPair<int, qint64>> r;
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log WHERE day >= ?"
+                             " GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"));
+    q.addBindValue(fromDay);
+    if (q.exec()) {
+        while (q.next()) {
+            r.append(qMakePair(q.value(0).toInt(), q.value(1).toLongLong()));
+        }
+    }
+    return r;
+}
+
+QList<ListeningRank> Database::listeningRanking(int fromDay, int limit) const
+{
+    QList<ListeningRank> r;
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT podcast_id, MAX(podcast_title), SUM(seconds) FROM listening_log WHERE day >= ?"
+                             " GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 3 DESC LIMIT ?"));
+    q.addBindValue(fromDay);
+    q.addBindValue(limit);
+    if (q.exec()) {
+        while (q.next()) {
+            ListeningRank rank;
+            rank.podcastId = q.value(0).toLongLong();
+            rank.title = q.value(1).toString();
+            rank.seconds = q.value(2).toLongLong();
+            r.append(rank);
+        }
+    }
+    return r;
+}
+
+qint64 Database::listeningTopEpisode(int fromDay, qint64 *seconds) const
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT episode_id, SUM(seconds) FROM listening_log WHERE day >= ?"
+                             " GROUP BY episode_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 1"));
+    q.addBindValue(fromDay);
+    if (q.exec() && q.next()) {
+        if (seconds) {
+            *seconds = q.value(1).toLongLong();
+        }
+        return q.value(0).toLongLong();
+    }
+    return 0;
+}
+
+int Database::listenedWithoutTime() const
+{
+    QSqlQuery q(handle());
+    if (q.exec(QStringLiteral("SELECT COUNT(*) FROM episodes WHERE played = 1"
+                              " AND id NOT IN (SELECT episode_id FROM listening_log WHERE seconds > 0)"
+                              " AND podcast_id NOT IN (SELECT id FROM podcasts WHERE provisional = 1)")) && q.next()) {
+        return q.value(0).toInt();
+    }
+    return 0;
+}
+
+bool Database::deleteListeningOfPodcast(qint64 podcastId)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("DELETE FROM listening_log WHERE podcast_id = ?"));
+    q.addBindValue(podcastId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("deleteListeningOfPodcast"), q.lastError().text());
+    }
+    return true;
+}
+
+QHash<qint64, qint64> Database::listeningByPodcast() const
+{
+    QHash<qint64, qint64> r;
+    QSqlQuery q(handle());
+    if (q.exec(QStringLiteral("SELECT podcast_id, SUM(seconds) FROM listening_log GROUP BY podcast_id"))) {
+        while (q.next()) {
+            r.insert(q.value(0).toLongLong(), q.value(1).toLongLong());
+        }
+    }
+    return r;
+}
+
+bool Database::replaceListeningLog(const QList<ListeningEntry> &entries)
+{
+    QSqlDatabase db = handle();
+    if (!db.transaction()) {
+        return fail(QStringLiteral("replaceListeningLog"), db.lastError().text());
+    }
+    QSqlQuery del(db);
+    if (!del.exec(QStringLiteral("DELETE FROM listening_log"))) {
+        db.rollback();
+        return fail(QStringLiteral("replaceListeningLog"), del.lastError().text());
+    }
+    QSqlQuery in(db);
+    in.prepare(QStringLiteral("INSERT INTO listening_log (day, episode_id, podcast_id, podcast_title, seconds,"
+                              " media_seconds) VALUES (?, ?, ?, ?, ?, ?)"));
+    for (const ListeningEntry &e : entries) {
+        in.addBindValue(e.day);
+        in.addBindValue(e.episodeId);
+        in.addBindValue(e.podcastId);
+        in.addBindValue(sqlText(e.podcastTitle));
+        in.addBindValue(e.seconds);
+        in.addBindValue(e.mediaSeconds);
+        if (!in.exec()) {
+            db.rollback();
+            return fail(QStringLiteral("replaceListeningLog"), in.lastError().text());
+        }
+    }
+    if (!db.commit()) {
+        db.rollback();
+        return fail(QStringLiteral("replaceListeningLog"), db.lastError().text());
+    }
+    return true;
+}
+
+bool Database::checkpointForCopy()
+{
+    return exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE)"));
+}
+
 DatabaseStats Database::stats() const
 {
     DatabaseStats s;
@@ -1611,7 +1978,8 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
             "UPDATE podcasts SET title = COALESCE(NULLIF(?, ''), title), link = ?, description = ?,"
             " author = ?, cover_url = COALESCE(NULLIF(?, ''), cover_url), etag = ?, last_modified = ?,"
             " last_update = ?, last_error = NULL, funding = ?,"
-            " language = COALESCE(NULLIF(?, ''), language), categories = COALESCE(NULLIF(?, ''), categories)"
+            " language = COALESCE(NULLIF(?, ''), language), categories = COALESCE(NULLIF(?, ''), categories),"
+            " podcast_guid = ?, medium = ?"
             " WHERE id = ?"));
     meta.addBindValue(sqlText(feed.title));
     meta.addBindValue(sqlText(feed.link));
@@ -1626,6 +1994,8 @@ int Database::applyFeed(qint64 podcastId, const ParsedFeed &feed,
     meta.addBindValue(sqlText(feed.categories.isEmpty() ? QString()
                               : QString::fromUtf8(QJsonDocument(QJsonArray::fromStringList(feed.categories))
                                                   .toJson(QJsonDocument::Compact))));
+    meta.addBindValue(sqlText(feed.podcastGuid));
+    meta.addBindValue(sqlText(feed.medium));
     meta.addBindValue(podcastId);
     if (!meta.exec()) {
         fail(QStringLiteral("applyFeed podcast"), meta.lastError().text());
@@ -1836,7 +2206,15 @@ bool Database::markPlayed(qint64 episodeId)
     }
     // Played = position at the end; with unknown duration 1 of 1 second
     const int total = duration > 0 ? duration : 1;
-    return recordPlayback(episodeId, 0, total, total);
+    const bool ok = recordPlayback(episodeId, 0, total, total);
+    if (ok && duration <= 0) {
+        // (289) The made-up second must not become the episode's length
+        QSqlQuery reset(handle());
+        reset.prepare(QStringLiteral("UPDATE episodes SET duration = 0 WHERE id = ? AND duration = 1"));
+        reset.addBindValue(episodeId);
+        reset.exec();
+    }
+    return ok;
 }
 
 bool Database::markUnplayed(qint64 episodeId)
@@ -1869,6 +2247,159 @@ bool Database::clearNew(qint64 episodeId)
         return fail(QStringLiteral("clearNew"), q.lastError().text());
     }
     return true;
+}
+
+// (302) The flag again (undo of "to the playlist" on the New episodes page)
+bool Database::setNew(qint64 episodeId)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("UPDATE episodes SET is_new = 1 WHERE id = ? AND played = 0 AND position = 0"));
+    q.addBindValue(episodeId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("setNew"), q.lastError().text());
+    }
+    return q.numRowsAffected() > 0;
+}
+
+// (302) A podcast shown on the page again: its old flags would flood "New"
+bool Database::clearNewOfPodcast(qint64 podcastId)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE podcast_id = ? AND is_new = 1"));
+    q.addBindValue(podcastId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("clearNewOfPodcast"), q.lastError().text());
+    }
+    return true;
+}
+
+// (302) Setting "home.hiddenPodcasts": podcast ids, comma separated. Local
+// view of this phone (kept in the database copy, not synchronized)
+QList<qint64> Database::hiddenFromNew() const
+{
+    QList<qint64> ids;
+    const QStringList parts = setting(QStringLiteral("home.hiddenPodcasts")).split(QLatin1Char(','), QString::SkipEmptyParts);
+    for (const QString &part : parts) {
+        bool ok = false;
+        const qint64 id = part.trimmed().toLongLong(&ok);
+        if (ok && id > 0 && !ids.contains(id)) {
+            ids.append(id);
+        }
+    }
+    return ids;
+}
+
+bool Database::setHiddenFromNew(const QList<qint64> &ids)
+{
+    QStringList parts;
+    for (qint64 id : ids) {
+        parts << QString::number(id);
+    }
+    return setSetting(QStringLiteral("home.hiddenPodcasts"), parts.join(QLatin1Char(',')));
+}
+
+// (293) "Remove all" in the New episodes list: the flag of all episodes
+static QString podcastSortKey(const QString &title)
+{
+    int i = 0;
+    while (i < title.size() && !title.at(i).isLetterOrNumber()) {
+        ++i;
+    }
+    return i < title.size() ? title.mid(i) : title;
+}
+
+int Database::comparePodcastTitles(const QString &a, const QString &b)
+{
+    static QCollator collator;
+    static bool ready = false;
+    if (!ready) {
+        collator.setCaseSensitivity(Qt::CaseInsensitive);
+        collator.setNumericMode(true);
+        ready = true;
+    }
+    return collator.compare(podcastSortKey(a), podcastSortKey(b));
+}
+
+QList<EpisodeRef> Database::homeUnplayedRefs(bool onlyNew) const
+{
+    QList<EpisodeRef> result;
+    QString sql = QStringLiteral("SELECT e.id, e.podcast_id, COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url)"
+                                 " FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                                 " WHERE p.provisional = 0 AND e.played = 0");
+    if (onlyNew) {
+        sql += QStringLiteral(" AND e.is_new = 1");     // (322) "New" by podcast
+    }
+    const QList<qint64> hidden = hiddenFromNew();
+    if (!hidden.isEmpty()) {
+        QStringList ids;
+        for (qint64 id : hidden) {
+            ids << QString::number(id);
+        }
+        sql += QStringLiteral(" AND e.podcast_id NOT IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+    }
+    sql += QStringLiteral(" ORDER BY e.published DESC, e.id DESC");
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (!q.exec(sql)) {
+        fail(QStringLiteral("homeUnplayedRefs"), q.lastError().text());
+        return result;
+    }
+    while (q.next()) {
+        EpisodeRef r;
+        r.id = q.value(0).toLongLong();
+        r.podcastId = q.value(1).toLongLong();
+        r.podcastTitle = q.value(2).toString();
+        result.append(r);
+    }
+    return result;
+}
+
+int Database::homeNewCount() const
+{
+    // Same rows as episodes(..., HomeNew): subscribed, unplayed, flag set,
+    // not hidden - without the limit of the list
+    QString sql = QStringLiteral("SELECT COUNT(*) FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                                 " WHERE p.provisional = 0 AND e.played = 0 AND e.is_new = 1");
+    const QList<qint64> hidden = hiddenFromNew();
+    if (!hidden.isEmpty()) {
+        QStringList ids;
+        for (qint64 id : hidden) {
+            ids << QString::number(id);
+        }
+        sql += QStringLiteral(" AND e.podcast_id NOT IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+    }
+    QSqlQuery q(handle());
+    if (!q.exec(sql) || !q.next()) {
+        return 0;
+    }
+    return q.value(0).toInt();
+}
+
+bool Database::clearAllNew(qint64 upToEpisodeId)
+{
+    QSqlQuery q(handle());
+    if (upToEpisodeId >= 0) {
+        // (322) Episodes that came in while the countdown ran stay "new"
+        q.prepare(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE is_new = 1 AND id <= ?"));
+        q.addBindValue(upToEpisodeId);
+        if (!q.exec()) {
+            return fail(QStringLiteral("clearAllNew"), q.lastError().text());
+        }
+        return true;
+    }
+    if (!q.exec(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE is_new = 1"))) {
+        return fail(QStringLiteral("clearAllNew"), q.lastError().text());
+    }
+    return true;
+}
+
+qint64 Database::maxNewEpisodeId() const
+{
+    QSqlQuery q(handle());
+    if (q.exec(QStringLiteral("SELECT COALESCE(MAX(id), 0) FROM episodes WHERE is_new = 1")) && q.next()) {
+        return q.value(0).toLongLong();
+    }
+    return 0;
 }
 
 // --- Settings ---------------------------------------------------------------
@@ -2210,10 +2741,17 @@ ApplyResult Database::applyPendingActions()
             " last_played = MAX(last_played, ?),"
             " duration = CASE WHEN duration > 0 THEN duration ELSE ? END WHERE id = ?"));
     QSqlQuery markNew(db);
-    markNew.prepare(QStringLiteral("UPDATE episodes SET played = 0, position = 0, is_new = 1,"
+    // (302) "new" from another device = unplayed only: the flag is a local work
+    // area (as the local "Mark as unplayed", which does not set it either)
+    markNew.prepare(QStringLiteral("UPDATE episodes SET played = 0, position = 0,"
                                    " position_updated = ? WHERE id = ?"));
     QSqlQuery done(db);
     done.prepare(QStringLiteral("DELETE FROM sync_pending WHERE id = ?"));
+    // (289) A newer state from the other device was applied: an older change
+    // of this phone still waiting to be sent must not be sent after it
+    QSqlQuery dropStale(db);
+    dropStale.prepare(QStringLiteral("DELETE FROM sync_outbox WHERE podcast_url = ? AND episode_url = ?"
+                                     " AND timestamp < ?"));
 
     for (int i = 0; i < actions.size(); ++i) {
         const EpisodeAction &a = actions.at(i);
@@ -2244,11 +2782,19 @@ ApplyResult Database::applyPendingActions()
             play.addBindValue(qMax(0, a.total));
             play.addBindValue(episodeId);
             play.exec();
+            dropStale.addBindValue(a.podcastUrl);
+            dropStale.addBindValue(a.episodeUrl);
+            dropStale.addBindValue(a.timestamp);
+            dropStale.exec();
             ++result.applied;
         } else if (action == QLatin1String("new")) {
             markNew.addBindValue(a.timestamp);
             markNew.addBindValue(episodeId);
             markNew.exec();
+            dropStale.addBindValue(a.podcastUrl);
+            dropStale.addBindValue(a.episodeUrl);
+            dropStale.addBindValue(a.timestamp);
+            dropStale.exec();
             ++result.applied;
         } else {
             ++result.older;     // download / delete: nothing to change here
@@ -2654,7 +3200,11 @@ bool Database::isArchiveFolderUsed(const QString &folder, qint64 exceptPodcastId
 bool Database::setDownloaded(qint64 episodeId, const QString &path)
 {
     QSqlQuery q(handle());
-    q.prepare(QStringLiteral("UPDATE episodes SET download_state = 2, download_path = ? WHERE id = ?"));
+    // (274) The time stays when a finished download is only moved (Music,
+    // archive); a new download gets the time now
+    q.prepare(QStringLiteral("UPDATE episodes SET downloaded_at = CASE WHEN download_state = 2 AND downloaded_at > 0"
+                             " THEN downloaded_at ELSE ? END, download_state = 2, download_path = ? WHERE id = ?"));
+    q.addBindValue(now());
     q.addBindValue(sqlText(path));
     q.addBindValue(episodeId);
     if (!q.exec()) {
@@ -2825,12 +3375,17 @@ bool Database::queueAdd(qint64 episodeId, bool atFront)
 {
     QSqlQuery q(handle());
     // Already in the playlist: moved (to the front or to the end)
+    // (325) added_at: now, or kept when the episode is in the playlist already
     q.prepare(atFront
-              ? QStringLiteral("INSERT OR REPLACE INTO queue (episode_id, position)"
-                               " VALUES (?, (SELECT COALESCE(MIN(position), 0) - 1 FROM queue))")
-              : QStringLiteral("INSERT OR REPLACE INTO queue (episode_id, position)"
-                               " VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM queue))"));
+              ? QStringLiteral("INSERT OR REPLACE INTO queue (episode_id, position, added_at)"
+                               " VALUES (?, (SELECT COALESCE(MIN(position), 0) - 1 FROM queue),"
+                               " COALESCE((SELECT added_at FROM queue WHERE episode_id = ?), ?))")
+              : QStringLiteral("INSERT OR REPLACE INTO queue (episode_id, position, added_at)"
+                               " VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM queue),"
+                               " COALESCE((SELECT added_at FROM queue WHERE episode_id = ?), ?))"));
     q.addBindValue(episodeId);
+    q.addBindValue(episodeId);
+    q.addBindValue(QDateTime::currentMSecsSinceEpoch() / 1000);
     if (!q.exec()) {
         return fail(QStringLiteral("queueAdd"), q.lastError().text());
     }
@@ -2893,6 +3448,61 @@ bool Database::queueSetOrder(const QList<qint64> &episodeIds)
         q.exec();
     }
     return db.commit();
+}
+
+QList<qint64> Database::queuePinnedIds() const
+{
+    QList<qint64> ids;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (q.exec(QStringLiteral("SELECT episode_id FROM queue WHERE pinned = 1 ORDER BY position"))) {
+        while (q.next()) {
+            ids.append(q.value(0).toLongLong());
+        }
+    }
+    return ids;
+}
+
+bool Database::queueSetPinned(qint64 episodeId, bool pinned)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("UPDATE queue SET pinned = ? WHERE episode_id = ?"));
+    q.addBindValue(pinned ? 1 : 0);
+    q.addBindValue(episodeId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("queueSetPinned"), q.lastError().text());
+    }
+    return true;
+}
+
+QList<qint64> Database::queueAutoIds() const
+{
+    QList<qint64> ids;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (q.exec(QStringLiteral("SELECT episode_id FROM queue WHERE auto_added = 1 ORDER BY position"))) {
+        while (q.next()) {
+            ids.append(q.value(0).toLongLong());
+        }
+    }
+    return ids;
+}
+
+bool Database::queueSetAuto(qint64 episodeId, bool autoAdded)
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("UPDATE queue SET auto_added = ? WHERE episode_id = ?"));
+    q.addBindValue(autoAdded ? 1 : 0);
+    q.addBindValue(episodeId);
+    if (!q.exec()) {
+        return fail(QStringLiteral("queueSetAuto"), q.lastError().text());
+    }
+    return true;
+}
+
+void Database::queueClearPins()
+{
+    exec(QStringLiteral("UPDATE queue SET pinned = 0"));
 }
 
 void Database::queueClear()

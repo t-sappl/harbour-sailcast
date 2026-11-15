@@ -71,6 +71,8 @@ public:
     // (245) Video files of "Downloads in Music" and "Save in Music" go to
     // this root instead (~/Videos/Podcasts), in a folder of the same name
     void setVideoRoot(const QString &root) { m_videoRoot = root; }
+    // (289) The episode playing is never moved
+    void setCurrentEpisode(qint64 id) { m_currentEpisode = id; }
     QString archiveRoot() const { return m_root; }
     bool isRunning() const { return m_podcastId != 0; }
 
@@ -111,10 +113,13 @@ signals:
 
 private:
     QString m_videoRoot;
+    qint64 m_currentEpisode = 0;
     // (245) The root for an episode's file: Videos for video files
     QString rootFor(const EpisodeRow &e) const;
     void saveCover();
     QString ensureFolderName(const PodcastRow &podcast);
+    QString chooseFolderName(const PodcastRow &podcast) const;
+    QString musicFolderName(const PodcastRow &podcast);
     void archiveEpisodes();
     void finish();
     QString folderFor(qint64 podcastId) const;

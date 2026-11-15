@@ -16,7 +16,7 @@ Page {
         return Number(value).toLocaleString(Qt.locale(), "f", decimals) + "×"
     }
     // After an episode that was not started from the playlist (24)
-    readonly property var afterSingleOptions: ["load", "play", "stop"]
+    readonly property var afterSingleOptions: ["load", "play", "stop", "podcast"]
     readonly property var smartResumeOptions: [0, 5, 10, 20, 30]
     // (252) Count as played when that little is left
     readonly property var countPlayedOptions: [0, 15, 30, 60, 120]
@@ -55,16 +55,20 @@ Page {
             width: parent.width
 
             PageHeader {
-                title: qsTr("Playback")
+                title: qsTr("Playback and playlist")
             }
 
+            // (326, settings restructured) Order: the everyday settings first,
+            // then the playlist (from this page before), the finer points, the
+            // buttons. "Download playlist episodes" stays in Downloads (all
+            // automatic downloads in one place).
             // (254, forum 5 Nov: "I cannot find where I set 2x") The global
             // speed was only in the player; the podcast settings say "as set
             // globally (2.0×)" and pointed nowhere. Same setting (player.rate)
             // as the player's speed button; a podcast with its own speed keeps it.
             ComboBox {
                 label: qsTr("Speed")
-                description: qsTr("For all podcasts without their own speed (podcast settings)")
+                description: qsTr("For all podcasts without their own speed (podcast settings).")
                 currentIndex: page.indexOf(page.speedOptions, appWindow.player.globalRate, 2)
                 menu: ContextMenu {
                     Repeater {
@@ -74,70 +78,6 @@ Page {
                             onClicked: {
                                 appWindow.player.globalRate = modelData
                                 core.setSetting("player.rate", "" + modelData)
-                            }
-                        }
-                    }
-                }
-            }
-
-            ComboBox {
-                label: qsTr("After an episode outside the playlist")
-                currentIndex: page.indexOf(page.afterSingleOptions, core.setting("player.afterSingle", "load"), 0)
-                menu: ContextMenu {
-                    MenuItem {
-                        text: qsTr("Load the next playlist episode")
-                        onClicked: core.setSetting("player.afterSingle", "load")
-                    }
-                    MenuItem {
-                        text: qsTr("Play the next playlist episode")
-                        onClicked: core.setSetting("player.afterSingle", "play")
-                    }
-                    MenuItem {
-                        text: qsTr("Stop")
-                        onClicked: core.setSetting("player.afterSingle", "stop")
-                    }
-                }
-            }
-
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
-                text: qsTr("Episodes started on the playlist page are always followed by the next playlist episode. \"Load\" puts it into the player bar, paused - one tap continues.")
-            }
-
-            // Smart resume (53)
-            ComboBox {
-                label: qsTr("Rewind after a long pause")
-                description: qsTr("After more than 5 minutes of pause (or a restart) playback continues a little earlier")
-                currentIndex: page.indexOf(page.smartResumeOptions, parseInt(core.setting("player.smartResume", "10")), 2)
-                menu: ContextMenu {
-                    Repeater {
-                        model: page.smartResumeOptions
-                        MenuItem {
-                            text: modelData > 0 ? qsTr("%n s", "", modelData) : qsTr("Off")
-                            onClicked: core.setSetting("player.smartResume", "" + modelData)
-                        }
-                    }
-                }
-            }
-
-            // (252) Almost finished counts as played
-            ComboBox {
-                label: qsTr("Count as played when less remains")
-                description: qsTr("When you pause, switch or close the app with less than this left, the episode counts as played. The next one does not start.")
-                currentIndex: page.indexOf(page.countPlayedOptions, appWindow.player.countPlayedBelow, 0)
-                menu: ContextMenu {
-                    Repeater {
-                        model: page.countPlayedOptions
-                        MenuItem {
-                            text: modelData === 0 ? qsTr("Off")
-                                  : (modelData >= 60 ? qsTr("%n min", "", modelData / 60) : qsTr("%n s", "", modelData))
-                            onClicked: {
-                                appWindow.player.countPlayedBelow = modelData
-                                core.setSetting("player.countPlayedBelow", String(modelData))
                             }
                         }
                     }
@@ -185,11 +125,96 @@ Page {
                 }
             }
 
+            // Smart resume (53)
+            ComboBox {
+                label: qsTr("Rewind after a long pause")
+                description: qsTr("After more than 5 minutes of pause, playback continues a little earlier.")
+                currentIndex: page.indexOf(page.smartResumeOptions, parseInt(core.setting("player.smartResume", "10")), 2)
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.smartResumeOptions
+                        MenuItem {
+                            text: modelData > 0 ? qsTr("%n s", "", modelData) : qsTr("Off")
+                            onClicked: core.setSetting("player.smartResume", "" + modelData)
+                        }
+                    }
+                }
+            }
+
+            SectionHeader { text: qsTr("Playlist") }
+
+            // (276) The playlist button of the rows
+            ComboBox {
+                label: qsTr("Add to the playlist")
+                description: core.setting("playlist.sortKeep", "0") === "1" && core.setting("playlist.sortMode", "") !== ""
+                             ? qsTr("Not while the playlist is kept sorted: the sorting decides the place.")
+                             : qsTr("Where the playlist button puts an episode. Several taps in a row reverse the order with \"Next\".")
+                currentIndex: core.setting("playlist.addTo", "end") === "next" ? 1 : 0
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("To the end of the playlist")
+                        onClicked: core.setSetting("playlist.addTo", "end")
+                    }
+                    MenuItem {
+                        text: qsTr("Next, after the episode playing")
+                        onClicked: core.setSetting("playlist.addTo", "next")
+                    }
+                }
+            }
+
+            // (329, Gemini) The explanation as the description: as its own
+            // Label it floated between the settings
+            ComboBox {
+                label: qsTr("After an episode outside the playlist")
+                description: qsTr("Episodes started on the playlist page are always followed by the next playlist episode. \"Load\" puts it into the player bar, paused.")
+                currentIndex: page.indexOf(page.afterSingleOptions, core.setting("player.afterSingle", "load"), 0)
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("Load the next playlist episode")
+                        onClicked: core.setSetting("player.afterSingle", "load")
+                    }
+                    MenuItem {
+                        text: qsTr("Play the next playlist episode")
+                        onClicked: core.setSetting("player.afterSingle", "play")
+                    }
+                    MenuItem {
+                        text: qsTr("Stop")
+                        onClicked: core.setSetting("player.afterSingle", "stop")
+                    }
+                    MenuItem {
+                        text: qsTr("Play the next episode of this podcast")
+                        onClicked: core.setSetting("player.afterSingle", "podcast")
+                    }
+                }
+            }
+
+            SectionHeader { text: qsTr("Finer points") }
+
+            // (252) Almost finished counts as played
+            ComboBox {
+                label: qsTr("Count as played when less remains")
+                description: qsTr("With less than this left when you pause, switch or close the app, the episode counts as played.")
+                currentIndex: page.indexOf(page.countPlayedOptions, appWindow.player.countPlayedBelow, 0)
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.countPlayedOptions
+                        MenuItem {
+                            text: modelData === 0 ? qsTr("Off")
+                                  : (modelData >= 60 ? qsTr("%n min", "", modelData / 60) : qsTr("%n s", "", modelData))
+                            onClicked: {
+                                appWindow.player.countPlayedBelow = modelData
+                                core.setSetting("player.countPlayedBelow", String(modelData))
+                            }
+                        }
+                    }
+                }
+            }
+
             // (246) Second step: press and hold the skip buttons
             ComboBox {
                 readonly property var options: [30, 60, 120, 300]
                 label: qsTr("Press and hold to skip")
-                description: qsTr("Repeated every half second while held – player bar, player column and episode page")
+                description: qsTr("Repeated every half second while held, in the player and on the episode page.")
                 currentIndex: page.indexOf(options, appWindow.player.skipLargeSeconds, 1)
                 menu: ContextMenu {
                     Repeater {
@@ -213,7 +238,7 @@ Page {
             // fit the arrows the system draws (101)
             ComboBox {
                 label: qsTr("Lock screen: left button")
-                description: qsTr("Also applies to the headset buttons")
+                description: qsTr("Also the headset buttons. \"Previous chapter\": a second press goes to the one before; without chapters it skips back.")
                 currentIndex: page.indexOf(page.remotePrevOptions, appWindow.player.remotePrev, 0)
                 menu: ContextMenu {
                     MenuItem {
@@ -229,6 +254,7 @@ Page {
 
             ComboBox {
                 label: qsTr("Lock screen: right button")
+                description: qsTr("Without chapters \"Chapter, then episode\" skips forward instead of going to the next episode.")
                 currentIndex: page.indexOf(page.remoteNextOptions, appWindow.player.remoteNextAction, 0)
                 menu: ContextMenu {
                     MenuItem {
@@ -246,18 +272,9 @@ Page {
                 }
             }
 
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
-                text: qsTr("\"Previous chapter\": the start of the chapter, a second press goes to the one before; without chapters it skips back.")
-            }
-
             ComboBox {
                 label: qsTr("Second button on the cover")
-                description: qsTr("The first one is always play/pause")
+                description: qsTr("The first one is always play/pause.")
                 currentIndex: page.indexOf(page.coverButtonOptions, appWindow.player.coverButton, 0)
                 menu: ContextMenu {
                     MenuItem {

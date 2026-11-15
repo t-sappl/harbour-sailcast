@@ -2,6 +2,7 @@
 #include "appcore.h"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 
 #include <QCollator>
@@ -13,6 +14,8 @@
 #include "webdavbackup.h"
 
 #include <QDateTime>
+#include <QElapsedTimer>
+#include <QPair>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -44,6 +47,11 @@
 #include "fyyd.h"
 #include "gpodderimport.h"
 #include "opml.h"
+#include "htmlexport.h"
+#include "imagecache.h"
+#include <QBuffer>
+#include <QImage>
+#include <QSaveFile>
 #include "podcastindex.h"
 #include "syncengine.h"
 
@@ -360,7 +368,7 @@ AppCore::AppCore(QObject *parent)
         switch (error) {
         case NextcloudLogin::InvalidAddress: text = tr("Invalid server address"); break;
         case NextcloudLogin::NoNextcloud: text = tr("No Nextcloud found at this address"); break;
-        case NextcloudLogin::NotStarted: text = tr("The server did not start the login - is it a Nextcloud?"); break;
+        case NextcloudLogin::NotStarted: text = tr("The server did not start the login – is it a Nextcloud?"); break;
         case NextcloudLogin::TimedOut: text = tr("The login in the browser was not completed in time"); break;
         case NextcloudLogin::Incomplete: text = tr("The server sent an incomplete answer"); break;
         default: text = tr("Login failed: %1").arg(detail); break;
@@ -419,7 +427,7 @@ AppCore::AppCore(QObject *parent)
         // The Sailcast device exists on the server now
         m_database->setSetting(QStringLiteral("sync.deviceExisting"), QStringLiteral("1"));
         emit settingsChanged();
-        emitMessage(tr("The devices now share their subscriptions - synchronize to get them"));
+        emitMessage(tr("The devices now share their subscriptions – synchronize to get them"));
         emit devicesSynchronized();
     });
     connect(m_devices, &GpodderDevices::synchronizeFailed, this, [this](const QString &error) {
@@ -432,6 +440,23 @@ AppCore::AppCore(QObject *parent)
     });
 #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     m_networkConfig = new QNetworkConfigurationManager(this);
+    // (289) The list of connections is filled a moment after the start: an
+    // update right at the start saw "no Wi-Fi" and skipped the automatic
+    // downloads. They wait for the list now (see autoDownload).
+    const auto networkReady = [this]() {
+        if (m_networkReady) {
+            return;
+        }
+        m_networkReady = true;
+        const QList<QPair<qint64, int> > waiting = m_autoDeferred;
+        m_autoDeferred.clear();
+        for (int i = 0; i < waiting.size(); ++i) {
+            autoDownload(waiting.at(i).first, waiting.at(i).second);
+        }
+    };
+    connect(m_networkConfig, &QNetworkConfigurationManager::updateCompleted, this, networkReady);
+    QTimer::singleShot(5000, this, networkReady);    // the list never completes: go on anyway
+    m_networkConfig->updateConfigurations();
 #endif
     m_metadataTimer = new QTimer(this);
     m_metadataTimer->setSingleShot(true);
@@ -450,6 +475,8 @@ AppCore::AppCore(QObject *parent)
     // (248) Subscriptions differing only in the case of the address: merged
     // once after the start
     QTimer::singleShot(3000, this, &AppCore::mergeCaseDuplicates);
+    // (289) After the connection list is complete (5 s): interrupted downloads go on
+    QTimer::singleShot(6000, this, &AppCore::resumeDownloads);
     connect(m_updater, &FeedUpdater::podcastUpdated, this, [this](qint64 id, int newEpisodes) {
         emit podcastRefreshed(int(id), true);
         // Loaded for "Anhören ohne Abo" (147): not counted as new episodes
@@ -464,9 +491,15 @@ AppCore::AppCore(QObject *parent)
             return;
         }
         m_updateRegular = true;
-        m_updateNew += newEpisodes;
+        // (289) The first update of a subscription brings the whole back
+        // catalog, but only the newest episode counts as new
+        m_updateNew += newEpisodes >= m_database->podcast(id).episodeCount ? qMin(newEpisodes, 1) : newEpisodes;
         if (newEpisodes > 0) {
+            // (289) Heard elsewhere: the states waiting for these episodes are
+            // applied first, so such an episode is not loaded or added
+            m_database->applyPendingActions();
             autoDownload(id, newEpisodes);
+            autoAddToPlaylist(id, newEpisodes);
             // "New since you last looked" marker on the podcast (50)
             m_database->setSetting(QStringLiteral("podcast.%1.newAt").arg(id),
                                    QString::number(QDateTime::currentMSecsSinceEpoch() / 1000));
@@ -476,8 +509,9 @@ AppCore::AppCore(QObject *parent)
         emit podcastRefreshed(int(id), false);
         if (m_previews.contains(id)) {
             m_previews.remove(id);
-            // Nothing stored yet: no trace left
-            if (m_database->podcast(id).episodeCount == 0) {
+            // Nothing stored yet: no trace left (320, code review: unless it
+            // was subscribed in the meantime)
+            if (m_database->podcast(id).episodeCount == 0 && m_database->podcast(id).provisional) {
                 removeProvisional(id);
             }
             emit previewFailed(UrlMask::maskText(error));
@@ -491,41 +525,83 @@ AppCore::AppCore(QObject *parent)
     });
     connect(m_updater, &FeedUpdater::finished, this, [this]() {
         m_database->applyPendingActions();
+        // (309) Playlist episodes added without Wi-Fi: loaded now
+        downloadPlaylistCatchUp();
         // (168) Imported with "only the newest unplayed": now that the
         // episodes are there (and the sync's states applied)
         markImportedOlder();
-        afterPlayed();
+        afterMarkedPlayed();
         m_updateDone = 0;
         m_updateTotal = 0;
         emit updatingChanged();
         emit dataChanged();
-        if (!m_sync->isRunning() && m_updateRegular) {
-            emitMessage(m_updateFailed > 0
-                         ? tr("%n new episodes", "", m_updateNew) + QStringLiteral(", ")
-                           + tr("%n feeds failed", "", m_updateFailed)
-                         : tr("%n new episodes", "", m_updateNew));
+        if (m_sync->isRunning()) {
+            // (289) The sync is still running (at the start both run side by
+            // side): the result is told when it is over, not lost
+            m_updateSummaryPending = true;
+            return;
         }
-        m_updateNew = 0;
-        m_updateFailed = 0;
-        m_updateRegular = false;
+        emitUpdateSummary();
     });
 
     // --- Sync ---
+    // (289) Another device unsubscribed a podcast: clean up like a local unsubscribe
+    m_sync->setKeepPodcast([this](qint64 podcastId) {
+        return m_currentEpisode > 0 && m_database->episode(m_currentEpisode).podcastId == podcastId;
+    });
+    connect(m_sync, &SyncEngine::podcastRemoving, this, [this](qint64 id) {
+        flushArchiveMetadata(id);
+        const QList<qint64> pending = m_downloads->pendingIds();
+        for (int i = 0; i < pending.size(); ++i) {
+            if (m_database->episode(pending.at(i)).podcastId == id) {
+                cancelDownload(int(pending.at(i)));
+            }
+        }
+        // (320, code review) An ended ("archived") podcast keeps its
+        // downloads, as in the clean-up: another device must not take them
+        if (m_database->podcast(id).archived) {
+            return;
+        }
+        const QList<EpisodeRow> downloads = m_database->episodes(id, -1, Database::Downloaded);
+        for (int i = 0; i < downloads.size(); ++i) {
+            if (!isKept(downloads.at(i)) && downloads.at(i).id != m_currentEpisode) {
+                QFile::remove(downloads.at(i).downloadPath);
+            }
+        }
+    });
+    connect(m_sync, &SyncEngine::podcastRemoved, this, [this](qint64 id, const QString &title) {
+        m_updater->setPassword(id, QString());
+        m_downloads->setPassword(id, QString());
+        m_database->removeSettings(QStringLiteral("podcast.%1.").arg(id));
+        m_metadataDirty.remove(id);
+        emit podcastForgotten(int(id));     // (320) the page layer forgets the password
+        emit bookmarksChanged(0);
+        reloadQueue();
+        emit queueChanged();
+        emit dataChanged();
+        emitMessage(tr("Removed by the sync: %1").arg(title));
+    });
     connect(m_sync, &SyncEngine::finished, this, [this](const SyncResult &r) {
         // Episodes played on another device leave the playlist here too
-        afterPlayed();
+        afterMarkedPlayed();
         emit syncingChanged();
         emit dataChanged();
         emit queueChanged();
         emitMessage(tr("Synchronized: %1 listening states, %2 subscription changes")
                      .arg(r.applied.applied + r.actionsUploaded)
                      .arg(r.podcastsAdded + r.podcastsRemoved + r.subscriptionsUploaded));
+        if (m_updateSummaryPending && !m_updater->isBusy()) {
+            emitUpdateSummary();
+        }
         // The sync password is known now: a Nextcloud backup that is due
         backupIfDue();
     });
     connect(m_sync, &SyncEngine::failed, this, [this](const QString &error) {
         emit syncingChanged();
         emitMessage(tr("Sync failed: %1").arg(error));
+        if (m_updateSummaryPending && !m_updater->isBusy()) {
+            emitUpdateSummary();
+        }
     });
 
     // --- Downloads ---
@@ -535,6 +611,7 @@ AppCore::AppCore(QObject *parent)
         emit downloadProgressChanged(int(id), progress);
     });
     connect(m_downloads, &DownloadManager::downloaded, this, [this](qint64 id, const QString &) {
+        forgetResumable(int(id));
         m_downloadProgress.remove(int(id));
         emit downloadFinished(int(id), true);
         emit episodeChanged(int(id));
@@ -543,12 +620,17 @@ AppCore::AppCore(QObject *parent)
         emit dataChanged();
     });
     connect(m_downloads, &DownloadManager::failed, this, [this](qint64 id, const QString &error) {
+        forgetResumable(int(id));
         m_downloadProgress.remove(int(id));
         emit downloadFinished(int(id), false);
         emit episodeChanged(int(id));
         emit downloadsChanged();
         const bool cancelledHere = m_cancelled.remove(int(id));
-        if (!cancelledHere && error != DownloadManager::cancelledError()) {
+        if (error == DownloadManager::noSpaceError()) {
+            // (289) Equal texts are shown once: a burst of failed downloads is one line
+            emitMessage(tr("No space left – download stopped (%1 MB free)")
+                         .arg(qint64(qMax<qint64>(0, m_downloads->freeBytes()) / 1048576)));
+        } else if (!cancelledHere && error != DownloadManager::cancelledError()) {
             emitMessage(tr("Download failed: %1").arg(error));
         }
     });
@@ -587,10 +669,12 @@ AppCore::AppCore(QObject *parent)
 
 AppCore::~AppCore()
 {
+    m_closing = true;   // (289) aborting downloads now must not empty the list to resume
     // Pending episodes.json updates of archived podcasts
     writeArchiveMetadata();
     // The workers use the database - delete them first
     delete m_chapters;
+    deleteHtmlJob();
     delete m_archiver;
     delete m_sync;
     delete m_downloads;
@@ -617,6 +701,14 @@ void AppCore::openDatabase()
     m_databaseError.clear();
     if (!m_database->open(databasePath())) {
         m_databaseError = m_database->lastError();
+        return;
+    }
+    // (304) Once with 1.4: before 302 hardly anything took the "new" flag
+    // away, so months of old episodes would fill the view "New". They stay
+    // unplayed (view "All unplayed"); only the flag goes.
+    if (m_database->setting(QStringLiteral("migrate.newCleared14")).isEmpty()) {
+        m_database->clearAllNew();
+        m_database->setSetting(QStringLiteral("migrate.newCleared14"), QStringLiteral("1"));
     }
 }
 
@@ -625,8 +717,26 @@ bool AppCore::isKept(const EpisodeRow &e) const
     // (209) In the archive folder and named there (kept by "Save in Music"
     // or archived) - a file of "Downloads in Music" is a normal download;
     // (245) video files in the Videos folder likewise
-    return e.downloaded && !e.archiveFile.isEmpty()
-            && (isInside(e.downloadPath, archiveRoot()) || isInside(e.downloadPath, videoRoot()));
+    if (!e.downloaded || e.archiveFile.isEmpty()) {
+        return false;
+    }
+    if (isInside(e.downloadPath, archiveRoot()) || isInside(e.downloadPath, videoRoot())) {
+        return true;
+    }
+    // (289) Files kept under an archive folder that was changed later
+    const QStringList old = oldArchiveRoots();
+    for (int i = 0; i < old.size(); ++i) {
+        if (isInside(e.downloadPath, old.at(i))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QStringList AppCore::oldArchiveRoots() const
+{
+    const QString raw = m_database->setting(QStringLiteral("archive.oldRoots"));
+    return raw.isEmpty() ? QStringList() : raw.split(QLatin1Char('\n'), QString::SkipEmptyParts);
 }
 
 QString AppCore::videoRoot() const
@@ -649,7 +759,7 @@ QString AppCore::archiveRoot() const
 
 QString AppCore::version() const
 {
-    return QStringLiteral("1.3 (build 269)");
+    return QStringLiteral("1.4 (build 332)");
 }
 
 void AppCore::reloadQueue()
@@ -659,6 +769,32 @@ void AppCore::reloadQueue()
     for (int i = 0; i < queue.size(); ++i) {
         m_queue.insert(int(queue.at(i)));
     }
+    m_pinned.clear();
+    const QList<qint64> pinned = m_database->queuePinnedIds();
+    for (int i = 0; i < pinned.size(); ++i) {
+        m_pinned.insert(int(pinned.at(i)));
+    }
+    m_autoAdded.clear();
+    const QList<qint64> autoAdded = m_database->queueAutoIds();
+    for (int i = 0; i < autoAdded.size(); ++i) {
+        m_autoAdded.insert(int(autoAdded.at(i)));
+    }
+}
+
+// (289) "n new episodes" of the update just finished
+void AppCore::emitUpdateSummary()
+{
+    m_updateSummaryPending = false;
+    if (m_updateRegular) {
+        // (280) "No new episodes" instead of "0 new episodes"
+        const QString found = m_updateNew > 0 ? tr("%n new episodes", "", m_updateNew) : tr("No new episodes");
+        emitMessage(m_updateFailed > 0
+                     ? found + QStringLiteral(", ") + tr("%n feeds failed", "", m_updateFailed)
+                     : found);
+    }
+    m_updateNew = 0;
+    m_updateFailed = 0;
+    m_updateRegular = false;
 }
 
 bool AppCore::updating() const
@@ -731,6 +867,351 @@ void AppCore::subscribe(const QString &url, int folderId)
     }
     emit dataChanged();
     emit updatingChanged();
+}
+
+// (297) Everything the statistics page shows for one period. The heat map is
+// always the last 53 weeks (Monday first), whatever the period.
+// (329) Few queries, no ranking/categories (the full statistics take longer):
+// read every time the Podcasts page becomes active
+QVariantMap AppCore::listeningOverview() const
+{
+    QVariantMap map;
+    const QDate today = QDate::currentDate();
+    const QString dayFormat = QStringLiteral("yyyyMMdd");
+    auto dayOf = [&dayFormat](const QDate &d) { return d.toString(dayFormat).toInt(); };
+    const QList<QPair<int, qint64>> everyDay = m_database->listeningPerDay(0);
+    QHash<int, qint64> allDays;
+    qint64 total = 0;
+    for (int i = 0; i < everyDay.size(); ++i) {
+        allDays.insert(everyDay.at(i).first, everyDay.at(i).second);
+        total += everyDay.at(i).second;
+    }
+    // Same period as listeningStatistics(7): today and the 6 days before
+    qint64 week = 0;
+    for (int i = 0; i < 7; ++i) {
+        week += allDays.value(dayOf(today.addDays(-i)));
+    }
+    // Current series as in listeningStatistics: ends today or yesterday
+    int current = 0;
+    QDate cursor = allDays.value(dayOf(today)) > 0 ? today : today.addDays(-1);
+    while (allDays.value(dayOf(cursor)) > 0) {
+        ++current;
+        cursor = cursor.addDays(-1);
+    }
+    map.insert(QStringLiteral("empty"), total <= 0);
+    map.insert(QStringLiteral("weekSeconds"), double(week));
+    map.insert(QStringLiteral("totalSeconds"), double(total));
+    map.insert(QStringLiteral("streak"), current);
+    return map;
+}
+
+QVariantMap AppCore::listeningStatistics(int days) const
+{
+    QVariantMap map;
+    const QDate today = QDate::currentDate();
+    const QString dayFormat = QStringLiteral("yyyyMMdd");
+    const int fromDay = days > 0 ? today.addDays(-(days - 1)).toString(dayFormat).toInt() : 0;
+    const ListeningTotals totals = m_database->listeningTotals(fromDay);
+    map.insert(QStringLiteral("seconds"), double(totals.seconds));
+    map.insert(QStringLiteral("saved"), double(totals.savedSeconds));
+    map.insert(QStringLiteral("episodes"), totals.episodes);
+    map.insert(QStringLiteral("noTime"), m_database->listenedWithoutTime());
+    const ListeningSummary all = m_database->listeningSummary();
+    map.insert(QStringLiteral("firstDay"), all.firstDay);
+    map.insert(QStringLiteral("empty"), all.days == 0);
+
+    // Seconds per day of the period and of the last year
+    const QList<QPair<int, qint64>> perDay = m_database->listeningPerDay(fromDay);
+    QHash<int, qint64> secondsOf;
+    for (int i = 0; i < perDay.size(); ++i) {
+        secondsOf.insert(perDay.at(i).first, perDay.at(i).second);
+    }
+    auto dayOf = [&dayFormat](const QDate &d) { return d.toString(dayFormat).toInt(); };
+
+    // Course: one bar per day (7 and 30 days); "all": see below
+    QVariantList bars;
+    QString unit = QStringLiteral("day");
+    if (days > 0) {
+        for (int i = days - 1; i >= 0; --i) {
+            const QDate d = today.addDays(-i);
+            QVariantMap bar;
+            bar.insert(QStringLiteral("seconds"), double(secondsOf.value(dayOf(d))));
+            bar.insert(QStringLiteral("label"), days <= 7 ? QLocale().dayName(d.dayOfWeek(), QLocale::ShortFormat)
+                                                             : QString::number(d.day()));
+            bars.append(bar);
+        }
+    } else if (all.firstDay > 0) {
+        // (314) The unit after the length of the log: days up to two months,
+        // weeks up to half a year, else months (a log of two weeks showed
+        // one single bar "Nov - Nov")
+        const QDate first = QDate::fromString(QString::number(all.firstDay), dayFormat);
+        const qint64 span = first.daysTo(today) + 1;
+        auto shortDate = [](const QDate &d) { return QLocale().toString(d, QStringLiteral("d MMM")); };
+        if (span <= 62) {
+            unit = QStringLiteral("day");
+            for (QDate d = first; d <= today; d = d.addDays(1)) {
+                QVariantMap bar;
+                bar.insert(QStringLiteral("seconds"), double(secondsOf.value(dayOf(d))));
+                bar.insert(QStringLiteral("label"), shortDate(d));
+                bars.append(bar);
+            }
+        } else if (span <= 26 * 7) {
+            unit = QStringLiteral("week");
+            QDate week = first.addDays(1 - first.dayOfWeek());
+            for (; week <= today; week = week.addDays(7)) {
+                qint64 sum = 0;
+                for (int i = 0; i < 7; ++i) {
+                    const QDate d = week.addDays(i);
+                    if (d >= first && d <= today) {
+                        sum += secondsOf.value(dayOf(d));
+                    }
+                }
+                QVariantMap bar;
+                bar.insert(QStringLiteral("seconds"), double(sum));
+                bar.insert(QStringLiteral("label"), shortDate(week < first ? first : week));
+                bars.append(bar);
+            }
+        } else {
+            unit = QStringLiteral("month");
+            QDate month(first.year(), first.month(), 1);
+            const QDate lastMonth(today.year(), today.month(), 1);
+            while (month.addMonths(24) <= lastMonth) {
+                month = month.addMonths(1);
+            }
+            const QDate firstMonth = month;
+            for (; month <= lastMonth; month = month.addMonths(1)) {
+                qint64 sum = 0;
+                for (QDate d = month; d.month() == month.month() && d <= today; d = d.addDays(1)) {
+                    sum += secondsOf.value(dayOf(d));
+                }
+                QVariantMap bar;
+                bar.insert(QStringLiteral("seconds"), double(sum));
+                // (323, blind test) First and last bar and every January with
+                // the year: "Nov ... Nov" over 13 months did not say which
+                QString label = QLocale().monthName(month.month(), QLocale::ShortFormat);
+                if (month == firstMonth || month == lastMonth || month.month() == 1) {
+                    label += QLatin1Char(' ') + QString::number(month.year());
+                }
+                bar.insert(QStringLiteral("label"), label);
+                bars.append(bar);
+            }
+        }
+    }
+    map.insert(QStringLiteral("bars"), bars);
+    map.insert(QStringLiteral("barUnit"), unit);
+
+    // Heat map: 53 weeks, Monday first, cells after today are -1
+    const QDate gridStart = today.addDays(-(52 * 7 + today.dayOfWeek() - 1));
+    const QList<QPair<int, qint64>> yearDays = m_database->listeningPerDay(dayOf(gridStart));
+    QHash<int, qint64> yearSeconds;
+    for (int i = 0; i < yearDays.size(); ++i) {
+        yearSeconds.insert(yearDays.at(i).first, yearDays.at(i).second);
+    }
+    QVariantList heat;
+    for (int w = 0; w < 53; ++w) {
+        for (int d = 0; d < 7; ++d) {
+            const QDate date = gridStart.addDays(w * 7 + d);
+            heat.append(date > today ? -1.0 : double(yearSeconds.value(dayOf(date))));
+        }
+    }
+    map.insert(QStringLiteral("heat"), heat);
+    // Month names under the heat map: the week in which a month starts
+    QVariantList heatMonths;
+    for (int w = 0; w < 53; ++w) {
+        const QDate monday = gridStart.addDays(w * 7);
+        if (w == 0 || monday.month() != monday.addDays(-7).month()) {
+            QVariantMap m;
+            m.insert(QStringLiteral("week"), w);
+            m.insert(QStringLiteral("label"), QLocale().monthName(monday.month(), QLocale::ShortFormat));
+            heatMonths.append(m);
+        }
+    }
+    map.insert(QStringLiteral("heatMonths"), heatMonths);
+
+    // Series (from all days of the period, in the order of the days)
+    int longest = 0;
+    int run = 0;
+    QDate previous;
+    qint64 weekdays[7] = {0, 0, 0, 0, 0, 0, 0};
+    qint64 bestDaySeconds = 0;
+    int bestDay = 0;
+    qint64 sum = 0;
+    for (int i = 0; i < perDay.size(); ++i) {
+        const QDate d = QDate::fromString(QString::number(perDay.at(i).first), dayFormat);
+        if (!d.isValid()) {
+            continue;
+        }
+        run = (previous.isValid() && previous.daysTo(d) == 1) ? run + 1 : 1;
+        longest = qMax(longest, run);
+        previous = d;
+        weekdays[d.dayOfWeek() - 1] += perDay.at(i).second;
+        sum += perDay.at(i).second;
+        if (perDay.at(i).second > bestDaySeconds) {
+            bestDaySeconds = perDay.at(i).second;
+            bestDay = perDay.at(i).first;
+        }
+    }
+    // Current series: ends today, or yesterday (the day is not over yet)
+    // (322) Not limited to the chosen period: "current" is a fact about today,
+    // "record" the longest series of the whole log (the other tiles follow the period)
+    int current = 0;
+    {
+        QHash<int, qint64> allDays;
+        const QList<QPair<int, qint64>> everyDay = m_database->listeningPerDay(0);
+        for (int i = 0; i < everyDay.size(); ++i) {
+            allDays.insert(everyDay.at(i).first, everyDay.at(i).second);
+        }
+        QDate cursor = allDays.contains(dayOf(today)) ? today : today.addDays(-1);
+        while (allDays.value(dayOf(cursor)) > 0) {
+            ++current;
+            cursor = cursor.addDays(-1);
+        }
+    }
+    longest = qMax(longest, all.longestStreak);
+    int periodDays = days;
+    if (days == 0 && all.firstDay > 0) {
+        periodDays = int(QDate::fromString(QString::number(all.firstDay), dayFormat).daysTo(today)) + 1;
+    }
+    map.insert(QStringLiteral("longestStreak"), longest);
+    map.insert(QStringLiteral("currentStreak"), current);
+    map.insert(QStringLiteral("activeDays"), perDay.size());
+    map.insert(QStringLiteral("activePercent"), periodDays > 0 ? qRound(100.0 * perDay.size() / periodDays) : 0);
+    map.insert(QStringLiteral("perActiveDay"), perDay.isEmpty() ? 0.0 : double(sum) / perDay.size());
+    QVariantList weekdayList;
+    int favourite = -1;
+    qint64 favouriteSeconds = 0;
+    for (int i = 0; i < 7; ++i) {
+        QVariantMap w;
+        w.insert(QStringLiteral("seconds"), double(weekdays[i]));
+        w.insert(QStringLiteral("label"), QLocale().dayName(i + 1, QLocale::ShortFormat));
+        weekdayList.append(w);
+        if (weekdays[i] > favouriteSeconds) {
+            favouriteSeconds = weekdays[i];
+            favourite = i;
+        }
+    }
+    map.insert(QStringLiteral("weekdays"), weekdayList);
+    map.insert(QStringLiteral("favouriteWeekday"), favourite >= 0 ? QLocale().dayName(favourite + 1, QLocale::LongFormat) : QString());
+
+    // Records
+    map.insert(QStringLiteral("bestDaySeconds"), double(bestDaySeconds));
+    map.insert(QStringLiteral("bestDay"), bestDay > 0
+               ? QLocale().toString(QDate::fromString(QString::number(bestDay), dayFormat), tr("d MMM")) : QString());
+    // (324, code review) "Most listened episode" is no longer shown (315):
+    // its query is gone
+
+    // Per podcast, folder and category
+    // (324, code review) The category names from the cache file once per
+    // calculation (it read and parsed the file for every podcast and category)
+    const QList<FyydCategory> categoryTree = m_discoverFyyd->cachedCategories();
+    QHash<QString, QString> topLabels;
+    auto topLabel = [this, &categoryTree, &topLabels](const QString &top) {
+        if (!topLabels.contains(top)) {
+            topLabels.insert(top, categoryLabelsIn(QStringList(top), categoryTree).value(0, top));
+        }
+        return topLabels.value(top);
+    };
+    const QList<ListeningRank> ranking = m_database->listeningRanking(fromDay);
+    QHash<qint64, PodcastRow> podcasts;
+    const QList<PodcastRow> rows = m_database->podcasts();
+    for (int i = 0; i < rows.size(); ++i) {
+        podcasts.insert(rows.at(i).id, rows.at(i));
+    }
+    QHash<qint64, QString> folderNames;
+    const QList<FolderRow> folders = m_database->folders();
+    for (int i = 0; i < folders.size(); ++i) {
+        folderNames.insert(folders.at(i).id, folders.at(i).name);
+    }
+    QVariantList rankList;
+    QHash<QString, qint64> byFolder;
+    QHash<QString, qint64> byMain;
+    QHash<QString, double> byAll;     // (297) shared equally between the categories of a podcast
+    const QString none = tr("No category");
+    for (int i = 0; i < ranking.size(); ++i) {
+        const ListeningRank &r = ranking.at(i);
+        const bool exists = podcasts.contains(r.podcastId);
+        const PodcastRow p = podcasts.value(r.podcastId);
+        QVariantMap item;
+        item.insert(QStringLiteral("podcastId"), r.podcastId);
+        item.insert(QStringLiteral("title"), exists ? p.title : r.title);
+        item.insert(QStringLiteral("coverUrl"), exists ? p.coverUrl : QString());
+        item.insert(QStringLiteral("seconds"), double(r.seconds));
+        item.insert(QStringLiteral("exists"), exists && !p.provisional);
+        rankList.append(item);
+    }
+    // The folder and category sums use all podcasts of the log, not only the first 50
+    const QList<ListeningRank> everyone = m_database->listeningRanking(fromDay, 100000);
+    for (int i = 0; i < everyone.size(); ++i) {
+        const ListeningRank &r = everyone.at(i);
+        if (!podcasts.contains(r.podcastId)) {
+            byFolder[tr("Gone podcasts")] += r.seconds;
+            byMain[none] += r.seconds;
+            byAll[none] += double(r.seconds);
+            continue;
+        }
+        const PodcastRow &p = podcasts[r.podcastId];
+        byFolder[p.folderId > 0 && folderNames.contains(p.folderId) ? folderNames.value(p.folderId) : tr("Other podcasts")] += r.seconds;
+        QStringList tops;
+        for (int c = 0; c < p.categories.size(); ++c) {
+            const QString top = p.categories.at(c).trimmed().section(QLatin1Char('/'), 0, 0);
+            if (!top.isEmpty() && !tops.contains(top)) {
+                tops.append(top);
+            }
+        }
+        if (tops.isEmpty()) {
+            byMain[none] += r.seconds;
+            byAll[none] += r.seconds;
+            continue;
+        }
+        byMain[topLabel(tops.first())] += r.seconds;
+        for (int t = 0; t < tops.size(); ++t) {
+            byAll[topLabel(tops.at(t))] += double(r.seconds) / tops.size();
+        }
+    }
+    auto toList = [](const QHash<QString, double> &hash) {
+        QList<QPair<double, QString>> sorted;
+        for (QHash<QString, double>::const_iterator it = hash.constBegin(); it != hash.constEnd(); ++it) {
+            sorted.append(qMakePair(it.value(), it.key()));
+        }
+        std::sort(sorted.begin(), sorted.end(), [](const QPair<double, QString> &a, const QPair<double, QString> &b) {
+            return a.first != b.first ? a.first > b.first : a.second < b.second;
+        });
+        QVariantList list;
+        for (int i = 0; i < sorted.size(); ++i) {
+            QVariantMap item;
+            item.insert(QStringLiteral("label"), sorted.at(i).second);
+            item.insert(QStringLiteral("seconds"), sorted.at(i).first);
+            list.append(item);
+        }
+        return list;
+    };
+    map.insert(QStringLiteral("ranking"), rankList);
+    QHash<QString, double> folderSeconds;
+    for (QHash<QString, qint64>::const_iterator it = byFolder.constBegin(); it != byFolder.constEnd(); ++it) {
+        folderSeconds.insert(it.key(), double(it.value()));
+    }
+    QHash<QString, double> mainSeconds;
+    for (QHash<QString, qint64>::const_iterator it = byMain.constBegin(); it != byMain.constEnd(); ++it) {
+        mainSeconds.insert(it.key(), double(it.value()));
+    }
+    map.insert(QStringLiteral("folders"), toList(folderSeconds));
+    map.insert(QStringLiteral("categoriesMain"), toList(mainSeconds));
+    map.insert(QStringLiteral("categoriesAll"), toList(byAll));
+    return map;
+}
+
+void AppCore::resetListeningStatistics()
+{
+    if (m_database->replaceListeningLog(QList<ListeningEntry>())) {
+        emit dataChanged();
+    }
+}
+
+void AppCore::resetListeningOf(int podcastId)
+{
+    if (m_database->deleteListeningOfPodcast(podcastId)) {
+        emit dataChanged();
+    }
 }
 
 QVariantMap AppCore::podcastStats(int podcastId) const
@@ -833,7 +1314,11 @@ QVariantMap AppCore::rhythmOf(QList<qint64> dates)
 
 QStringList AppCore::categoryLabels(const QStringList &categories) const
 {
-    const QList<FyydCategory> tree = m_discoverFyyd->cachedCategories();
+    return categoryLabelsIn(categories, m_discoverFyyd->cachedCategories());
+}
+
+QStringList AppCore::categoryLabelsIn(const QStringList &categories, const QList<FyydCategory> &tree) const
+{
     const bool german = QLocale::system().language() == QLocale::German;
     auto label = [&tree, german](const QString &name, bool sub) {
         for (int i = 0; i < tree.size(); ++i) {
@@ -916,6 +1401,10 @@ void AppCore::listenWithoutSubscribing(const QString &url, const QString &title,
 // (not files in the archive), settings and the row - no message, no sync
 void AppCore::removeProvisional(qint64 podcastId)
 {
+    // (320, code review) Subscribed since: nothing to remove
+    if (!m_database->podcast(podcastId).provisional) {
+        return;
+    }
     const QList<EpisodeRow> downloads = m_database->episodes(podcastId, -1, Database::Downloaded);
     for (int i = 0; i < downloads.size(); ++i) {
         if (!isKept(downloads.at(i))) {
@@ -928,6 +1417,14 @@ void AppCore::removeProvisional(qint64 podcastId)
 
 void AppCore::unsubscribe(int podcastId)
 {
+    // (320, code review) The episode in the player: its file would go and the
+    // player would hold an episode that no longer exists (same rule as for
+    // deleting a download, 289)
+    if (m_currentEpisode > 0 && m_database->episode(m_currentEpisode).podcastId == podcastId) {
+        emitMessage(tr("Not while an episode of this podcast is loaded in the player"));
+        return;
+    }
+    flushArchiveMetadata(podcastId);
     // Running downloads of the podcast end first
     const QList<qint64> pending = m_downloads->pendingIds();
     for (int i = 0; i < pending.size(); ++i) {
@@ -1829,7 +2326,7 @@ void AppCore::onFeedChecked(const FeedProbeResult &r)
     case FeedProbeResult::Ok:
         break;
     case FeedProbeResult::LoginRequired:
-        error = tr("The feed needs a login (HTTP %1) - after subscribing, set it on the podcast page").arg(r.httpStatus);
+        error = tr("The feed needs a login (HTTP %1) – after subscribing, set it on the podcast page").arg(r.httpStatus);
         break;
     case FeedProbeResult::NotAFeed:
         error = r.discovered ? tr("None of the feeds this page names loads.")
@@ -1994,6 +2491,9 @@ QVariantMap AppCore::episode(int episodeId) const
     map.insert(QStringLiteral("position"), e.position);
     map.insert(QStringLiteral("remaining"), e.remaining());
     map.insert(QStringLiteral("played"), e.played);
+    // (291) When the position was stored last (Unix time): the length of the
+    // pause after a restart decides whether smart resume rewinds
+    map.insert(QStringLiteral("positionUpdated"), double(e.positionUpdated));
     // (189) Skipped with "next": where it was left, for playing it again
     map.insert(QStringLiteral("skippedAt"), e.played ? skippedAt(int(e.id)) : 0);
     map.insert(QStringLiteral("isNew"), e.isNew);
@@ -2034,6 +2534,26 @@ QVariantMap AppCore::episode(int episodeId) const
         }
     }
     map.insert(QStringLiteral("hasVideoAlternate"), videoAlternate);
+    // (274) What the camera stands for: "stream" (HLS, in the enclosure or as
+    // a version), "file" (a plain video file), "" (audio)
+    QString videoKind;
+    if (e.mimeType.toLower().contains(QLatin1String("mpegurl"))) {
+        videoKind = QStringLiteral("stream");
+    } else if (e.mimeType.startsWith(QLatin1String("video/"))) {
+        videoKind = QStringLiteral("file");
+    } else {
+        for (int i = 0; i < alternates.size(); ++i) {
+            const QString type = alternates.at(i).mimeType.toLower();
+            if (type.contains(QLatin1String("mpegurl"))) {
+                videoKind = QStringLiteral("stream");
+                break;
+            }
+            if (type.startsWith(QLatin1String("video/"))) {
+                videoKind = QStringLiteral("file");
+            }
+        }
+    }
+    map.insert(QStringLiteral("videoKind"), videoKind);
     map.insert(QStringLiteral("mimeType"), e.mimeType);
     map.insert(QStringLiteral("fileSize"), double(e.fileSize));
     // (245) Size of the video that would be streamed (the version's length,
@@ -2113,7 +2633,7 @@ void AppCore::markPlayed(int episodeId)
 {
     m_database->markPlayed(episodeId);
     archiveStateChanged(episodeId);
-    afterPlayed();
+    afterMarkedPlayed();
     emit episodeChanged(episodeId);
     emit dataChanged();
 }
@@ -2140,13 +2660,86 @@ void AppCore::removeFromNew(int episodeId)
     emit dataChanged();
 }
 
+void AppCore::restoreNew(int episodeId)
+{
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (e.id && !e.played && m_database->setNew(episodeId)) {
+        emit episodeChanged(episodeId);
+        emit dataChanged();
+    }
+}
+
+int AppCore::homeNewCount() const
+{
+    return m_database->homeNewCount();
+}
+
+int AppCore::newEpisodesSnapshot() const
+{
+    return int(m_database->maxNewEpisodeId());
+}
+
+void AppCore::removeAllFromNew(int upToEpisodeId)
+{
+    // (302) All of them, hidden podcasts included (no filter); nothing left to undo
+    // (322) Of those that were there at the tap (not what the update brought during the countdown)
+    m_database->clearAllNew(upToEpisodeId);
+    m_triageByPlaylist.clear();
+    emit dataChanged();
+}
+
+// (302) The user took an episode up: the "new" flag goes (the page keeps the
+// row until it is left - see EpisodeListModel::keepVanished). Not for
+// Auto-Add and Auto-Download, they do not call this.
+void AppCore::triageByUser(int episodeId, bool viaPlaylist)
+{
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id || !e.isNew || e.played) {
+        return;
+    }
+    m_database->clearNew(episodeId);
+    if (viaPlaylist) {
+        m_triageByPlaylist.insert(episodeId);
+    }
+    emit episodeChanged(episodeId);
+    emit dataChanged();
+}
+
+void AppCore::noteDownloadByUser(int episodeId)
+{
+    triageByUser(episodeId, false);
+}
+
+bool AppCore::hiddenFromNew(int podcastId) const
+{
+    return m_database->hiddenFromNew().contains(podcastId);
+}
+
+void AppCore::setHiddenFromNew(int podcastId, bool hidden)
+{
+    QList<qint64> ids = m_database->hiddenFromNew();
+    const bool now = ids.contains(podcastId);
+    if (hidden == now) {
+        return;
+    }
+    if (hidden) {
+        ids.append(podcastId);
+    } else {
+        ids.removeAll(podcastId);
+        // Shown again: its old flags would flood "New"
+        m_database->clearNewOfPodcast(podcastId);
+    }
+    m_database->setHiddenFromNew(ids);
+    emit dataChanged();
+}
+
 bool AppCore::ensureMergeBackup()
 {
-    // Before the first merge a copy, as "before-restore.db" (restorable on
-    // Settings → Backup)
+    // Before each merge a fresh copy, as "before-merge.db" (restorable on
+    // Settings → Backup; 320, code review: before only the first merge got one)
     QDir().mkpath(backupDirectory());
     const QString path = backupDirectory() + QStringLiteral("/before-merge.db");
-    return QFile::exists(path) || copyDatabaseTo(path);
+    return copyDatabaseTo(path);
 }
 
 void AppCore::mergeDuplicate(qint64 from, qint64 into)
@@ -2162,7 +2755,28 @@ void AppCore::mergeDuplicate(qint64 from, qint64 into)
         return;
     }
     const QString title = m_database->podcast(into).title;
+    // (320, code review) Files of the source that the merge does not take over
+    // (the same episode is downloaded in both) would stay without an entry
+    QStringList sourceFiles;
+    {
+        const QList<EpisodeRow> src = m_database->episodes(from, -1, Database::Downloaded);
+        for (int i = 0; i < src.size(); ++i) {
+            if (!isKept(src.at(i))) {
+                sourceFiles.append(src.at(i).downloadPath);
+            }
+        }
+    }
     if (m_database->mergePodcasts(from, into)) {
+        QSet<QString> used;
+        const QList<EpisodeRow> now = m_database->episodes(into, -1, Database::Downloaded);
+        for (int i = 0; i < now.size(); ++i) {
+            used.insert(now.at(i).downloadPath);
+        }
+        for (int i = 0; i < sourceFiles.size(); ++i) {
+            if (!used.contains(sourceFiles.at(i))) {
+                QFile::remove(sourceFiles.at(i));
+            }
+        }
         qWarning() << "Duplicate subscription" << from << "merged into" << into << title;
         emit dataChanged();
         emitMessage(tr("Duplicate subscription merged: %1").arg(title));
@@ -2195,6 +2809,44 @@ QVariantList AppCore::markablePodcasts(bool keepNewest) const
     return list;
 }
 
+QVariantList AppCore::unplayedToDownload(int newest) const
+{
+    QVariantList list;
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    for (int i = 0; i < podcasts.size(); ++i) {
+        const PodcastRow &p = podcasts.at(i);
+        if (p.provisional || p.archived) {
+            continue;
+        }
+        // Newest first
+        const QList<EpisodeRow> episodes = m_database->episodes(p.id, -1, Database::Unplayed);
+        int count = 0;
+        qint64 bytes = 0;
+        QVariantList ids;
+        for (const EpisodeRow &e : episodes) {
+            if (e.downloaded || e.url.isEmpty() || m_downloadProgress.contains(int(e.id))) {
+                continue;
+            }
+            if (newest > 0 && count >= newest) {
+                break;
+            }
+            ++count;
+            bytes += qMax<qint64>(0, e.fileSize);
+            ids.append(int(e.id));
+        }
+        if (count > 0) {
+            QVariantMap map;
+            map.insert(QStringLiteral("podcastId"), int(p.id));
+            map.insert(QStringLiteral("title"), p.customTitle.isEmpty() ? p.title : p.customTitle);
+            map.insert(QStringLiteral("count"), count);
+            map.insert(QStringLiteral("bytes"), double(bytes));
+            map.insert(QStringLiteral("ids"), ids);
+            list.append(map);
+        }
+    }
+    return list;
+}
+
 void AppCore::markEverythingPlayed(bool keepNewest, const QVariantList &podcastIds)
 {
     // (248) Only the chosen podcasts (empty = all)
@@ -2216,7 +2868,7 @@ void AppCore::markEverythingPlayed(bool keepNewest, const QVariantList &podcastI
     if (!m_metadataDirty.isEmpty()) {
         m_metadataTimer->start();
     }
-    afterPlayed();
+    afterMarkedPlayed();
     emit dataChanged();
     emitMessage(tr("%n episodes marked as played", "", count));
 }
@@ -2224,7 +2876,7 @@ void AppCore::markEverythingPlayed(bool keepNewest, const QVariantList &podcastI
 void AppCore::markAllPlayed(int podcastId)
 {
     const int count = m_database->markAllPlayed(podcastId);
-    afterPlayed();
+    afterMarkedPlayed();
     if (!m_database->podcast(podcastId).archiveFolder.isEmpty()) {
         m_metadataDirty.insert(podcastId);
         m_metadataTimer->start();
@@ -2265,10 +2917,37 @@ void AppCore::loadChapters(int episodeId)
 
 // --- Downloads ---------------------------------------------------------------
 
+// (289) Storage protection: false (with a message) when `bytes` would leave
+// less than the reserve free
+bool AppCore::storageAllows(qint64 bytes, bool quiet)
+{
+    if (m_downloads->fitsInStorage(bytes)) {
+        return true;
+    }
+    if (!quiet) {
+        const qint64 free = m_downloads->freeBytes();
+        const int reserve = int(DownloadManager::reserveBytes() / 1048576);
+        emitMessage(bytes > 0
+                     ? tr("Not enough space: about %1 MB needed, %2 MB free (%3 MB stay free)")
+                       .arg(qint64(bytes / 1048576)).arg(qint64(qMax<qint64>(0, free) / 1048576)).arg(reserve)
+                     : tr("Not enough space: %1 MB free (%2 MB stay free)")
+                       .arg(qint64(qMax<qint64>(0, free) / 1048576)).arg(reserve));
+    }
+    return false;
+}
+
 void AppCore::download(int episodeId)
 {
     if (m_downloadProgress.contains(episodeId)) {
         return;
+    }
+    {
+        const EpisodeRow check = m_database->episode(episodeId);
+        // Several at once: the burst gets one message (equal texts are shown once)
+        if (check.id && !storageAllows(qMax<qint64>(0, check.fileSize), false)) {
+            emit downloadFinished(episodeId, false);
+            return;
+        }
     }
     m_cancelled.remove(episodeId);
     m_downloadProgress.insert(episodeId, 0.0);
@@ -2281,13 +2960,66 @@ void AppCore::download(int episodeId)
     const EpisodeRow episode = m_database->episode(episodeId);
     if (episode.id && podcastInMusic(episode.podcastId)) {
         target = m_archiver->musicTarget(episodeId);
+        if (target.isEmpty()) {
+            // (289) Was loaded silently to the phone before
+            emitMessage(tr("A file of this episode is already in the Music folder – loading to the phone"));
+        }
     }
     m_downloads->download(episodeId, target);
+    // (289) Loading when the app ends: goes on at the next start
+    m_resumable.insert(episodeId);
+    saveResumable();
     emit downloadsChanged();
+}
+
+// (289) The downloads started by the app (not those of an archive copy) are
+// kept in a setting while they run: the queue lives in memory only, and after
+// the app was closed or stopped by the system the waiting ones were forgotten
+void AppCore::saveResumable()
+{
+    QStringList ids;
+    foreach (int id, m_resumable) {
+        ids << QString::number(id);
+    }
+    m_database->setSetting(QStringLiteral("downloads.resume"), ids.join(QLatin1Char(',')));
+}
+
+void AppCore::forgetResumable(int episodeId)
+{
+    if (!m_closing && m_resumable.remove(episodeId)) {
+        saveResumable();
+    }
+}
+
+void AppCore::resumeDownloads()
+{
+    const QStringList ids = m_database->setting(QStringLiteral("downloads.resume"))
+            .split(QLatin1Char(','), QString::SkipEmptyParts);
+    if (ids.isEmpty()) {
+        return;
+    }
+    if (!downloadAllowed()) {
+        return;     // no Wi-Fi: they are not started over mobile data without asking
+                    // (321, code review: the list stays for the next start, was cleared before)
+    }
+    m_resumable.clear();
+    saveResumable();
+    int started = 0;
+    for (int i = 0; i < ids.size(); ++i) {
+        const EpisodeRow e = m_database->episode(ids.at(i).toInt());
+        if (e.id && !e.downloaded && !e.url.isEmpty()) {
+            download(int(e.id));
+            ++started;
+        }
+    }
+    if (started > 0) {
+        emitMessage(tr("%n interrupted downloads continue", "", started));
+    }
 }
 
 void AppCore::cancelDownload(int episodeId)
 {
+    forgetResumable(episodeId);
     m_cancelled.insert(episodeId);
     if (!m_downloads->cancel(episodeId)) {
         m_cancelled.remove(episodeId);
@@ -2313,11 +3045,102 @@ void AppCore::deleteDownload(int episodeId)
             emitMessage(tr("The file is part of the archive and stays"));
             return;
         }
-        QFile::remove(e.downloadPath);
+        if (episodeId == m_currentEpisode) {
+            // (289) The file of the episode in the player is in use
+            emitMessage(tr("Not while this episode is loaded in the player"));
+            return;
+        }
+        // (320, code review) Not gone (read-only card, foreign owner): the
+        // entry stays, otherwise a new download would make a second file
+        if (!QFile::remove(e.downloadPath) && QFileInfo::exists(e.downloadPath)) {
+            emitMessage(tr("The file could not be deleted"));
+            return;
+        }
         m_database->clearDownload(episodeId);
+        forgetPendingPlaylistDownload(episodeId);
     }
     emit episodeChanged(episodeId);
     emit dataChanged();
+}
+
+// (314) Deleted on purpose: not loaded again by the catch-up after the next
+// update (a marker could still be there when the file came another way)
+void AppCore::forgetPendingPlaylistDownload(int episodeId)
+{
+    QSet<int> pending = pendingPlaylistDownloads();
+    if (pending.remove(episodeId)) {
+        storePendingPlaylistDownloads(pending);
+    }
+}
+
+int AppCore::deleteDownloads(const QVariantList &episodeIds)
+{
+    int deleted = 0;
+    int stays = 0;
+    for (const QVariant &v : episodeIds) {
+        const int id = v.toInt();
+        const EpisodeRow e = m_database->episode(id);
+        if (!e.downloaded) {
+            continue;
+        }
+        // The archive and the episode in the player keep their file
+        if (isKept(e) || id == m_currentEpisode) {
+            ++stays;
+            continue;
+        }
+        if (!QFile::remove(e.downloadPath) && QFileInfo::exists(e.downloadPath)) {
+            ++stays;    // (320, code review) could not be deleted: stays noted
+            continue;
+        }
+        m_database->clearDownload(id);
+        forgetPendingPlaylistDownload(id);
+        emit episodeChanged(id);
+        ++deleted;
+    }
+    if (deleted > 0) {
+        emit dataChanged();
+    }
+    if (stays > 0) {
+        emitMessage(tr("%n episodes stay: archive or playing now", "", stays));
+    }
+    return deleted;
+}
+
+QList<EpisodeRow> AppCore::deletableDownloadRows(int podcastId) const
+{
+    QList<EpisodeRow> result;
+    const QList<EpisodeRow> downloads = m_database->episodes(podcastId, -1, Database::Downloaded);
+    for (int i = 0; i < downloads.size(); ++i) {
+        const EpisodeRow &e = downloads.at(i);
+        if (!e.downloaded || isKept(e) || e.id == m_currentEpisode || m_downloads->isActive(e.id)) {
+            continue;
+        }
+        result.append(e);
+    }
+    return result;
+}
+
+QVariantMap AppCore::deletableDownloads(int podcastId) const
+{
+    const QList<EpisodeRow> rows = deletableDownloadRows(podcastId);
+    double bytes = 0;
+    for (int i = 0; i < rows.size(); ++i) {
+        bytes += double(QFileInfo(rows.at(i).downloadPath).size());
+    }
+    QVariantMap map;
+    map.insert(QStringLiteral("count"), rows.size());
+    map.insert(QStringLiteral("bytes"), bytes);
+    return map;
+}
+
+int AppCore::deletePodcastDownloads(int podcastId)
+{
+    QVariantList ids;
+    const QList<EpisodeRow> rows = deletableDownloadRows(podcastId);
+    for (int i = 0; i < rows.size(); ++i) {
+        ids.append(int(rows.at(i).id));
+    }
+    return deleteDownloads(ids);
 }
 
 void AppCore::keepEpisode(int episodeId)
@@ -2334,6 +3157,11 @@ void AppCore::keepEpisode(int episodeId)
         emit episodeChanged(episodeId);
         emit dataChanged();
         emitMessage(tr("Saved in %1").arg(QFileInfo(e.downloadPath).absolutePath()));
+        return;
+    }
+    if (episodeId == m_currentEpisode && e.downloaded) {
+        // (289) Moving the file would break the episode playing
+        emitMessage(tr("Not while this episode is loaded in the player – save it afterwards"));
         return;
     }
     QString error;
@@ -2378,6 +3206,17 @@ QVariantMap AppCore::downloadAllInfo(int podcastId) const
 int AppCore::downloadAll(int podcastId, bool unplayedOnly)
 {
     const QList<EpisodeRow> episodes = m_database->episodes(podcastId);
+    // (289) Everything at once: the whole size must fit before anything starts
+    qint64 needed = 0;
+    for (const EpisodeRow &e : episodes) {
+        if (!(e.downloaded || e.url.isEmpty() || (unplayedOnly && e.played)
+                || m_downloadProgress.contains(int(e.id)))) {
+            needed += qMax<qint64>(0, e.fileSize);
+        }
+    }
+    if (!storageAllows(needed, false)) {
+        return 0;
+    }
     int started = 0;
     for (const EpisodeRow &e : episodes) {
         if (e.downloaded || e.url.isEmpty() || (unplayedOnly && e.played)
@@ -2455,7 +3294,7 @@ int AppCore::markEpisodesPlayed(const QVariantList &episodeIds)
         ++marked;
     }
     if (marked > 0) {
-        afterPlayed();
+        afterMarkedPlayed();
         emit dataChanged();
     }
     emitMessage(tr("%n episodes marked as played", "", marked));
@@ -2472,6 +3311,12 @@ int AppCore::markEpisodesUnplayed(const QVariantList &episodeIds)
             continue;
         }
         m_database->markUnplayed(e.id);
+        // (289) Like the menu: skipped before = back where it was left
+        const int at = skippedAt(id);
+        if (at > 0) {
+            m_database->recordPlayback(id, 0, at, e.duration);
+            clearSkipped(id);
+        }
         archiveStateChanged(id);
         emit episodeChanged(id);
         ++marked;
@@ -2583,7 +3428,7 @@ int AppCore::markSectionPlayed(int podcastId, const QString &section)
         }
     }
     if (marked > 0) {
-        afterPlayed();
+        afterMarkedPlayed();
         emit dataChanged();
     }
     return marked;
@@ -2591,6 +3436,16 @@ int AppCore::markSectionPlayed(int podcastId, const QString &section)
 
 int AppCore::downloadEpisodes(const QVariantList &episodeIds)
 {
+    qint64 needed = 0;
+    for (int i = 0; i < episodeIds.size(); ++i) {
+        const int id = episodeIds.at(i).toInt();
+        if (id > 0 && !m_downloadProgress.contains(id)) {
+            needed += qMax<qint64>(0, m_database->episode(id).fileSize);
+        }
+    }
+    if (!storageAllows(needed, false)) {
+        return 0;
+    }
     int started = 0;
     for (int i = 0; i < episodeIds.size(); ++i) {
         const int id = episodeIds.at(i).toInt();
@@ -2762,13 +3617,8 @@ int AppCore::queueDownloaded()
         if (e.played || m_queue.contains(int(e.id)) || e.id == m_currentEpisode) {
             continue;
         }
-        m_database->queueAdd(e.id, false);
-        m_queue.insert(int(e.id));
-        emit episodeChanged(int(e.id));
+        queueAddImpl(int(e.id), false, true, false);   // (288) sorted in with "Sorted: keep" like the other bulk paths
         ++added;
-    }
-    if (added > 0) {
-        emit queueChanged();
     }
     emitMessage(added > 0 ? tr("%n episodes added to the playlist", "", added)
                           : tr("No unplayed downloads outside the playlist"));
@@ -2875,34 +3725,48 @@ QVariantMap AppCore::downloadStats() const
     int music = 0;
     qint64 musicBytes = 0;
     const QString root = archiveRoot();
+    // (275) Of them the archived ones (own section on the Downloads page)
+    qint64 archivedBytes = 0;
+    QHash<qint64, bool> podcastArchived;
     const QList<EpisodeRow> downloads = m_database->episodes(-1, -1, Database::Downloaded);
     for (int i = 0; i < downloads.size(); ++i) {
         const QFileInfo info(downloads.at(i).downloadPath);
         if (info.exists()) {
             ++count;
             bytes += info.size();
+            if (!podcastArchived.contains(downloads.at(i).podcastId)) {
+                podcastArchived.insert(downloads.at(i).podcastId, m_database->podcast(downloads.at(i).podcastId).archived);
+            }
+            if (podcastArchived.value(downloads.at(i).podcastId) || !downloads.at(i).archiveFile.isEmpty()) {
+                archivedBytes += info.size();
+            }
             // (245) The Videos folder counts with Music (both shared folders)
             if (isInside(downloads.at(i).downloadPath, root) || isInside(downloads.at(i).downloadPath, videoRoot())) {
                 ++music;
                 musicBytes += info.size();
             }
-            // (190) Played ones: what "Delete played downloads" would free
-            if (downloads.at(i).played) {
-                ++played;
-                playedBytes += info.size();
-            }
         }
+    }
+    // (190) Played ones: what "Delete played downloads" would free - (274)
+    // counted by the cleanup itself (dry run), so the tile and the button
+    // agree: kept files, "never" podcasts and archived ones are not counted
+    {
+        const CleanupResult freeable = m_downloads->cleanup(0, archiveRoot(), m_currentEpisode, podcastCleanupDays(), true, true);
+        played = freeable.files;
+        playedBytes = freeable.bytes;
     }
     QVariantMap map;
     map.insert(QStringLiteral("count"), count);
     map.insert(QStringLiteral("bytes"), double(bytes));
     map.insert(QStringLiteral("played"), played);
     map.insert(QStringLiteral("playedBytes"), double(playedBytes));
+    map.insert(QStringLiteral("archivedBytes"), double(archivedBytes));
     map.insert(QStringLiteral("music"), music);
     map.insert(QStringLiteral("musicBytes"), double(musicBytes));
     // (190) Free space where the downloads go
     QStorageInfo storage(m_downloads->downloadDirectory());
     map.insert(QStringLiteral("free"), storage.isValid() ? double(storage.bytesAvailable()) : -1.0);
+    map.insert(QStringLiteral("reserve"), double(DownloadManager::reserveBytes()));
     return map;
 }
 
@@ -2958,10 +3822,36 @@ int AppCore::cleanupDownloads(int days)
             days = -1;
         }
     }
-    const CleanupResult r = m_downloads->cleanup(days, archiveRoot(), 0, podcastCleanupDays(), all);
+    const CleanupResult r = m_downloads->cleanup(days, archiveRoot(), m_currentEpisode, podcastCleanupDays(), all);
     emit dataChanged();
-    emitMessage(tr("%n downloads deleted", "", r.files));
+    // (274) Say what stayed and why when the user asked and something stayed
+    // (Thomas 7 Nov: "0 downloads deleted" with nine played ones listed)
+    QStringList why;
+    if (all && r.keptNever > 0) {
+        why << tr("podcast set to \"Never\"");
+    }
+    if (all && r.keptArchived > 0) {
+        why << tr("archived podcast");
+    }
+    if (all && r.keptInMusic > 0) {
+        why << tr("saved in Music or Videos");
+    }
+    if (why.isEmpty()) {
+        emitMessage(tr("%n downloads deleted", "", r.files));
+    } else {
+        const int kept = r.keptNever + r.keptArchived + r.keptInMusic;
+        emitMessage(tr("%n downloads deleted", "", r.files) + QStringLiteral(" · ") + tr("%n kept", "", kept)
+                    + QStringLiteral(" (") + why.join(QStringLiteral(", ")) + QLatin1Char(')'));
+    }
     return r.files;
+}
+
+// (320, code review) Episodes were marked as played or states came from the
+// sync: the player may hold one of them (see PlayerController)
+void AppCore::afterMarkedPlayed()
+{
+    afterPlayed();
+    emit listenStateChanged();
 }
 
 void AppCore::afterPlayed()
@@ -2986,6 +3876,7 @@ void AppCore::setCurrentEpisode(int episodeId)
 {
     const int previous = m_currentEpisode;
     m_currentEpisode = episodeId;
+    m_archiver->setCurrentEpisode(episodeId);
     // (189) Played again: the skip position has been used (or not wanted) -
     // (254) not here any more but when the new position is saved, see
     // recordPlayback(): clearing it as soon as the episode was loaded lost it
@@ -3078,10 +3969,10 @@ void AppCore::cleanupOnStart()
         days = -1;
     }
     // Also with "never" globally: podcasts may have their own choice (117)
-    m_downloads->cleanup(days, archiveRoot(), 0, podcastCleanupDays());
+    m_downloads->cleanup(days, archiveRoot(), m_currentEpisode, podcastCleanupDays());
     // (209) Half downloads of failed attempts never tried again
-    m_downloads->removeStaleParts(archiveRoot(), 7);
-    m_downloads->removeStaleParts(videoRoot(), 7);
+    m_downloads->removeStaleParts(archiveRoot(), 1);   // (289) 1 day, was 7
+    m_downloads->removeStaleParts(videoRoot(), 1);
     // Listened to without subscribing (147): gone after 30 days without use
     // (not the player's episode, not with an episode in the playlist)
     const qint64 last = m_database->setting(QStringLiteral("player.last"), QStringLiteral("0")).toLongLong();
@@ -3123,7 +4014,15 @@ void AppCore::autoDownload(qint64 podcastId, int newEpisodes)
     if (autoSetting.isEmpty()) {
         autoSetting = m_database->setting(QStringLiteral("downloads.auto"), QStringLiteral("0"));
     }
-    if (autoSetting != QLatin1String("1") || !downloadAllowed()) {
+    if (autoSetting != QLatin1String("1")) {
+        return;
+    }
+    if (!m_networkReady && !onWifi()) {
+        // (289) The list of connections is not complete yet
+        m_autoDeferred.append(qMakePair(podcastId, newEpisodes));
+        return;
+    }
+    if (!downloadAllowed()) {
         return;
     }
     const PodcastRow podcast = m_database->podcast(podcastId);
@@ -3135,20 +4034,104 @@ void AppCore::autoDownload(qint64 podcastId, int newEpisodes)
             || podcast.id == m_archivingId) {
         return;
     }
-    const QList<EpisodeRow> episodes = m_database->episodes(podcastId, qMin(newEpisodes, AutoDownloadLimit),
-                                                            Database::NewEpisodes);
-    for (int i = 0; i < episodes.size(); ++i) {
-        if (!episodes.at(i).downloaded && !episodes.at(i).url.isEmpty()) {
-            download(int(episodes.at(i).id));
+    // (289) The episodes of THIS update (not "all new ones of the podcast": old
+    // ones left over from earlier updates took the places), without those
+    // already heard (also on another device, see podcastUpdated) or loaded,
+    // in the podcast's own order - the first ones to listen to come first
+    const bool oldestFirst = m_database->setting(QStringLiteral("podcast.%1.oldestFirst").arg(podcastId),
+                                                 QStringLiteral("0")) == QLatin1String("1");
+    if (!storageAllows(0, true)) {
+        // (289) Storage protection: stops for the whole run, told once
+        if (!m_lowSpaceTold) {
+            m_lowSpaceTold = true;
+            emitMessage(tr("Storage almost full – automatic downloads stopped"));
+            QTimer::singleShot(60000, this, [this]() { m_lowSpaceTold = false; });
+        }
+        return;
+    }
+    QList<EpisodeRow> episodes = updateEpisodes(podcastId, newEpisodes);
+    for (int i = episodes.size() - 1; i >= 0; --i) {
+        if (episodes.at(i).played || episodes.at(i).downloaded || episodes.at(i).url.isEmpty()) {
+            episodes.removeAt(i);
         }
     }
+    std::stable_sort(episodes.begin(), episodes.end(), [oldestFirst](const EpisodeRow &a, const EpisodeRow &b) {
+        return oldestFirst ? (a.published != b.published ? a.published < b.published : a.id < b.id)
+                           : (a.published != b.published ? a.published > b.published : a.id > b.id);
+    });
+    while (episodes.size() > AutoDownloadLimit) {
+        episodes.removeLast();
+    }
+    for (int i = 0; i < episodes.size(); ++i) {
+        // (289) A video is large: automatically only on Wi-Fi, also with
+        // "Only on Wi-Fi" off (by hand it asks)
+        if (episodes.at(i).mimeType.startsWith(QLatin1String("video/")) && !onWifi()) {
+            continue;
+        }
+        if (!storageAllows(qMax<qint64>(0, episodes.at(i).fileSize), true)) {
+            break;
+        }
+        download(int(episodes.at(i).id));
+    }
+}
+
+// (289) The rows inserted by the last update of the podcast: new rows have the
+// highest ids
+QList<EpisodeRow> AppCore::updateEpisodes(qint64 podcastId, int newEpisodes) const
+{
+    QList<EpisodeRow> episodes = m_database->episodes(podcastId, -1, Database::AllEpisodes);
+    std::sort(episodes.begin(), episodes.end(), [](const EpisodeRow &a, const EpisodeRow &b) {
+        return a.id > b.id;
+    });
+    while (episodes.size() > newEpisodes) {
+        episodes.removeLast();
+    }
+    return episodes;
 }
 
 // --- Playlist ----------------------------------------------------------------
 
+void AppCore::queueAddDefault(int episodeId)
+{
+    const bool keep = keepSorted();
+    const bool next = !keep && m_database->setting(QStringLiteral("playlist.addTo"), QStringLiteral("end")) == QLatin1String("next");
+    queueAdd(episodeId, next);
+    triageByUser(episodeId, true);
+    downloadForPlaylist(episodeId);
+}
+
+bool AppCore::keepSorted() const
+{
+    return m_database->setting(QStringLiteral("playlist.sortKeep"), QStringLiteral("0")) == QLatin1String("1")
+            && !m_database->setting(QStringLiteral("playlist.sortMode")).isEmpty();
+}
+
 void AppCore::queueAdd(int episodeId, bool next)
 {
+    queueAddImpl(episodeId, next, true, false);
+}
+
+// (277) The explicit choice of the context menu ("Play next", "Add to end
+// of playlist"): with "Sorted: keep" the place is not overruled by the
+// sorting - the episode is pinned there instead (without it no pin: a
+// later sorting may place it like any other)
+void AppCore::queueAddPlaced(int episodeId, bool next)
+{
+    const bool keep = keepSorted();
+    // (288) An episode in the playlist moved by "Play next" (Up next tab)
+    // keeps a pin it had
+    const bool wasPinned = m_pinned.contains(episodeId);
+    queueAddImpl(episodeId, next, !keep, keep || wasPinned);
+    triageByUser(episodeId, true);
+    downloadForPlaylist(episodeId);
+}
+
+void AppCore::queueAddImpl(int episodeId, bool next, bool sortIn, bool pin, bool autoAdded)
+{
+    // The row is written again (INSERT OR REPLACE): pin and Auto-Add mark are gone
     m_database->queueAdd(episodeId, next);
+    m_pinned.remove(episodeId);
+    m_autoAdded.remove(episodeId);
     // (183) "Play next" = right after the episode playing now when that one
     // is in the playlist: since 169 the playlist continues after the
     // current episode's place, so the front would only come after the end
@@ -3160,17 +4143,159 @@ void AppCore::queueAdd(int episodeId, bool next)
             m_database->queueMove(episodeId, current + 1);
         }
     }
+    // (288) To the very front but behind pins that stand at the front: they
+    // keep their places
+    if (next && !m_pinned.isEmpty() && !(m_currentEpisode > 0 && m_currentEpisode != episodeId
+                                          && m_database->queueIds().contains(m_currentEpisode))) {
+        QList<qint64> ids = m_database->queueIds();
+        ids.removeAll(episodeId);
+        int lead = 0;
+        while (lead < ids.size() && m_pinned.contains(int(ids.at(lead)))) {
+            ++lead;
+        }
+        if (lead > 0) {
+            m_database->queueMove(episodeId, lead);
+        }
+    }
+    // (275) "Sorted: keep": added to the end = put in its place
+    if (!next && sortIn) {
+        placeSorted(episodeId);
+    }
+    if (pin) {
+        m_database->queueSetPinned(episodeId, true);
+        m_pinned.insert(episodeId);
+    }
+    // (286) Only Auto-Add sets the mark (hand-added episodes never carry it)
+    if (autoAdded && !pin) {
+        m_database->queueSetAuto(episodeId, true);
+        m_autoAdded.insert(episodeId);
+    }
     m_queue.insert(episodeId);
     emit queueChanged();
     emit episodeChanged(episodeId);
 }
 
+// (277) Releases one pin; with "Sorted: keep" the episode goes to its
+// place in the sorting at once
+void AppCore::queueUnpin(int episodeId)
+{
+    if (!m_pinned.contains(episodeId)) {
+        return;
+    }
+    m_database->queueSetPinned(episodeId, false);
+    m_pinned.remove(episodeId);
+    if (keepSorted()) {
+        queueSort(m_database->setting(QStringLiteral("playlist.sortMode")), true);
+    } else {
+        emit queueChanged();
+    }
+}
+
 void AppCore::queueRemove(int episodeId)
 {
+    // (309) A download "to the playlist" started and still running stops with it
+    if (m_downloadByPlaylist.remove(episodeId) && m_downloadProgress.contains(episodeId)) {
+        cancelDownload(episodeId);
+    }
+    // (310) Not caught up any more
+    {
+        QSet<int> pending = pendingPlaylistDownloads();
+        if (pending.remove(episodeId)) {
+            storePendingPlaylistDownloads(pending);
+        }
+    }
     m_database->queueRemove(episodeId);
     m_queue.remove(episodeId);
+    m_pinned.remove(episodeId);
+    m_autoAdded.remove(episodeId);
     emit queueChanged();
+    // (302) The flag this session's "to the playlist" took away: back (only for
+    // an episode not heard yet - setNew checks)
+    const bool restore = m_triageByPlaylist.remove(episodeId) && m_database->setNew(episodeId);
     emit episodeChanged(episodeId);
+    if (restore) {
+        emit dataChanged();
+    }
+}
+
+QSet<int> AppCore::pendingPlaylistDownloads() const
+{
+    QSet<int> ids;
+    const QStringList parts = m_database->setting(QStringLiteral("playlist.pendingDownload"))
+            .split(QLatin1Char(','), QString::SkipEmptyParts);
+    for (const QString &part : parts) {
+        const int id = part.toInt();
+        if (id > 0) {
+            ids.insert(id);
+        }
+    }
+    return ids;
+}
+
+void AppCore::storePendingPlaylistDownloads(const QSet<int> &ids)
+{
+    QStringList parts;
+    for (int id : ids) {
+        parts << QString::number(id);
+    }
+    m_database->setSetting(QStringLiteral("playlist.pendingDownload"), parts.join(QLatin1Char(',')));
+}
+
+void AppCore::downloadForPlaylist(int episodeId)
+{
+    if (m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) != QLatin1String("1")) {
+        return;
+    }
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id || e.downloaded || m_downloadProgress.contains(episodeId)) {
+        return;
+    }
+    // Without Wi-Fi under "Wi-Fi only", or a video without Wi-Fi (245):
+    // streamed for now, remembered and loaded after the next update with
+    // Wi-Fi (downloadPlaylistCatchUp)
+    if (!downloadAllowed() || (e.mimeType.startsWith(QLatin1String("video/")) && !onWifi())) {
+        QSet<int> pending = pendingPlaylistDownloads();
+        pending.insert(episodeId);
+        storePendingPlaylistDownloads(pending);
+        return;
+    }
+    m_downloadByPlaylist.insert(episodeId);
+    download(episodeId);
+}
+
+void AppCore::downloadPlaylistCatchUp()
+{
+    QSet<int> pending = pendingPlaylistDownloads();
+    if (pending.isEmpty()) {
+        return;
+    }
+    if (m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) != QLatin1String("1")) {
+        storePendingPlaylistDownloads(QSet<int>());
+        return;
+    }
+    if (!downloadAllowed()) {
+        return;
+    }
+    // (310) Only what was added by hand and could not be loaded then - not
+    // every episode of the playlist that is not loaded
+    const QSet<qint64> queued = QSet<qint64>::fromList(m_database->queueIds());
+    const QList<int> ids = pending.toList();
+    for (int id : ids) {
+        const EpisodeRow e = m_database->episode(id);
+        if (!e.id || !queued.contains(id) || e.downloaded) {
+            pending.remove(id);
+            continue;
+        }
+        if (e.mimeType.startsWith(QLatin1String("video/")) && !onWifi()) {
+            continue;
+        }
+        pending.remove(id);
+        if (!m_downloadProgress.contains(id)) {
+            m_downloadByPlaylist.insert(id);
+            download(id);
+        }
+    }
+    storePendingPlaylistDownloads(pending);
 }
 
 void AppCore::queueMove(int episodeId, int newIndex)
@@ -3179,7 +4304,7 @@ void AppCore::queueMove(int episodeId, int newIndex)
     emit queueChanged();
 }
 
-void AppCore::queueSetOrder(const QVariantList &episodeIds)
+void AppCore::queueSetOrder(const QVariantList &episodeIds, int movedId)
 {
     QList<qint64> ids;
     // Queued episodes that are not in the list (the current one) first
@@ -3196,8 +4321,350 @@ void AppCore::queueSetOrder(const QVariantList &episodeIds)
     for (int i = 0; i < episodeIds.size(); ++i) {
         ids.append(episodeIds.at(i).toLongLong());
     }
+    const bool changed = ids != current;
     m_database->queueSetOrder(ids);
+    // (275) An episode dragged to another place stays there when sorting
+    if (changed && movedId > 0 && m_queue.contains(movedId)) {
+        m_database->queueSetPinned(movedId, true);
+        m_pinned.insert(movedId);
+        // (286) Moved by hand: no longer "put there by Auto-Add"
+        if (m_autoAdded.remove(movedId)) {
+            m_database->queueSetAuto(movedId, false);
+        }
+    }
     emit queueChanged();
+}
+
+namespace {
+
+// (275) What sorting the playlist needs of an episode
+struct SortItem
+{
+    qint64 id = 0;
+    qint64 podcastId = 0;
+    QString podcastTitle;
+    qint64 published = 0;
+    int duration = 0;
+    qint64 downloadedAt = 0;
+    bool oldestFirst = false;   // the podcast's own episode order
+};
+
+// Order within one podcast: as set for the podcast (oldest or newest first)
+bool inPodcastOrder(const SortItem &a, const SortItem &b)
+{
+    if (a.published != b.published) {
+        return a.oldestFirst ? a.published < b.published : a.published > b.published;
+    }
+    return a.id < b.id;
+}
+
+bool sortLess(const QString &mode, const SortItem &a, const SortItem &b)
+{
+    if (mode == QLatin1String("oldest")) {
+        return a.published != b.published ? a.published < b.published : a.id < b.id;
+    }
+    if (mode == QLatin1String("newest")) {
+        return a.published != b.published ? a.published > b.published : a.id < b.id;
+    }
+    if (mode == QLatin1String("shortest")) {
+        // Unknown length (0) last
+        const bool au = a.duration <= 0;
+        const bool bu = b.duration <= 0;
+        if (au != bu) {
+            return bu;
+        }
+        if (a.duration != b.duration) {
+            return a.duration < b.duration;
+        }
+        // (288) Same length: the newer one first (a visible reason), then storage order
+        return a.published != b.published ? a.published > b.published : a.id < b.id;
+    }
+    if (mode == QLatin1String("lastDownloaded")) {
+        if (a.downloadedAt != b.downloadedAt) {
+            // Not downloaded (0) last
+            return a.downloadedAt > b.downloadedAt;
+        }
+        return a.published != b.published ? a.published > b.published : a.id < b.id;
+    }
+    // byPodcast
+    const int c = QString::compare(a.podcastTitle, b.podcastTitle, Qt::CaseInsensitive);
+    if (c != 0) {
+        return c < 0;
+    }
+    if (a.podcastId != b.podcastId) {
+        return a.podcastId < b.podcastId;
+    }
+    return inPodcastOrder(a, b);
+}
+
+} // namespace
+
+void AppCore::queueSort(const QString &mode, bool keep)
+{
+    static const QStringList modes = QStringList() << QStringLiteral("oldest") << QStringLiteral("newest")
+            << QStringLiteral("shortest") << QStringLiteral("lastDownloaded") << QStringLiteral("byPodcast")
+            << QStringLiteral("smartShuffle");
+    if (!modes.contains(mode)) {
+        return;
+    }
+    m_database->setSetting(QStringLiteral("playlist.sortMode"), mode);
+    m_database->setSetting(QStringLiteral("playlist.sortKeep"), keep ? QStringLiteral("1") : QStringLiteral("0"));
+
+    const QList<qint64> ids = m_database->queueIds();
+    QList<SortItem> items;
+    QList<bool> fixed;
+    QHash<qint64, bool> oldestFirst;
+    for (int i = 0; i < ids.size(); ++i) {
+        const EpisodeRow e = m_database->episode(ids.at(i));
+        SortItem item;
+        item.id = ids.at(i);
+        item.podcastId = e.podcastId;
+        item.podcastTitle = e.podcastTitle;
+        item.published = e.published;
+        item.duration = e.duration;
+        item.downloadedAt = e.downloadedAt;
+        if (!oldestFirst.contains(e.podcastId)) {
+            oldestFirst.insert(e.podcastId, m_database->setting(
+                    QStringLiteral("podcast.%1.oldestFirst").arg(e.podcastId), QStringLiteral("0")) == QLatin1String("1"));
+        }
+        item.oldestFirst = oldestFirst.value(e.podcastId);
+        items.append(item);
+        // The episode playing and pinned ones keep their place
+        fixed.append(int(ids.at(i)) == m_currentEpisode || m_pinned.contains(int(ids.at(i))));
+    }
+
+    QList<SortItem> movable;
+    for (int i = 0; i < items.size(); ++i) {
+        if (!fixed.at(i)) {
+            movable.append(items.at(i));
+        }
+    }
+    if (mode == QLatin1String("smartShuffle")) {
+        // Per podcast in its own order; every episode gets a place on the
+        // way 0..1 (its rank plus a random part, divided by the number of
+        // the podcast's episodes): the podcasts alternate, the order within
+        // a podcast stays
+        static bool seeded = false;
+        if (!seeded) {
+            qsrand(uint(QDateTime::currentMSecsSinceEpoch() & 0x7fffffff));
+            seeded = true;
+        }
+        QHash<qint64, QList<SortItem> > groups;
+        for (int i = 0; i < movable.size(); ++i) {
+            groups[movable.at(i).podcastId].append(movable.at(i));
+        }
+        QList<QPair<double, SortItem> > keyed;
+        for (QHash<qint64, QList<SortItem> >::iterator g = groups.begin(); g != groups.end(); ++g) {
+            std::sort(g.value().begin(), g.value().end(), inPodcastOrder);
+            const int n = g.value().size();
+            for (int i = 0; i < n; ++i) {
+                const double r = qrand() / (double(RAND_MAX) + 1.0);
+                keyed.append(qMakePair((i + r) / n, g.value().at(i)));
+            }
+        }
+        std::stable_sort(keyed.begin(), keyed.end(), [](const QPair<double, SortItem> &a, const QPair<double, SortItem> &b) {
+            return a.first != b.first ? a.first < b.first : a.second.id < b.second.id;
+        });
+        movable.clear();
+        for (int i = 0; i < keyed.size(); ++i) {
+            movable.append(keyed.at(i).second);
+        }
+    } else {
+        std::stable_sort(movable.begin(), movable.end(), [&mode](const SortItem &a, const SortItem &b) {
+            return sortLess(mode, a, b);
+        });
+    }
+
+    QList<qint64> result;
+    int next = 0;
+    for (int i = 0; i < ids.size(); ++i) {
+        result.append(fixed.at(i) ? ids.at(i) : movable.at(next++).id);
+    }
+    m_database->queueSetOrder(result);
+    emit queueChanged();
+}
+
+// (275) "Sorted: keep": an episode added to the end goes where the chosen
+// sorting wants it. Never before the episode playing (the playlist goes on
+// after its place). Smart Shuffle: behind the last episode of its podcast
+// already in the list (before the first when the podcast is newest first),
+// without one at the end.
+void AppCore::placeSorted(int episodeId)
+{
+    if (m_database->setting(QStringLiteral("playlist.sortKeep"), QStringLiteral("0")) != QLatin1String("1")) {
+        return;
+    }
+    const QString mode = m_database->setting(QStringLiteral("playlist.sortMode"));
+    if (mode.isEmpty()) {
+        return;
+    }
+    QList<qint64> ids = m_database->queueIds();
+    if (!ids.removeOne(episodeId)) {
+        return;
+    }
+    auto itemOf = [this](qint64 id) {
+        const EpisodeRow e = m_database->episode(id);
+        SortItem item;
+        item.id = id;
+        item.podcastId = e.podcastId;
+        item.podcastTitle = e.podcastTitle;
+        item.published = e.published;
+        item.duration = e.duration;
+        item.downloadedAt = e.downloadedAt;
+        item.oldestFirst = m_database->setting(QStringLiteral("podcast.%1.oldestFirst").arg(e.podcastId),
+                                               QStringLiteral("0")) == QLatin1String("1");
+        return item;
+    };
+    // (288) With pins in the list: one sorting around them (the pins keep
+    // their places; a single move would push them). Not Smart Shuffle:
+    // that sorting is random.
+    if (!m_pinned.isEmpty() && mode != QLatin1String("smartShuffle")) {
+        queueSort(mode, true);
+        return;
+    }
+    const SortItem added = itemOf(episodeId);
+    const int current = m_currentEpisode > 0 ? ids.indexOf(m_currentEpisode) : -1;
+    const int minIndex = current >= 0 ? current + 1 : 0;
+    int target = ids.size();
+    if (mode == QLatin1String("smartShuffle")) {
+        // (288) By the podcast's own order and the dates: before the first
+        // episode of the podcast that comes after the new one, else behind
+        // the last one (an older episode used to land before newer ones)
+        int firstAfter = -1;
+        int last = -1;
+        for (int i = minIndex; i < ids.size(); ++i) {
+            if (m_database->episode(ids.at(i)).podcastId == added.podcastId) {
+                last = i;
+                if (firstAfter < 0 && inPodcastOrder(added, itemOf(ids.at(i)))) {
+                    firstAfter = i;
+                }
+            }
+        }
+        if (last >= 0) {
+            target = firstAfter >= 0 ? firstAfter : last + 1;
+        }
+    } else {
+        for (int i = minIndex; i < ids.size(); ++i) {
+            if (sortLess(mode, added, itemOf(ids.at(i)))) {
+                target = i;
+                break;
+            }
+        }
+    }
+    if (target < ids.size()) {
+        m_database->queueMove(episodeId, target);
+    }
+}
+
+int AppCore::nextEpisodeOfPodcast(int finishedEpisodeId) const
+{
+    const EpisodeRow finished = m_database->episode(finishedEpisodeId);
+    if (!finished.id || finished.podcastId <= 0) {
+        return -1;
+    }
+    const bool oldestFirst = m_database->setting(QStringLiteral("podcast.%1.oldestFirst").arg(finished.podcastId),
+                                                 QStringLiteral("0")) == QLatin1String("1");
+    const QList<EpisodeRow> episodes = m_database->episodes(finished.podcastId, -1, Database::AllEpisodes, oldestFirst);
+    bool after = false;
+    for (int i = 0; i < episodes.size(); ++i) {
+        if (episodes.at(i).id == finished.id) {
+            after = true;
+        } else if (after && !episodes.at(i).played && !episodes.at(i).url.isEmpty()) {
+            return int(episodes.at(i).id);
+        }
+    }
+    return -1;
+}
+
+bool AppCore::isPinned(int episodeId) const
+{
+    return m_pinned.contains(episodeId);
+}
+
+bool AppCore::isAutoAdded(int episodeId) const
+{
+    return m_autoAdded.contains(episodeId);
+}
+
+int AppCore::pinnedCount() const
+{
+    return m_pinned.size();
+}
+
+void AppCore::queueClearPins()
+{
+    m_database->queueClearPins();
+    m_pinned.clear();
+    // (288) Like releasing one pin: with "Sorted: keep" the episodes go to
+    // their places at once
+    if (keepSorted()) {
+        queueSort(m_database->setting(QStringLiteral("playlist.sortMode")), true);
+    } else {
+        emit queueChanged();
+    }
+}
+
+// (275) Auto-Add per podcast ("podcast.<id>.autoAdd": empty = off, "end",
+// "top" or (277) "sorted"; "podcast.<id>.autoAddLimit": "all", "1", "3", "5" - at most that
+// many of the new episodes per update, the newest ones). Not for the first
+// update of a subscription (the whole back catalog), archived or not
+// subscribed podcasts. Played episodes and those already in it are skipped.
+void AppCore::autoAddToPlaylist(qint64 podcastId, int newEpisodes)
+{
+    const QString where = m_database->setting(QStringLiteral("podcast.%1.autoAdd").arg(podcastId));
+    if (where != QLatin1String("end") && where != QLatin1String("top") && where != QLatin1String("sorted")) {
+        return;
+    }
+    const PodcastRow podcast = m_database->podcast(podcastId);
+    if (!podcast.id || podcast.archived || podcast.provisional || newEpisodes >= podcast.episodeCount) {
+        return;
+    }
+    const QString limitText = m_database->setting(QStringLiteral("podcast.%1.autoAddLimit").arg(podcastId),
+                                                  QStringLiteral("3"));
+    const int limit = limitText == QLatin1String("all") ? newEpisodes : qBound(1, limitText.toInt(), newEpisodes);
+    const bool oldestFirst = m_database->setting(QStringLiteral("podcast.%1.oldestFirst").arg(podcastId),
+                                                 QStringLiteral("0")) == QLatin1String("1");
+    // (288) The episodes of THIS update (new rows have the highest ids), of
+    // those the newest ones up to the limit. Before it took the newest
+    // "new" episodes of the podcast: older ones found in a later update
+    // were skipped as long as newer unplayed ones were there.
+    QList<EpisodeRow> episodes = updateEpisodes(podcastId, newEpisodes);
+    // (289) Heard ones (on another device too) and ones already in the list
+    // are left out BEFORE the limit counts - before, a heard newest episode
+    // used up the only place
+    for (int i = episodes.size() - 1; i >= 0; --i) {
+        if (episodes.at(i).played || m_queue.contains(int(episodes.at(i).id))) {
+            episodes.removeAt(i);
+        }
+    }
+    std::sort(episodes.begin(), episodes.end(), [](const EpisodeRow &a, const EpisodeRow &b) {
+        return a.published != b.published ? a.published > b.published : a.id > b.id;
+    });
+    while (episodes.size() > limit) {
+        episodes.removeLast();
+    }
+    // Added in the podcast's own order
+    std::stable_sort(episodes.begin(), episodes.end(), [oldestFirst](const EpisodeRow &a, const EpisodeRow &b) {
+        return oldestFirst ? a.published < b.published : a.published > b.published;
+    });
+    if (where == QLatin1String("top")) {
+        // One after the other to the front: the last one added ends up first
+        std::reverse(episodes.begin(), episodes.end());
+    }
+    bool any = false;
+    for (int i = 0; i < episodes.size(); ++i) {
+        const EpisodeRow &e = episodes.at(i);
+        if (e.played || m_queue.contains(int(e.id))) {
+            continue;
+        }
+        // (277) "end" and "top" are literal; "sorted" follows the sorting of
+        // the playlist (with "Sorted: keep"; otherwise = end)
+        queueAddImpl(int(e.id), where == QLatin1String("top"), where == QLatin1String("sorted"), false, true);
+        any = true;
+    }
+    if (any) {
+        emit dataChanged();
+    }
 }
 
 void AppCore::queueClear()
@@ -3290,6 +4757,19 @@ void AppCore::archivePodcast(int podcastId)
     if (!QDir().mkpath(archiveRoot())) {
         emitMessage(tr("Cannot create the archive folder %1").arg(archiveRoot()));
         return;
+    }
+    // (289) The whole podcast must fit (what is not on the phone yet)
+    {
+        qint64 needed = 0;
+        const QList<EpisodeRow> all = m_database->episodes(podcastId);
+        for (int i = 0; i < all.size(); ++i) {
+            if (!all.at(i).downloaded && !all.at(i).url.isEmpty()) {
+                needed += qMax<qint64>(0, all.at(i).fileSize);
+            }
+        }
+        if (!storageAllows(needed, false)) {
+            return;
+        }
     }
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
@@ -3391,7 +4871,17 @@ bool AppCore::setArchiveDirectory(const QString &path)
             return false;
         }
     }
+    // (289) Remember the folder that was in use: files kept there stay protected
+    const QString before = archiveRoot();
     m_database->setSetting(QStringLiteral("archive.dir"), folder);
+    if (archiveRoot() != before) {
+        QStringList old = oldArchiveRoots();
+        old.removeAll(archiveRoot());
+        if (!old.contains(before)) {
+            old.append(before);
+        }
+        m_database->setSetting(QStringLiteral("archive.oldRoots"), old.join(QLatin1Char('\n')));
+    }
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
     m_downloads->setVideoRoot(videoRoot());
@@ -3443,6 +4933,24 @@ void AppCore::archiveStateChanged(int episodeId)
         m_metadataDirty.insert(podcastId);
         m_metadataTimer->start();
     }
+}
+
+// (320, code review) The pending change of episodes.json of one podcast is
+// written now (before the podcast and its rows go: afterwards there is
+// nothing to write it from)
+void AppCore::flushArchiveMetadata(qint64 podcastId)
+{
+    if (!m_metadataDirty.contains(podcastId)) {
+        return;
+    }
+    if (m_archiver->isRunning() && podcastId == m_archivingId) {
+        return;
+    }
+    QString error;
+    if (!m_archiver->writeMetadata(podcastId, &error)) {
+        qWarning("[AppCore] episodes.json: %s", qPrintable(error));
+    }
+    m_metadataDirty.remove(podcastId);
 }
 
 void AppCore::writeArchiveMetadata()
@@ -3512,7 +5020,7 @@ void AppCore::importOpml(const QString &path, int folderId, bool markOlder)
     }
     m_database->setSetting(QStringLiteral("import.markOlder"), waiting.join(QLatin1Char(',')));
     emit dataChanged();
-    emitMessage(added > 0 ? tr("%n podcasts added - loading the episodes", "", added)
+    emitMessage(added > 0 ? tr("%n podcasts added – loading the episodes", "", added)
                            : tr("All podcasts of the file are already subscribed"));
     if (added > 0) {
         updateAll();
@@ -3573,17 +5081,53 @@ void AppCore::importDatabase(const QString &path, bool keepFolders)
     if (QFileInfo(path).absoluteFilePath() == QFileInfo(databasePath()).absoluteFilePath()) {
         return;
     }
+    // (320, code review) Before anything is deleted: the file must be an SQLite
+    // database, and the current one is kept (Settings -> Backup: undo) -
+    // before, a wrong file or a failed copy left an empty database
+    {
+        QFile probe(path);
+        const bool header = probe.open(QIODevice::ReadOnly) && probe.read(16) == QByteArray("SQLite format 3\0", 16);
+        if (!header) {
+            emitMessage(tr("Import failed: %1").arg(tr("not a database file")));
+            return;
+        }
+    }
+    QDir().mkpath(backupDirectory());
+    const QString undo = backupDirectory() + QStringLiteral("/before-restore.db");
+    if (QFileInfo(path).absoluteFilePath() != QFileInfo(undo).absoluteFilePath() && !copyDatabaseTo(undo)) {
+        emitMessage(tr("Backup failed: %1").arg(undo));
+        return;
+    }
     writeArchiveMetadata();
     const QString target = databasePath();
     m_database->close();
     QFile::remove(target);
     QFile::remove(target + QStringLiteral("-wal"));
     QFile::remove(target + QStringLiteral("-shm"));
-    const bool copied = QFile::copy(path, target);
+    bool copied = QFile::copy(path, target);
     if (copied) {
         QFile::setPermissions(target, QFile::ReadOwner | QFile::WriteOwner);
     }
     openDatabase();
+    if ((!copied || !m_databaseError.isEmpty()) && QFile::exists(undo)
+            && QFileInfo(path).absoluteFilePath() != QFileInfo(undo).absoluteFilePath()) {
+        // The new one does not work (copy failed, schema too new): the old one back
+        const QString reason = m_databaseError.isEmpty() ? path : m_databaseError;
+        m_database->close();
+        QFile::remove(target);
+        QFile::remove(target + QStringLiteral("-wal"));
+        QFile::remove(target + QStringLiteral("-shm"));
+        if (QFile::copy(undo, target)) {
+            QFile::setPermissions(target, QFile::ReadOwner | QFile::WriteOwner);
+        }
+        openDatabase();
+        reloadQueue();
+        emit settingsChanged();
+        emit dataChanged();
+        emit queueChanged();
+        emitMessage(tr("Import failed: %1").arg(reason) + QLatin1Char(' ') + tr("The previous data is back."));
+        return;
+    }
     // Folders of the other device (e.g. /tmp on the desktop) do not exist
     // here: back to the defaults - not for a backup of this phone (93)
     if (!keepFolders) {
@@ -3645,6 +5189,516 @@ QString AppCore::exportOpml(const QVariantList &folderIds)
         return QString();
     }
     return path;
+}
+
+// (294) --- HTML export ----------------------------------------------------
+
+static QString clockText(qint64 seconds)
+{
+    const qint64 h = seconds / 3600;
+    const qint64 m = (seconds / 60) % 60;
+    const qint64 sec = seconds % 60;
+    return h > 0 ? QStringLiteral("%1:%2:%3").arg(h).arg(m, 2, 10, QLatin1Char('0')).arg(sec, 2, 10, QLatin1Char('0'))
+                 : QStringLiteral("%1:%2").arg(m, 2, 10, QLatin1Char('0')).arg(sec, 2, 10, QLatin1Char('0'));
+}
+
+// The export works in slices on the main thread: the database connection
+// belongs to it, so a second thread would need its own connection. After each
+// ~40 ms the event loop runs again, the page shows the progress.
+struct AppCore::HtmlExportJob
+{
+    QList<QPair<int, PodcastRow> > plan;    // folder index, podcast
+    QList<HtmlExport::Folder> folders;      // by folder index, "" = other podcasts (last)
+    int skipped = 0;                        // private feeds left out
+    int next = 0;
+    bool cancelled = false;
+};
+
+void AppCore::deleteHtmlJob()
+{
+    delete m_htmlJob;
+    m_htmlJob = nullptr;
+}
+
+namespace {
+struct HtmlNeeds
+{
+    QList<qint64> ids;      // episodes whose chapters would be loaded (for the chosen mode)
+    int last5 = 0;          // ... if only the last 5 episodes are exported
+    int all = 0;            // ... if all episodes are
+    int episodes = 0;
+};
+
+HtmlNeeds htmlNeeds(const Database *db, const QList<QPair<int, PodcastRow> > &plan, int mode)
+{
+    HtmlNeeds needs;
+    for (int k = 0; k < plan.size(); ++k) {
+        const QList<EpisodeRow> episodes = db->episodes(plan.at(k).second.id);   // newest first
+        needs.episodes += episodes.size();
+        for (int i = 0; i < episodes.size(); ++i) {
+            const EpisodeRow &e = episodes.at(i);
+            if (e.chapterCount > 0 || e.chaptersUrl.isEmpty()) {
+                continue;
+            }
+            ++needs.all;
+            if (i < 5) {
+                ++needs.last5;
+            }
+            if (mode >= 2 || (mode == 1 && i < 5)) {
+                needs.ids.append(e.id);
+            }
+        }
+    }
+    return needs;
+}
+} // namespace
+
+// Which podcasts, in which folders: folders alphabetically, "Other podcasts"
+// last, podcasts by title; provisional ones and feeds with a login or a key
+// in the address stay out (a key must not travel in a page)
+void AppCore::planHtmlExport(const QVariantList &folderIds, HtmlExportJob *job) const
+{
+    QSet<int> wanted;
+    for (int i = 0; i < folderIds.size(); ++i) {
+        wanted.insert(folderIds.at(i).toInt());
+    }
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    const QList<FolderRow> folders = m_database->folders();
+    QHash<qint64, QString> folderNames;
+    for (int f = 0; f < folders.size(); ++f) {
+        folderNames.insert(folders.at(f).id, folders.at(f).name);
+    }
+    QCollator collator;
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    collator.setNumericMode(true);
+    QList<FolderRow> sortedFolders = folders;
+    std::sort(sortedFolders.begin(), sortedFolders.end(), [&collator](const FolderRow &a, const FolderRow &b) {
+        return collator.compare(a.name, b.name) < 0;
+    });
+    QList<PodcastRow> sortedPodcasts = podcasts;
+    std::sort(sortedPodcasts.begin(), sortedPodcasts.end(), [&collator](const PodcastRow &a, const PodcastRow &b) {
+        return collator.compare(a.title, b.title) < 0;
+    });
+    for (int f = 0; f <= sortedFolders.size(); ++f) {
+        const bool other = f == sortedFolders.size();
+        const qint64 folderId = other ? 0 : sortedFolders.at(f).id;
+        HtmlExport::Folder folder;
+        folder.name = other ? QString() : sortedFolders.at(f).name;
+        job->folders.append(folder);
+        for (int i = 0; i < sortedPodcasts.size(); ++i) {
+            const PodcastRow &p = sortedPodcasts.at(i);
+            if (p.folderId != folderId && !(other && !folderNames.contains(p.folderId))) {
+                continue;
+            }
+            const int key = folderNames.contains(p.folderId) ? int(p.folderId) : 0;
+            if ((!wanted.isEmpty() && !wanted.contains(key)) || p.provisional) {
+                continue;
+            }
+            if (!p.authUser.isEmpty() || UrlMask::maskText(p.url) != p.url) {
+                ++job->skipped;
+                continue;
+            }
+            job->plan.append(qMakePair(f, p));
+        }
+    }
+}
+
+// One podcast with what the options ask for (covers from the cache only)
+HtmlExport::Podcast AppCore::buildHtmlPodcast(const PodcastRow &p, const QVariantMap &options) const
+{
+    // episodes: 0 none, 1 the last 5, 2 all (5 shown, the rest folded)
+    const int episodeMode = options.value(QStringLiteral("episodes")).toInt();
+    const bool withEpisodes = episodeMode > 0;
+    const bool withChapters = withEpisodes && options.value(QStringLiteral("chapters")).toBool();
+    const bool withBookmarks = withEpisodes && options.value(QStringLiteral("bookmarks")).toBool();
+    const bool withNotes = withEpisodes && options.value(QStringLiteral("episodeNotes"), true).toBool();
+    // statistics: 0 none, 1 totals, 2 everything (also the time per podcast)
+    const bool statistics = options.value(QStringLiteral("statistics")).toInt() >= 2;
+    HtmlExport::Podcast h;
+    h.title = p.title;
+    h.author = p.author;
+    h.language = languageName(p.language);
+    h.categories = p.categories;
+    h.description = p.description;
+    h.link = p.link;
+    h.feedUrl = p.url;
+    const QList<EpisodeRow> episodes = m_database->episodes(p.id);
+    h.episodeCount = episodes.size();
+    QList<qint64> dates;
+    int played = 0;
+    for (const EpisodeRow &e : episodes) {
+        if (e.published > 0) {
+            dates.append(e.published);
+        }
+        played += e.played ? 1 : 0;
+    }
+    h.rhythm = rhythmOf(dates).value(QStringLiteral("rhythm")).toString();
+    if (statistics) {
+        h.listenedSeconds = p.listenedSeconds;
+        h.listenedEpisodes = played;
+    }
+    if (withEpisodes) {
+        const int count = episodeMode >= 2 ? episodes.size() : qMin(5, int(episodes.size()));
+        for (int k = 0; k < count; ++k) {
+            const EpisodeRow &e = episodes.at(k);
+            HtmlExport::Episode he;
+            he.title = e.title;
+            he.date = e.published > 0
+                    ? QLocale().toString(QDateTime::fromMSecsSinceEpoch(e.published * 1000).date(), QLocale::ShortFormat)
+                    : QString();
+            he.duration = e.duration > 0 ? tr("%1 min").arg(e.duration / 60) : QString();
+            he.played = e.played;
+            if (withNotes) {
+                he.description = m_database->episodeDescription(e.id, false);
+            }
+            if (withChapters) {
+                const QList<ParsedChapter> chapters = m_database->chapters(e.id);
+                for (const ParsedChapter &c : chapters) {
+                    he.chapters << clockText(c.startMs / 1000) + QLatin1Char(' ') + c.title;
+                }
+            }
+            if (withBookmarks && e.bookmarkCount > 0) {
+                const QList<BookmarkRow> bookmarks = m_database->bookmarks(e.id);
+                for (const BookmarkRow &b : bookmarks) {
+                    QString text = clockText(b.position);
+                    if (!b.title.isEmpty()) {
+                        text += QLatin1Char(' ') + b.title;
+                    }
+                    if (!b.note.isEmpty()) {
+                        text += QStringLiteral(" – ") + b.note;
+                    }
+                    he.bookmarks << text;
+                }
+            }
+            h.episodes.append(he);
+        }
+    }
+    // Cover: only from the cache (no loading here), 96 px JPEG
+    if (!p.coverUrl.isEmpty()) {
+        const QString local = QUrl(ImageCache::instance()->url(p.coverUrl)).toLocalFile();
+        QImage image(local);
+        if (!image.isNull()) {
+            image = image.scaled(96, 96, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+            QByteArray bytes;
+            QBuffer buffer(&bytes);
+            buffer.open(QIODevice::WriteOnly);
+            if (image.save(&buffer, "JPEG", 80)) {
+                h.coverDataUri = QStringLiteral("data:image/jpeg;base64,")
+                        + QString::fromLatin1(bytes.toBase64());
+            }
+        }
+    }
+    return h;
+}
+
+QVariantMap AppCore::htmlExportPreview(const QVariantList &folderIds) const
+{
+    HtmlExportJob job;
+    planHtmlExport(folderIds, &job);
+    const HtmlNeeds needs = htmlNeeds(m_database, job.plan, 0);
+    QVariantMap map;
+    map.insert(QStringLiteral("podcasts"), job.plan.size());
+    map.insert(QStringLiteral("skipped"), job.skipped);
+    map.insert(QStringLiteral("chapterEpisodes"), needs.last5);       // last 5
+    map.insert(QStringLiteral("chapterEpisodesAll"), needs.all);
+    map.insert(QStringLiteral("episodesAll"), needs.episodes);
+    return map;
+}
+
+void AppCore::startHtmlExport(const QVariantList &folderIds, const QVariantMap &options)
+{
+    if (m_htmlChapters || m_htmlJob) {
+        return;                 // one at a time
+    }
+    m_htmlFolders = folderIds;
+    m_htmlOptions = options;
+    m_htmlDone = 0;
+    m_htmlTotal = 0;
+    const int mode = options.value(QStringLiteral("episodes")).toInt();
+    if (mode > 0 && options.value(QStringLiteral("chapters")).toBool()) {
+        HtmlExportJob job;
+        planHtmlExport(folderIds, &job);
+        const HtmlNeeds needs = htmlNeeds(m_database, job.plan, mode);
+        if (!needs.ids.isEmpty()) {
+            m_htmlTotal = needs.ids.size();
+            m_htmlChapters = new ChaptersLoader(m_database, this);
+            const auto step = [this]() {
+                ++m_htmlDone;
+                emit htmlExportProgress(m_htmlDone, m_htmlTotal);
+            };
+            connect(m_htmlChapters, &ChaptersLoader::loaded, this, step);
+            connect(m_htmlChapters, &ChaptersLoader::failed, this, step);
+            connect(m_htmlChapters, &ChaptersLoader::finished, this, [this]() { finishHtmlExport(false); });
+            emit htmlExportProgress(0, m_htmlTotal);
+            m_htmlChapters->load(needs.ids);
+            return;
+        }
+    }
+    finishHtmlExport(false);
+}
+
+void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
+{
+    const ListeningSummary sum = m_database->listeningSummary();
+    const auto time = [](qint64 seconds) {
+        // (326, blind test) Rounded like the app (TimeFormat.length), not cut
+        // off: the export said "5 h 3 min" where the app says "5 h 4 min"
+        const qint64 minutes = (seconds + 30) / 60;
+        return minutes < 60 ? tr("%1 min").arg(minutes)
+                            : (minutes % 60 == 0 ? tr("%1 h").arg(minutes / 60)
+                                                 : tr("%1 h %2 min").arg(minutes / 60).arg(minutes % 60));
+    };
+    st->level = level;
+    const QDate first = QDate::fromString(QString::number(sum.firstDay), QStringLiteral("yyyyMMdd"));
+    st->title = first.isValid() ? tr("Listening statistics (since %1)").arg(QLocale().toString(first, QLocale::ShortFormat))
+                                : tr("Listening statistics");
+    st->total = time(sum.seconds);
+    st->totalLabel = tr("Total listening time");
+    // (321, code review) The same figure as on the statistics page (sum per row, not the difference of the sums)
+    st->saved = time(m_database->listeningTotals(0).savedSeconds);
+    st->savedLabel = tr("Time saved");
+    st->episodes = QString::number(sum.episodes);
+    st->episodesLabel = tr("Episodes listened to");
+    st->perDay = time(sum.days > 0 ? sum.seconds / sum.days : 0);
+    st->perDayLabel = tr("Per listening day");
+    st->streak = QString::number(sum.longestStreak);
+    st->streakLabel = tr("Days in a row (record, all time)");
+    // (297) Explanations, as on the statistics page
+    st->totalsNote = tr("Listening time: the time actually listened. Time saved: how much less time was needed by playing faster. Episodes: listened to for at least one minute.");
+    st->streakNote = tr("Days in a row: consecutive days on which something was listened to.");
+    st->topTitle = tr("Top podcasts");
+    const qint64 most = sum.top.isEmpty() ? 1 : qMax<qint64>(1, sum.top.first().second);
+    for (int i = 0; i < sum.top.size(); ++i) {
+        HtmlExport::Bar bar;
+        bar.label = sum.top.at(i).first;
+        bar.value = time(sum.top.at(i).second);
+        bar.share = double(sum.top.at(i).second) / double(most);
+        st->top.append(bar);
+    }
+    st->weekdaysTitle = tr("Weekdays");
+    qint64 maxDay = 1;
+    for (int i = 0; i < 7; ++i) {
+        maxDay = qMax(maxDay, sum.weekdays[i]);
+    }
+    for (int i = 0; i < 7; ++i) {
+        HtmlExport::Bar bar;
+        bar.label = QLocale().dayName(i + 1, QLocale::ShortFormat);
+        bar.value = time(sum.weekdays[i]);
+        bar.share = double(sum.weekdays[i]) / double(maxDay);
+        st->weekdays.append(bar);
+    }
+    st->note = tr("Counts only what was played in Sailcast on this device");
+    if (level < 2) {
+        return;
+    }
+    // (297) The parts of the statistics page that make sense on a page that
+    // shows the day of the export: course per month, heat map, categories
+    // (main category), records - the same numbers as the page ("All")
+    const QVariantMap page = listeningStatistics(0);
+    st->activeDays = QStringLiteral("%1 %").arg(page.value(QStringLiteral("activePercent")).toInt());
+    st->activeDaysLabel = tr("Days with listening");
+    // (314) The unit follows the length of the log (day, week, month)
+    const QString unit = page.value(QStringLiteral("barUnit")).toString();
+    st->monthsTitle = unit == QLatin1String("day") ? tr("Over time, per day")
+                    : unit == QLatin1String("week") ? tr("Over time, per week") : tr("Over time, per month");
+    const QVariantList months = page.value(QStringLiteral("bars")).toList();
+    double maxMonth = 1;
+    for (int i = 0; i < months.size(); ++i) {
+        maxMonth = qMax(maxMonth, months.at(i).toMap().value(QStringLiteral("seconds")).toDouble());
+    }
+    for (int i = 0; i < months.size(); ++i) {
+        const QVariantMap m = months.at(i).toMap();
+        HtmlExport::Bar bar;
+        bar.label = m.value(QStringLiteral("label")).toString();
+        bar.value = time(qint64(m.value(QStringLiteral("seconds")).toDouble()));
+        bar.share = m.value(QStringLiteral("seconds")).toDouble() / maxMonth;
+        st->months.append(bar);
+    }
+    st->heatTitle = tr("Activity in the last year");
+    const QVariantList heat = page.value(QStringLiteral("heat")).toList();
+    double maxHeat = 1;
+    for (int i = 0; i < heat.size(); ++i) {
+        maxHeat = qMax(maxHeat, heat.at(i).toDouble());
+    }
+    for (int i = 0; i < heat.size(); ++i) {
+        const double v = heat.at(i).toDouble();
+        st->heat.append(v < 0 ? -1 : (v <= 0 ? 0 : qBound(1, int(std::ceil(4.0 * v / maxHeat)), 4)));
+    }
+    const QVariantList heatMonths = page.value(QStringLiteral("heatMonths")).toList();
+    for (int i = 0; i < heatMonths.size(); ++i) {
+        const QVariantMap m = heatMonths.at(i).toMap();
+        st->heatMonths.append(qMakePair(m.value(QStringLiteral("week")).toInt(), m.value(QStringLiteral("label")).toString()));
+    }
+    st->categoriesTitle = tr("Categories");
+    st->categoriesNote = tr("Each podcast counts only for its first category.");
+    const QVariantList categories = page.value(QStringLiteral("categoriesMain")).toList();
+    const double total = qMax(1.0, page.value(QStringLiteral("seconds")).toDouble());
+    const double topCategory = categories.isEmpty() ? 1.0
+            : qMax(1.0, categories.first().toMap().value(QStringLiteral("seconds")).toDouble());
+    for (int i = 0; i < categories.size() && i < 10; ++i) {
+        const QVariantMap c = categories.at(i).toMap();
+        const double seconds = c.value(QStringLiteral("seconds")).toDouble();
+        HtmlExport::Bar bar;
+        bar.label = c.value(QStringLiteral("label")).toString();
+        bar.value = QStringLiteral("%1 · %2 %").arg(time(qint64(seconds))).arg(qRound(100.0 * seconds / total));
+        bar.share = seconds / topCategory;
+        st->categories.append(bar);
+    }
+    st->recordsTitle = tr("Records");
+    if (page.value(QStringLiteral("bestDaySeconds")).toDouble() > 0) {
+        st->records.append(qMakePair(tr("Longest listening day"),
+                                     time(qint64(page.value(QStringLiteral("bestDaySeconds")).toDouble()))
+                                     + QStringLiteral(" · ") + page.value(QStringLiteral("bestDay")).toString()));
+    }
+    // (314) The most listened podcast instead of the "most listened episode"
+    const QVariantList ranking = page.value(QStringLiteral("ranking")).toList();
+    if (!ranking.isEmpty() && ranking.first().toMap().value(QStringLiteral("seconds")).toDouble() > 0) {
+        const QVariantMap top = ranking.first().toMap();
+        st->records.append(qMakePair(tr("Most listened podcast"),
+                                     top.value(QStringLiteral("title")).toString() + QStringLiteral(" · ")
+                                     + time(qint64(top.value(QStringLiteral("seconds")).toDouble()))));
+    }
+    if (!page.value(QStringLiteral("favouriteWeekday")).toString().isEmpty()) {
+        st->records.append(qMakePair(tr("Favourite weekday"), page.value(QStringLiteral("favouriteWeekday")).toString()));
+    }
+}
+
+void AppCore::cancelHtmlExport()
+{
+    if (m_htmlChapters) {
+        finishHtmlExport(true);
+    }
+}
+
+void AppCore::finishHtmlExport(bool cancelled)
+{
+    if (m_htmlChapters) {
+        m_htmlChapters->disconnect(this);
+        m_htmlChapters->deleteLater();
+        m_htmlChapters = nullptr;
+    }
+    delete m_htmlJob;
+    m_htmlJob = new HtmlExportJob;
+    m_htmlJob->cancelled = cancelled;
+    planHtmlExport(m_htmlFolders, m_htmlJob);
+    emit htmlExportBuilding(0, m_htmlJob->plan.size());
+    QTimer::singleShot(0, this, [this]() { stepHtmlExport(); });
+}
+
+void AppCore::stepHtmlExport()
+{
+    HtmlExportJob *job = m_htmlJob;
+    if (!job) {
+        return;
+    }
+    QElapsedTimer timer;
+    timer.start();
+    while (job->next < job->plan.size() && timer.elapsed() < 40) {
+        const QPair<int, PodcastRow> &item = job->plan.at(job->next);
+        job->folders[item.first].podcasts.append(buildHtmlPodcast(item.second, m_htmlOptions));
+        ++job->next;
+    }
+    emit htmlExportBuilding(job->next, job->plan.size());
+    if (job->next < job->plan.size()) {
+        QTimer::singleShot(0, this, [this]() { stepHtmlExport(); });
+        return;
+    }
+    writeHtmlExport();
+}
+
+void AppCore::writeHtmlExport()
+{
+    QList<HtmlExport::Folder> folders = m_htmlJob->folders;
+    const int skipped = m_htmlJob->skipped;
+    const bool cancelled = m_htmlJob->cancelled;
+    delete m_htmlJob;
+    m_htmlJob = nullptr;
+    int count = 0;
+    for (int f = 0; f < folders.size(); ++f) {
+        folders[f].countText = tr("%n podcasts", "", folders.at(f).podcasts.size());
+        count += folders.at(f).podcasts.size();
+    }
+    HtmlExport::Options options;
+    options.descriptions = m_htmlOptions.value(QStringLiteral("descriptions"), true).toBool();
+    const int statsLevel = m_htmlOptions.value(QStringLiteral("statistics")).toInt();
+    options.statistics = statsLevel >= 2;
+    if (statsLevel > 0) {
+        fillHtmlStatistics(&options.stats, statsLevel);
+    }
+    HtmlExport::Labels &l = options.labels;
+    l.lang = QLocale().name().left(2);
+    l.title = tr("My podcasts");
+    int named = 0;
+    for (int f = 0; f < folders.size(); ++f) {
+        named += (!folders.at(f).name.isEmpty() && !folders.at(f).podcasts.isEmpty()) ? 1 : 0;
+    }
+    l.subtitle = (named > 0 ? tr("%n podcasts", "", count) + QStringLiteral(" · ") + tr("%n folders", "", named)
+                            : tr("%n podcasts", "", count))
+            + QStringLiteral(" · ") + tr("exported %1").arg(QLocale().toString(QDate::currentDate(), QLocale::ShortFormat));
+    if (skipped > 0) {
+        l.privateNote = tr("%n private feeds (with a password or a personal link) are not part of this page.", "", skipped);
+    }
+    l.intro = tr("Tap a folder or a podcast to see details and the latest episodes.");
+    l.introPoints << tr("Subscribe: opens the podcast in your podcast app, if it supports such links")
+                  << tr("Feed address: link to the RSS feed, to paste into any podcast app")
+                  << tr("Save list: a file (OPML) that almost every podcast app can import – all podcasts, one folder or the ones you tick")
+                  << tr("Search: looks for the podcast by name on fyyd, Podcast Index, Spotify or Apple Podcasts, where it is listed");
+    l.opmlAll = tr("Save all as a list (OPML)");
+    l.opml = tr("Save list");
+    l.otherPodcasts = tr("Other podcasts");
+    l.category = tr("Category");
+    l.language = tr("Language");
+    l.episodes = tr("Episodes");
+    l.rhythm = tr("Rhythm");
+    l.listened = tr("Listened");
+    l.subscribe = tr("Subscribe");
+    l.feed = tr("Feed address");
+    l.website = tr("Website");
+    l.lastEpisodes = tr("Last episodes");
+    l.moreEpisodes = tr("More episodes (%1)");
+    l.fyyd = tr("fyyd");
+    l.podcastIndex = tr("Podcast Index");
+    l.spotify = tr("Spotify");
+    l.apple = tr("Apple Podcasts");
+    l.sourceCode = tr("Sailcast on GitHub");
+    l.sailfishOs = tr("More about Sailfish OS");
+    l.promo = tr("Sailcast is a free, open-source podcast app for Sailfish OS, a Linux-based mobile operating system. It sorts podcasts into folders and offers chapters, bookmarks, a playlist and synchronisation with gpodder.net and Nextcloud.");
+    l.about = tr("The podcast search uses fyyd and Podcast Index.");
+    l.chapters = tr("Chapters");
+    l.bookmarks = tr("Bookmarks");
+    l.showNotes = tr("Description");
+    l.selected = tr("%1 selected");
+    l.all = tr("All");
+    l.none = tr("Deselect");
+    l.saveSelection = tr("Save selection as a list");
+    l.madeWith = tr("Made with Sailcast for Sailfish OS");
+    l.hour = tr("h");
+    l.minute = tr("min");
+    {
+        QImage icon(QStringLiteral("/usr/share/icons/hicolor/86x86/apps/harbour-sailcast.png"));
+        if (!icon.isNull()) {
+            icon = icon.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            QByteArray bytes;
+            QBuffer buffer(&bytes);
+            buffer.open(QIODevice::WriteOnly);
+            if (icon.save(&buffer, "PNG")) {
+                options.iconDataUri = QStringLiteral("data:image/png;base64,") + QString::fromLatin1(bytes.toBase64());
+            }
+        }
+    }
+    const QString html = HtmlExport::build(folders, options);
+    const QString path = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)
+            + QStringLiteral("/sailcast-subscriptions-%1.html").arg(today());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(html.toUtf8()) < 0 || !file.commit()) {
+        emitMessage(tr("Export failed: %1").arg(path));
+        emit htmlExportFinished(QString(), cancelled);
+        return;
+    }
+    if (skipped > 0) {
+        emitMessage(tr("%n private feeds (with a password or a personal link) were left out", "", skipped));
+    }
+    emit htmlExportFinished(path, cancelled);
 }
 
 QString AppCore::exportDatabase()
@@ -3756,7 +5810,7 @@ QString AppCore::backupNow(const QString &password)
     // Reported here, before the Nextcloud part (97): the page's message
     // came last and hid "the password is missing"
     if (!path.isEmpty()) {
-        emitMessage(nextcloudBackupPossible() ? tr("Backup saved - copying it to the Nextcloud …")
+        emitMessage(nextcloudBackupPossible() ? tr("Backup saved – copying it to the Nextcloud …")
                                               : tr("Backup saved"));
     }
     uploadBackup(path, password, true);
@@ -4043,7 +6097,7 @@ void AppCore::markFolderPlayed(int folderId)
             m_metadataTimer->start();
         }
     }
-    afterPlayed();
+    afterMarkedPlayed();
     emit dataChanged();
     emitMessage(tr("%n episodes marked as played", "", count));
 }
@@ -4300,7 +6354,7 @@ void AppCore::markOlderPlayed(int episodeId)
 {
     const qint64 podcastId = m_database->episode(episodeId).podcastId;
     const int count = m_database->markOlderPlayed(episodeId);
-    afterPlayed();
+    afterMarkedPlayed();
     if (podcastId > 0 && !m_database->podcast(podcastId).archiveFolder.isEmpty()) {
         m_metadataDirty.insert(podcastId);
         m_metadataTimer->start();

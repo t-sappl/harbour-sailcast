@@ -15,7 +15,9 @@ MenuItem {
         downloaded = core.downloadedCount()
     }
 
-    visible: core.podcastCount > 0
+    // (314) Downloads is a page of the swipe ring (setting "ui.downloadsRing"):
+    // then no pulley entry for it (as "Discover" in the Podcasts pulley)
+    visible: core.podcastCount > 0 && !appWindow.downloadsRingOn
     text: {
         var parts = []
         if (item.downloaded > 0) {
@@ -26,5 +28,5 @@ MenuItem {
         }
         return parts.length > 0 ? qsTr("Downloads (%1)").arg(parts.join(" · ")) : qsTr("Downloads")
     }
-    onClicked: pageStack.push(Qt.resolvedUrl("pages/DownloadsPage.qml"))
+    onClicked: appWindow.openDownloads()
 }

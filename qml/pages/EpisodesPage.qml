@@ -186,15 +186,6 @@ Page {
                 onClicked: pageStack.push(Qt.resolvedUrl("PodcastSettingsPage.qml"),
                                           { podcastId: page.podcastId, podcastTitle: page.podcast.title || "" })
             }
-            MenuItem {
-                text: page.searching ? qsTr("End search") : qsTr("Search episodes")
-                onClicked: {
-                    page.searching = !page.searching
-                    if (!page.searching) {
-                        page.searchText = ""
-                    }
-                }
-            }
             // (143) Only what is used often; unsubscribe, login, support,
             // save in Music and "download all" are on the podcast settings
             // page, "similar podcasts" is the line next to the cover
@@ -218,6 +209,17 @@ Page {
                 onClicked: pageStack.push(Qt.resolvedUrl("MarkPlayedDialog.qml"),
                                           { podcastId: page.podcastId, podcastTitle: page.podcast.title || "",
                                             unplayMode: (page.podcast.unplayed || 0) === 0 })
+            }
+            // (314) Search and Update at the bottom, as on the Podcasts page;
+            // the two mass changes above
+            MenuItem {
+                text: page.searching ? qsTr("End search") : qsTr("Search episodes")
+                onClicked: {
+                    page.searching = !page.searching
+                    if (!page.searching) {
+                        page.searchText = ""
+                    }
+                }
             }
             MenuItem {
                 text: qsTr("Update")
@@ -312,7 +314,7 @@ Page {
                         visible: page.podcast.archived === true
                         width: parent.width
                         wrapMode: Text.Wrap
-                        text: qsTr("Ended - not updated any more")
+                        text: qsTr("Ended – not updated any more")
                         font.pixelSize: Theme.fontSizeExtraSmall
                         color: Theme.secondaryHighlightColor
                     }
@@ -426,7 +428,7 @@ Page {
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: Theme.secondaryHighlightColor
-                    text: qsTr("Not subscribed - you can listen to the episodes. Without a subscription the podcast disappears after 30 days without listening.")
+                    text: qsTr("Not subscribed – you can listen to the episodes. Without a subscription the podcast disappears after 30 days without listening.")
                 }
                 ActionPill {
                     kind: "primary"
@@ -465,17 +467,23 @@ Page {
             // orange lines one above the other looked odd) - while the
             // description is closed; opened, the line sits above the episodes
             Item {
+                id: showRow
                 visible: (page.podcast.description || "").length > 0
                 width: parent.width
+                // (323, blind test) Large font: both texts no longer fit side
+                // by side (they lay on top of each other) - "More" goes below
+                readonly property bool stacked: !page.descriptionExpanded
+                    && rowUnplayedLabel.implicitWidth + moreLabel.implicitWidth + 4 * Theme.horizontalPageMargin > width
                 // (246) Opened: less room up to "Statistics" (too much space)
-                height: page.descriptionExpanded ? Math.round(Theme.itemSizeExtraSmall * 0.6) : Theme.itemSizeExtraSmall
+                height: page.descriptionExpanded ? Math.round(Theme.itemSizeExtraSmall * 0.6)
+                                                 : (stacked ? 2 * Theme.itemSizeExtraSmall : Theme.itemSizeExtraSmall)
 
                 BackgroundItem {
                     id: rowUnplayedSwitch
                     visible: !page.descriptionExpanded
                     anchors.left: parent.left
                     width: rowUnplayedLabel.width + 2 * Theme.horizontalPageMargin
-                    height: parent.height
+                    height: showRow.stacked ? parent.height / 2 : parent.height
                     onClicked: page.toggleUnplayedOnly()
                     Label {
                         id: rowUnplayedLabel
@@ -488,8 +496,9 @@ Page {
                 }
                 BackgroundItem {
                     anchors.right: parent.right
+                    y: showRow.stacked ? parent.height / 2 : 0
                     width: moreLabel.width + 2 * Theme.horizontalPageMargin
-                    height: parent.height
+                    height: showRow.stacked ? parent.height / 2 : parent.height
                     onClicked: page.toggleDescription()
                     Label {
                         id: moreLabel
@@ -518,13 +527,15 @@ Page {
                     height: Math.round(Theme.itemSizeExtraSmall * 0.7)
                 }
                 StatTiles {
+                    // (297) The "listened" tile opens the statistics page
+                    onTileClicked: if (index === 0) pageStack.push(Qt.resolvedUrl("StatisticsPage.qml"))
                     tiles: {
                         var s = aboutColumn.stats
                         var tiles = []
                         var hours = (s.listened || 0) / 3600
                         tiles.push({ value: hours >= 10 ? qsTr("%1 h").arg(Math.round(hours))
                                                        : qsTr("%1 h").arg(Number(hours).toLocaleString(Qt.locale(), "f", 1)),
-                                     label: qsTr("listened") })
+                                     label: qsTr("listened"), tappable: true })
                         tiles.push({ value: "" + (s.started || 0), label: qsTr("episodes started") })
                         // (246) "0 MB" without downloads (was "0")
                         tiles.push({ value: (s.bytes || 0) > 0 ? TimeFormat.size(s.bytes, qsTr("%1 MB"), qsTr("%1 GB")) : qsTr("%1 MB").arg(0),
@@ -673,6 +684,7 @@ Page {
             EpisodeDelegate {
                 width: parent.width
                 showPodcastTitle: false
+                showMarkOlder: true
             }
         }
 

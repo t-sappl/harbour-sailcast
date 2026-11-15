@@ -56,6 +56,31 @@ ApplicationWindow {
         }
     }
 
+    // Pauses other MPRIS players when Sailcast starts, and decides what the
+    // headset key means while Sailcast is paused (see MprisOthers.qml).
+    // Optional, like the Loader above.
+    Loader {
+        id: mprisOthersLoader
+        source: "MprisOthers.qml"
+        asynchronous: false
+        onStatusChanged: {
+            if (status === Loader.Error) {
+                console.warn("MprisOthers not available - other players are not paused")
+            }
+        }
+    }
+
+    // Pauses other playing MPRIS players; returns how many (0 if the
+    // MprisOthers module is not available)
+    function pauseOtherPlayers() {
+        return mprisOthersLoader.item ? mprisOthersLoader.item.pauseOthers() : 0
+    }
+
+    // Continues another player that was paused after Sailcast
+    function resumeOtherPlayer() {
+        return mprisOthersLoader.item ? mprisOthersLoader.item.resumeLatestOther() : false
+    }
+
     // Image for MPRIS / the lock screen: episode image with the podcast
     // cover as a badge, composed in C++ (works in the background too, see
     // src/artcomposer.h). Until it is ready, the plain image.
@@ -119,6 +144,13 @@ ApplicationWindow {
     RemorsePopup {
         id: windowRemorse
         z: 200
+    }
+
+    // (314) Selection mode (Downloads): the bar at the bottom of the page
+    // needs the room, so the player bar folds in (the user may open it again)
+    function collapsePlayerBar() {
+        playerBar.expanded = false
+        playerBar.sleepSelectorOpen = false
     }
 
     function remorseDeleteDownload(episodeId) {
@@ -364,6 +396,21 @@ ApplicationWindow {
         dialog.accepted.connect(function() { core.downloadSection(podcastId, section) })
     }
 
+    // (274) Several episodes at once ("Download unplayed" on the Downloads
+    // page): without Wi-Fi (setting "only on Wi-Fi") asked first, with the size
+    function requestEpisodesDownload(ids, bytes) {
+        if (core.downloadAllowed()) {
+            core.downloadEpisodes(ids)
+            return
+        }
+        var dialog = pageStack.push(Qt.resolvedUrl("pages/MobileDataDialog.qml"))
+        var megabytes = Math.round(bytes / 1048576)
+        dialog.message = megabytes > 0
+                ? qsTr("Download %1 episodes over the mobile connection? (about %2 MB)").arg(ids.length).arg(megabytes)
+                : qsTr("Download %1 episodes over the mobile connection?").arg(ids.length)
+        dialog.accepted.connect(function() { core.downloadEpisodes(ids) })
+    }
+
     function remorseMarkOlderPlayed(episodeId) {
         windowRemorse.execute(qsTr("Marking older episodes as played"), function() { core.markOlderPlayed(episodeId) })
     }
@@ -390,6 +437,14 @@ ApplicationWindow {
         if (id > 0) {
             windowBookmarkPanel.show(id, seconds)
         }
+    }
+
+    // (297) Statistics page: countdowns here, as the page itself may be left
+    function remorseResetStatistics() {
+        windowRemorse.execute(qsTr("Resetting statistics"), function() { core.resetListeningStatistics() })
+    }
+    function remorseResetListeningOf(podcastId) {
+        windowRemorse.execute(qsTr("Deleting listening history"), function() { core.resetListeningOf(podcastId) })
     }
 
     function remorseDeleteBookmark(bookmarkId) {
@@ -467,9 +522,14 @@ ApplicationWindow {
     function unsubscribe(podcastId) {
         var hadLogin = (core.podcast(podcastId).authUser || "").length > 0
         core.unsubscribe(podcastId)
-        if (hadLogin) {
+        // (320) Only when it really went (not with the episode in the player)
+        if (hadLogin && core.podcast(podcastId).podcastId === undefined) {
             secretStore.remove("feed-" + podcastId)
         }
+    }
+    Connections {
+        target: core
+        onPodcastForgotten: secretStore.remove("feed-" + podcastId)
     }
 
     // Downloads started by the user: without Wi-Fi (setting "only on
@@ -483,6 +543,7 @@ ApplicationWindow {
             showMessage(qsTr("Downloads the audio version – the video is only streamed"))
         }
         if (core.downloadAllowed() && !(video && !core.onWifi())) {
+            core.noteDownloadByUser(episodeId)
             core.download(episodeId)
             return
         }
@@ -492,16 +553,24 @@ ApplicationWindow {
                     ? qsTr("Download this video over the mobile connection? (about %1 MB)").arg(Math.round(e.fileSize / 1048576))
                     : qsTr("Download this video over the mobile connection?")
         }
-        dialog.accepted.connect(function() { core.download(episodeId) })
+        dialog.accepted.connect(function() { core.noteDownloadByUser(episodeId); core.download(episodeId) })
     }
 
     // (245) Before streaming a video without Wi-Fi ("video.mobile" = ask)
-    function askMobileVideo(megabytes, onAccept) {
+    // (274) audioMegabytes >= 0: the feed has an audio version, the dialog
+    // offers "Sound only" (about N MB, 0 = size unknown) - onAudio plays it
+    function askMobileVideo(megabytes, onAccept, audioMegabytes, onAudio) {
         var dialog = pageStack.push(Qt.resolvedUrl("pages/MobileDataDialog.qml"))
         dialog.acceptLabel = qsTr("Play")
         dialog.message = megabytes > 0
                 ? qsTr("Play the video over the mobile connection? (about %1 MB)").arg(megabytes)
                 : qsTr("Play the video over the mobile connection?")
+        if (audioMegabytes !== undefined && audioMegabytes >= 0 && onAudio) {
+            dialog.alternateLabel = audioMegabytes > 0
+                    ? qsTr("Sound only (about %1 MB)").arg(audioMegabytes)
+                    : qsTr("Sound only")
+            dialog.alternateChosen.connect(onAudio)
+        }
         dialog.accepted.connect(onAccept)
     }
 
@@ -672,19 +741,80 @@ ApplicationWindow {
     // and Podcasts - next to the subscriptions): built when first needed; it
     // loads its lists when first shown
     property Page ringDiscoverPage: null
+    // (301) Downloads as the last ring page (setting "ui.downloadsRing",
+    // default off): between Playlist and New episodes; built when first needed
+    property Page ringDownloadsPage: null
 
     Component {
         id: discoverRingComponent
         SearchPage { ringMember: true }
     }
 
+    Component {
+        id: downloadsRingComponent
+        DownloadsPage { ringMember: true }
+    }
+
     // (237) The same as a binding (pulley entries follow the setting at once)
     property int _settingsRevision: 0
+    // (301) The ring pages the pages around were built for: when a setting
+    // changes them, the stack is rebuilt the next time a ring page is shown
+    // (the attached right neighbour is only set once)
+    property string _ringSignature: core.setting("ui.discoverRing", "1") + core.setting("ui.downloadsRing", "0")
+    property bool _ringStale: false
     Connections {
         target: core
-        onSettingsChanged: appWindow._settingsRevision++
+        onSettingsChanged: {
+            appWindow._settingsRevision++
+            var sig = core.setting("ui.discoverRing", "1") + core.setting("ui.downloadsRing", "0")
+            if (sig !== appWindow._ringSignature) {
+                appWindow._ringSignature = sig
+                appWindow._ringStale = true
+            }
+        }
     }
     readonly property bool discoverRingOn: _settingsRevision >= 0 && core.setting("ui.discoverRing", "1") === "1"
+    readonly property bool downloadsRingOn: _settingsRevision >= 0 && core.setting("ui.downloadsRing", "0") === "1"
+    // (329) Line "7 days: … listened ›" on the Podcasts page; on: no
+    // "Listening statistics" in its pulley
+    readonly property bool statsLineOn: _settingsRevision >= 0 && core.setting("ui.statsLine", "1") === "1"
+
+    function downloadsInRing() {
+        return core.setting("ui.downloadsRing", "0") === "1"
+    }
+
+    function downloadsRingPage() {
+        if (!ringDownloadsPage) {
+            ringDownloadsPage = downloadsRingComponent.createObject(appWindow)
+        }
+        return ringDownloadsPage
+    }
+
+    // (301) Opens the Downloads page: as the ring page after the playlist
+    // (when set), else on top of the current page as before
+    function openDownloads() {
+        if (!downloadsInRing()) {
+            pageStack.push(Qt.resolvedUrl("pages/DownloadsPage.qml"))
+            return
+        }
+        var dp = downloadsRingPage()
+        if (pageStack.currentPage === dp || pageStack.busy) {
+            return
+        }
+        // (326, Thomas: the "downloaded" tile of the playlist opened New
+        // episodes) Since 309 Downloads follows New episodes, not the
+        // playlist - the left neighbour comes from the ring order itself
+        var before = prevRingPage(dp)
+        if (pageStack.currentPage === before && before.canNavigateForward
+                && pageStack.nextPage(before) === dp && !_ringStale) {
+            pageStack.navigateForward()
+            return
+        }
+        pageStack.clear()
+        pageStack.push(before, {}, PageStackAction.Immediate)
+        pageStack.push(dp, {}, PageStackAction.Immediate)
+        ringPageActivated(dp)
+    }
 
     function discoverInRing() {
         return core.setting("ui.discoverRing", "1") === "1"
@@ -697,8 +827,16 @@ ApplicationWindow {
         return ringDiscoverPage
     }
 
+    // (309, Thomas 13 Nov) Downloads as a ring page comes right after New
+    // episodes (it was between the playlist and New episodes):
+    // New episodes → Downloads → (Discover) → Podcasts → Playlist → New episodes
+    function afterHomeOrDownloads() {
+        return discoverInRing() ? discoverRingPage() : ringPodcastsPage
+    }
+
     function nextRingPage(page) {
-        if (page === ringHomePage) return discoverInRing() ? discoverRingPage() : ringPodcastsPage
+        if (page === ringHomePage) return downloadsInRing() ? downloadsRingPage() : afterHomeOrDownloads()
+        if (ringDownloadsPage && page === ringDownloadsPage) return afterHomeOrDownloads()
         if (page === ringPodcastsPage) return ringPlaylistPage
         if (page === ringPlaylistPage) return ringHomePage
         if (ringDiscoverPage && page === ringDiscoverPage) return ringPodcastsPage
@@ -707,9 +845,11 @@ ApplicationWindow {
 
     function prevRingPage(page) {
         if (page === ringHomePage) return ringPlaylistPage
-        if (page === ringPodcastsPage) return discoverInRing() ? discoverRingPage() : ringHomePage
+        if (ringDownloadsPage && page === ringDownloadsPage) return ringHomePage
+        if (page === ringPodcastsPage) return discoverInRing() ? discoverRingPage()
+                                                           : (downloadsInRing() ? downloadsRingPage() : ringHomePage)
         if (page === ringPlaylistPage) return ringPodcastsPage
-        if (ringDiscoverPage && page === ringDiscoverPage) return ringHomePage
+        if (ringDiscoverPage && page === ringDiscoverPage) return downloadsInRing() ? downloadsRingPage() : ringHomePage
         return null
     }
 
@@ -753,7 +893,11 @@ ApplicationWindow {
         var wantedPrev = prevRingPage(page)
         var prev = pageStack.previousPage(page)
         var prevIsBase = prev && !pageStack.previousPage(prev)
-        if (prev !== wantedPrev || !prevIsBase) {
+        // (301) The set of ring pages changed: build the stack again, the
+        // right neighbour is attached anew afterwards
+        var stale = _ringStale
+        _ringStale = false
+        if (stale || prev !== wantedPrev || !prevIsBase) {
             pageStack.clear()
             pageStack.push(wantedPrev, {}, PageStackAction.Immediate)
             pageStack.push(page, {}, PageStackAction.Immediate)
@@ -809,6 +953,17 @@ ApplicationWindow {
 
     // The core outlives the QML engine (see main), so the position can
     // still be saved here
+    // (290) The system may end an app in the background without a word:
+    // save the position when the app leaves the foreground
+    Connections {
+        target: Qt.application
+        onStateChanged: {
+            if (Qt.application.state !== Qt.ApplicationActive) {
+                playerController.save()
+            }
+        }
+    }
+
     Component.onDestruction: {
         playerController.save()
         playerController.countAsPlayedIfNearEnd()
@@ -982,7 +1137,9 @@ ApplicationWindow {
         MessageBanner {
             id: messageBanner
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: appWindow.playerBarHeight + Theme.paddingLarge
+            // (305, Gemini 13 Nov: merged with the player bar) More room
+            // above the bar, rounder
+            anchors.bottomMargin: appWindow.playerBarHeight + 2 * Theme.paddingLarge
             width: parent.width - appWindow.playerPanelWidth - 2 * Theme.horizontalPageMargin
             z: 101
         }

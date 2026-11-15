@@ -22,6 +22,13 @@ ListItem {
     property bool fresh: false      // new episodes since last opened (50)
     property bool video: false      // (247) video podcast: camera after the counts
     property string lastError: ""
+    // (286) Auto-Add is on for this podcast: the symbol of the playlist handle
+    property bool autoAdd: core.setting("podcast." + podcastId + ".autoAdd", "") !== ""
+
+    Connections {
+        target: core
+        onSettingsChanged: row.autoAdd = core.setting("podcast." + row.podcastId + ".autoAdd", "") !== ""
+    }
 
     contentHeight: Math.max(Theme.itemSizeLarge, textColumn.height + 2 * Theme.paddingMedium)
     onClicked: pageStack.push(Qt.resolvedUrl("pages/EpisodesPage.qml"), { podcastId: row.podcastId })
@@ -54,6 +61,28 @@ ListItem {
         source: row.coverUrl
         fallbackText: row.title
 
+        // (293) Number of unplayed episodes as in the grid (was only in the text)
+        Rectangle {
+            visible: row.unplayed > 0
+            anchors {
+                top: parent.top
+                right: parent.right
+                margins: Theme.paddingSmall / 2
+            }
+            height: unplayedLabel.height + Theme.paddingSmall
+            width: Math.max(height, unplayedLabel.width + Theme.paddingMedium)
+            radius: height / 2
+            color: Theme.highlightBackgroundColor
+            Label {
+                id: unplayedLabel
+                anchors.centerIn: parent
+                text: row.unplayed > 999 ? "999+" : row.unplayed
+                font.pixelSize: Theme.fontSizeExtraSmall
+                font.bold: true
+                color: Theme.primaryColor
+            }
+        }
+
         // (248) Video podcast: camera bottom left on a dark spot, as in the
         // grid (the symbol after the counts was hardly visible)
         Rectangle {
@@ -84,11 +113,33 @@ ListItem {
             rightMargin: Theme.horizontalPageMargin
             verticalCenter: parent.verticalCenter
         }
-        Label {
+        Item {
             width: parent.width
-            text: row.title
-            truncationMode: TruncationMode.Fade
-            color: row.highlighted ? Theme.highlightColor : Theme.primaryColor
+            height: titleLabel.height
+            Label {
+                id: titleLabel
+                width: parent.width - (autoMark.visible ? autoMark.width + Theme.paddingSmall : 0)
+                text: row.title
+                truncationMode: TruncationMode.Fade
+                // (293) Nothing unplayed: weaker
+                opacity: row.unplayed > 0 || row.highlighted ? 1.0 : 0.6
+                color: row.highlighted ? Theme.highlightColor : Theme.primaryColor
+            }
+            // (286) Auto-Add on: the playlist symbol with the circle arrow,
+            // quiet (the colour of the second line), after the title
+            HighlightImage {
+                id: autoMark
+                visible: row.autoAdd
+                source: Qt.resolvedUrl("images/icon-autoadd.svg")
+                color: row.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
+                width: Math.max(Math.round(Theme.iconSizeSmall * 0.8 * 0.95), 36)
+                height: Math.round(width * 34 / 40)
+                sourceSize.width: width
+                sourceSize.height: height
+                fillMode: Image.PreserveAspectFit
+                anchors.verticalCenter: titleLabel.verticalCenter
+                x: Math.min(titleLabel.contentWidth + Theme.paddingSmall, parent.width - width)
+            }
         }
         Label {
             width: parent.width

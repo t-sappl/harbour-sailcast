@@ -301,7 +301,7 @@ Column {
                             visible: index > (tabs.upNextList.length > 0
                                               && tabs.upNextList[0].followUp === true ? 1 : 0)
                             text: qsTr("Play next")
-                            onClicked: core.queueAdd(modelData.episodeId, true)
+                            onClicked: core.queueAddPlaced(modelData.episodeId, true)
                         }
                         MenuItem {
                             text: qsTr("Remove from playlist")

@@ -35,6 +35,11 @@ Page {
         return name === "podcasts" ? qsTr("Podcasts") : (name === "playlist" ? qsTr("Playlist") : qsTr("New episodes"))
     }
 
+    function speedText(value) {
+        var decimals = Math.round(value * 100) % 10 === 0 ? 1 : 2
+        return Number(value).toLocaleString(Qt.locale(), "f", decimals) + "×"
+    }
+
     function lockScreenName(prev, next) {
         return (next === "forward" ? qsTr("lock screen: skip")
                 : (next === "episodes" ? qsTr("lock screen: episodes") : qsTr("lock screen: chapters")))
@@ -69,42 +74,42 @@ Page {
                 title: qsTr("Settings")
             }
 
+            // (326, settings restructured, SETTINGS-PLAN.md) Seven entries by
+            // purpose; every setting in one place only
+            // (327, Thomas) Order as when setting up the app: pages, account,
+            // playback, downloads, bringing data in, backup; About as a row
             SettingsEntry {
-                title: qsTr("General")
+                title: qsTr("Pages and navigation")
                 summary: page.settingsVersion >= 0
                          && page.join([qsTr("Start: %1").arg(page.startPageName(core.setting("ui.startPage", "home"))),
-                                       core.setting("start.update", "1") === "1" ? qsTr("update on start") : qsTr("no update on start")])
+                                       core.setting("ui.downloadsRing", "0") === "1" ? qsTr("Downloads as a ring page") : ""])
                 target: Qt.resolvedUrl("SettingsGeneralPage.qml")
             }
 
             SettingsEntry {
                 title: qsTr("Synchronization")
                 // (254, usability audit #4) Before an account is set up,
-                // "no account" alone didn't say what this is for - "Nextcloud"
-                // or "gpodder.net" means nothing to a newcomer either. Once
-                // configured those names (and the user/last sync) are the
-                // useful summary, so only the unconfigured case gets the
-                // plain-words line.
+                // "no account" alone didn't say what this is for
                 summary: page.settingsVersion >= 0 && (!core.syncConfigured
                          ? qsTr("Keeps subscriptions and listening progress the same on all your devices")
                          : page.join([core.setting("sync.backend", "nextcloud") === "nextcloud" ? "Nextcloud" : "gpodder.net",
-                                      core.setting("sync.user", ""),
                                       core.syncing ? qsTr("synchronizing …")
-                                                   : qsTr("last sync %1").arg(page.dateText(parseInt(core.setting("sync.last_sync", "0")) * 1000))]))
+                                                   : qsTr("last sync %1").arg(page.dateText(parseInt(core.setting("sync.last_sync", "0")) * 1000)),
+                                      core.setting("start.update", "1") === "1" ? qsTr("update on start") : ""]))
                 target: Qt.resolvedUrl("SettingsSyncPage.qml")
             }
 
             SettingsEntry {
-                title: qsTr("Playback")
+                title: qsTr("Playback and playlist")
                 summary: page.settingsVersion >= 0
-                         && page.join([qsTr("skip %1/%2 s").arg(appWindow.player.skipBackSeconds).arg(appWindow.player.skipForwardSeconds),
-                                       page.lockScreenName(appWindow.player.remotePrev, appWindow.player.remoteNextAction),
-                                       qsTr("cover: %1").arg(page.coverButtonName(appWindow.player.coverButton))])
+                         && page.join([page.speedText(appWindow.player.globalRate),
+                                       qsTr("skip %1/%2 s").arg(appWindow.player.skipBackSeconds).arg(appWindow.player.skipForwardSeconds),
+                                       core.setting("playlist.addTo", "end") === "next" ? qsTr("add as next") : qsTr("add to the end")])
                 target: Qt.resolvedUrl("SettingsPlaybackPage.qml")
             }
 
             SettingsEntry {
-                title: qsTr("Downloads and archive")
+                title: qsTr("Downloads and storage")
                 summary: page.settingsVersion >= 0
                          && page.join([core.setting("downloads.wifiOnly", "0") === "1" ? qsTr("Wi-Fi only") : "",
                                        core.setting("downloads.auto", "0") === "1" ? qsTr("new episodes automatically") : "",
@@ -113,7 +118,14 @@ Page {
             }
 
             SettingsEntry {
-                title: qsTr("Backup")
+                title: qsTr("Import and export")
+                // (312) Its own line for "Share your podcasts"
+                summary: qsTr("OPML · gpodder-sailfish · archive folders · share")
+                target: Qt.resolvedUrl("ImportExportPage.qml")
+            }
+
+            SettingsEntry {
+                title: qsTr("Backup and restore")
                 summary: {
                     var dummy = page.settingsVersion
                     var days = parseInt(core.setting("backup.days", "7"))
@@ -124,28 +136,9 @@ Page {
             }
 
             SettingsEntry {
-                title: qsTr("Import and export")
-                // (254, usability audit pattern 5) "OPML" says nothing to a
-                // newcomer; the import page itself explains it
-                summary: qsTr("Subscription lists of other apps, databases, archive folders")
-                target: Qt.resolvedUrl("ImportExportPage.qml")
-            }
-
-            Item { width: 1; height: Theme.paddingLarge * 2 }
-
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryColor
-                text: "Sailcast " + core.version
-            }
-
-            ActionPill {
-                kind: "secondary"
-                x: Theme.horizontalPageMargin
-                text: qsTr("About Sailcast")
-                onClicked: pageStack.push(Qt.resolvedUrl("AboutPage.qml"))
+                title: qsTr("About Sailcast")
+                summary: "Sailcast " + core.version
+                target: Qt.resolvedUrl("AboutPage.qml")
             }
         }
 

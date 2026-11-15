@@ -86,6 +86,15 @@ struct BookmarkRow
 };
 
 // One episode as shown in lists
+// (306) An unplayed episode of the page New episodes, just enough to choose
+// the rows of the grouped view (at most a few per podcast)
+struct EpisodeRef
+{
+    qint64 id = 0;
+    qint64 podcastId = 0;
+    QString podcastTitle;
+};
+
 struct EpisodeRow
 {
     qint64 id = 0;
@@ -111,11 +120,13 @@ struct EpisodeRow
     bool downloaded = false;
     QString downloadPath;    // absolute path of the downloaded file
     QString archiveFile;     // file name inside the podcast's archive folder
+    qint64 downloadedAt = 0; // (274) when the download was completed, 0 = unknown
     int bookmarkCount = 0;   // (50) star on the image in lists
     int season = 0;          // (83) from the feed, 0 = none
     int episodeNumber = 0;   // (83) from the feed, 0 = none
     bool provisional = false; // (156) its podcast is not subscribed (147)
     QString type;            // (193) itunes:episodeType "trailer" or "bonus", empty = normal
+    QString podcastCoverUrl; // (306) the podcast's cover (group header)
 
     // Seconds still to listen to; -1 if the duration is unknown
     int remaining() const
@@ -144,6 +155,46 @@ struct SyncCounts
     int outboxSubscriptions = 0;
     int outboxActions = 0;
     int pendingActions = 0;
+};
+
+// (294) Totals of the listening log for the statistics of the HTML export
+struct ListeningSummary
+{
+    qint64 seconds = 0;         // wall clock
+    qint64 mediaSeconds = 0;    // episode time (more at higher speed)
+    int episodes = 0;           // episodes with at least 60 s
+    int days = 0;               // days with listening
+    int longestStreak = 0;      // consecutive days
+    int firstDay = 0;           // yyyyMMdd, 0 = no log
+    QList<QPair<QString, qint64>> top;  // podcast title, seconds (most first, up to 5)
+    qint64 weekdays[7] = {0, 0, 0, 0, 0, 0, 0};    // Monday first
+};
+
+// (296) One row of the listening log (day yyyyMMdd, one row per day and episode)
+struct ListeningEntry
+{
+    int day = 0;
+    qint64 episodeId = 0;
+    qint64 podcastId = 0;
+    QString podcastTitle;
+    int seconds = 0;
+    int mediaSeconds = 0;
+};
+
+// (297) Listening statistics page: numbers of one period (fromDay yyyyMMdd, 0 = all)
+struct ListeningTotals
+{
+    qint64 seconds = 0;         // wall clock
+    qint64 mediaSeconds = 0;    // episode time
+    qint64 savedSeconds = 0;    // sum of max(0, media - real) per row
+    int episodes = 0;           // episodes with at least 60 s in the period
+};
+
+struct ListeningRank
+{
+    qint64 podcastId = 0;
+    QString title;              // from the log (kept for podcasts that are gone)
+    qint64 seconds = 0;
 };
 
 struct DatabaseStats
@@ -201,12 +252,24 @@ public:
     bool setAuthUser(qint64 id, const QString &user);
 
     // --- Episodes ---
-    enum EpisodeFilter { AllEpisodes, Unplayed, InProgress, Downloaded, NewEpisodes, Queue };
+    enum EpisodeFilter { AllEpisodes, Unplayed, InProgress, Downloaded, NewEpisodes, Queue,
+                         // (275) Downloads page: the downloads of podcasts that
+                         // are not archived / the archived ones (podcast
+                         // ended-and-archived, or the file kept in Music)
+                         DownloadedActive, DownloadedArchived,
+                         // (302) The page "New episodes": unplayed episodes /
+                         // those with the "new" flag, without the podcasts hidden
+                         // there (setting "home.hiddenPodcasts")
+                         HomeUnplayed, HomeNew };
     // podcastId < 0: all podcasts. limit < 0: no limit. Newest first
     // (InProgress: most recently played first).
     // oldestFirst (53): oldest first for serials; search (53): words in the title
+    // sortMode (274, only for Downloaded): 0 last downloaded first, 1 newest
+    // published, 2 oldest published, 3 by podcast (then oldest first); the
+    // search then also finds the podcast's title
     QList<EpisodeRow> episodes(qint64 podcastId, int limit = -1, EpisodeFilter filter = AllEpisodes,
-                               bool oldestFirst = false, const QString &search = QString()) const;
+                               bool oldestFirst = false, const QString &search = QString(),
+                               int sortMode = 0) const;
     EpisodeRow episode(qint64 id) const;    // id 0 if not found
     // (236) Episodes whose description (plain text) contains the term but
     // whose title does not - newest first; second: the description
@@ -228,6 +291,20 @@ public:
     // (position progress) listened in the same stretch
     bool addListening(qint64 episodeId, int seconds, int mediaSeconds);
     // Total wall-clock seconds in the log, the episode time in mediaSeconds (CLI check)
+    ListeningSummary listeningSummary() const;
+    // (297) Statistics page
+    ListeningTotals listeningTotals(int fromDay) const;
+    QList<QPair<int, qint64>> listeningPerDay(int fromDay) const;     // day, seconds, oldest first
+    QList<ListeningRank> listeningRanking(int fromDay, int limit = 50) const;
+    qint64 listeningTopEpisode(int fromDay, qint64 *seconds) const;   // episode id, 0 = none
+    int listenedWithoutTime() const;    // played episodes without any row in the log
+    bool deleteListeningOfPodcast(qint64 podcastId);
+    // (296) Seconds listened per podcast (podcast id -> seconds), from the log
+    QHash<qint64, qint64> listeningByPodcast() const;
+    // (296) Replaces the whole listening log (empty list = clear it), in one transaction
+    bool replaceListeningLog(const QList<ListeningEntry> &entries);
+    // (296) Writes the WAL into the main file so that the file can be copied
+    bool checkpointForCopy();
     qint64 listenedSeconds(qint64 podcastId = -1, qint64 *mediaSeconds = nullptr) const;
     // (245) Episodes with a video or HLS version (camera symbol in lists)
     QSet<qint64> videoAlternateEpisodes() const;
@@ -241,6 +318,23 @@ public:
     bool markUnplayed(qint64 episodeId);
     // (253) Out of "New episodes" without counting as played (is_new only)
     bool clearNew(qint64 episodeId);
+    bool clearAllNew(qint64 upToEpisodeId = -1);
+    qint64 maxNewEpisodeId() const;
+    // (304) Episodes in the view "New" of New episodes (the chip counter)
+    int homeNewCount() const;
+    // (306) Unplayed episodes of the view "All unplayed" (subscribed, not
+    // hidden), newest first - the grouped view picks a few per podcast
+    QList<EpisodeRef> homeUnplayedRefs(bool onlyNew = false) const;
+    // (306) Podcast order everywhere: leading quotes and other marks do not
+    // count ("\"Literatur wird Oper\"" under L), umlauts and numbers right
+    static int comparePodcastTitles(const QString &a, const QString &b);
+    // (302) Sets the flag again (undo of "to the playlist"), and clears it for
+    // a whole podcast (shown again after it was hidden on the page)
+    bool setNew(qint64 episodeId);
+    bool clearNewOfPodcast(qint64 podcastId);
+    // (302) Podcast ids hidden on the page "New episodes"
+    QList<qint64> hiddenFromNew() const;
+    bool setHiddenFromNew(const QList<qint64> &ids);
 
     // --- Downloads and archive (stage 3) ---
     bool setArchived(qint64 podcastId, bool archived);
@@ -308,6 +402,14 @@ public:
     bool queueSetOrder(const QList<qint64> &episodeIds);
     void queueClear();
     QList<qint64> queueIds() const;
+    // (275) Pins: episodes the user dragged to a place by hand; sorting
+    // leaves them where they are
+    QList<qint64> queuePinnedIds() const;
+    bool queueSetPinned(qint64 episodeId, bool pinned);
+    // (286) Entries that Auto-Add put into the playlist
+    QList<qint64> queueAutoIds() const;
+    bool queueSetAuto(qint64 episodeId, bool autoAdded);
+    void queueClearPins();
     // Marks all unplayed episodes of a podcast as played; returns the number
     int markAllPlayed(qint64 podcastId, bool keepNewest = false);
     // (248) How many markAllPlayed would mark

@@ -290,8 +290,23 @@ void SyncEngine::applySubscriptions(const QByteArray &body)
                 continue;
             }
             const qint64 id = m_database->findSubscribed(url);
-            if (id >= 0 && m_database->removePodcast(id, false)) {
-                ++m_result.podcastsRemoved;
+            // (321, code review) The server names exactly the address it has: a
+            // subscription that only matches in spelling (kept after a merge
+            // of duplicates) is not the one removed; and a podcast of the
+            // episode in the player stays (as with the local unsubscribe)
+            if (id >= 0 && m_database->podcast(id).url != url) {
+                continue;
+            }
+            if (id >= 0 && m_keepPodcast && m_keepPodcast(id)) {
+                continue;
+            }
+            if (id >= 0) {
+                const QString title = m_database->podcast(id).title;
+                emit podcastRemoving(id);
+                if (m_database->removePodcast(id, false)) {
+                    ++m_result.podcastsRemoved;
+                    emit podcastRemoved(id, title);
+                }
             }
         }
     }
@@ -306,14 +321,23 @@ void SyncEngine::applySubscriptions(const QByteArray &body)
                 m_uploadedAdds.append(local.at(i));
             }
         }
+    }
+
+    // (320, code review) The mark "this was the first sync" and the outbox
+    // are only given up after the upload worked (before: a failed upload left
+    // the next sync a normal one, which no longer knew the subscriptions to upload)
+    m_subsTimestamp = object.value(QStringLiteral("timestamp")).toVariant().toLongLong();
+    uploadSubscriptions();
+}
+
+void SyncEngine::subscriptionsDone()
+{
+    if (m_firstSync) {
         // The outbox is covered by the union
         m_database->removeOutboxSubscriptions(m_database->outboxSubscriptions(QStringLiteral("add")));
         m_database->removeOutboxSubscriptions(m_database->outboxSubscriptions(QStringLiteral("remove")));
     }
-
-    m_database->setSetting(QStringLiteral("sync.subs_since"),
-                           QString::number(object.value(QStringLiteral("timestamp")).toVariant().toLongLong()));
-    uploadSubscriptions();
+    m_database->setSetting(QStringLiteral("sync.subs_since"), QString::number(m_subsTimestamp));
 }
 
 void SyncEngine::uploadSubscriptions()
@@ -323,6 +347,7 @@ void SyncEngine::uploadSubscriptions()
         m_uploadedRemoves = m_database->outboxSubscriptions(QStringLiteral("remove"));
     }
     if (m_uploadedAdds.isEmpty() && m_uploadedRemoves.isEmpty()) {
+        subscriptionsDone();
         loadNewFeeds();
         return;
     }
@@ -340,6 +365,7 @@ void SyncEngine::uploadSubscriptions()
         if (!m_firstSync) {
             m_database->removeOutboxSubscriptions(m_uploadedAdds + m_uploadedRemoves);
         }
+        subscriptionsDone();
         loadNewFeeds();
     });
 }

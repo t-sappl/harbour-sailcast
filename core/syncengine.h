@@ -58,6 +58,8 @@ class SyncEngine : public QObject
 {
     Q_OBJECT
 public:
+    // (321) Podcasts the sync must not remove (the player holds one of their episodes)
+    void setKeepPodcast(const std::function<bool(qint64)> &check) { m_keepPodcast = check; }
     enum Backend { Nextcloud, GpodderApi };
 
     SyncEngine(Database *database, FeedUpdater *updater, QObject *parent = nullptr);
@@ -80,6 +82,10 @@ signals:
     void progress(const QString &step);
     void finished(const SyncResult &result);
     void failed(const QString &error);
+    // (289) Another device unsubscribed: before and after the row is deleted,
+    // so the app can clean up like a local unsubscribe
+    void podcastRemoving(qint64 podcastId);
+    void podcastRemoved(qint64 podcastId, const QString &title);
 
 private:
     typedef std::function<void(const QByteArray &body)> Handler;
@@ -112,6 +118,9 @@ private:
     QString m_device;
     bool m_running = false;
     bool m_firstSync = false;
+    std::function<bool(qint64)> m_keepPodcast;
+    qint64 m_subsTimestamp = 0;
+    void subscriptionsDone();
     SyncResult m_result;
     QList<qint64> m_newPodcasts;
     QStringList m_uploadedAdds;

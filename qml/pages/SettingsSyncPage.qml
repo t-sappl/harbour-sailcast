@@ -13,6 +13,13 @@ Page {
     readonly property var backends: ["nextcloud", "gpodder"]
 
     property bool passwordLoaded: false
+    // (327) The password as stored (to see whether the field was changed)
+    property string storedPassword: ""
+    readonly property bool accountDirty: settingsVersion >= 0 && (!core.syncConfigured
+        || backendBox.currentIndex !== indexOf(backends, core.setting("sync.backend", "nextcloud"), 0)
+        || serverField.text.trim() !== core.setting("sync.server", "")
+        || userField.text.trim() !== core.setting("sync.user", "")
+        || (passwordLoaded && passwordField.text !== storedPassword))
     property string lastSyncText: lastSync()
 
     function lastSync() {
@@ -44,7 +51,7 @@ Page {
         if (core.syncConfigured) {
             core.removeSyncAccount()
             secretStore.remove("sync-password")
-            appWindow.showMessage(qsTr("Server type changed - the previous account was removed"))
+            appWindow.showMessage(qsTr("Server type changed – the previous account was removed"))
         }
         serverField.text = ""
         userField.text = ""
@@ -61,6 +68,7 @@ Page {
         serverField.text = core.setting("sync.server", "")
         userField.text = user
         passwordField.text = password
+        page.storedPassword = password
         secretStore.store("sync-password", password)
         core.sync(password)
     }
@@ -88,6 +96,7 @@ Page {
             if (name === "sync-password" && !page.passwordLoaded) {
                 page.passwordLoaded = true
                 if (ok) {
+                    page.storedPassword = value
                     passwordField.text = value
                 }
             }
@@ -120,9 +129,39 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
-                text: qsTr("Subscriptions and listening state are synchronized with other podcast apps (e.g. AntennaPod) through a Nextcloud with the app \"GPodder Sync\" or a gpodder.net compatible server. Folders, the playlist and per-podcast settings are not synchronized - they stay on this phone.")
+                color: Theme.secondaryColor
+                text: qsTr("Subscriptions and listening state are synchronized with other podcast apps (e.g. AntennaPod) through a Nextcloud with the app \"GPodder Sync\" or a gpodder.net compatible server. Folders, the playlist and per-podcast settings are not synchronized – they stay on this phone.")
             }
+
+            // (326, settings restructured) From General: when the feeds are
+            // updated and synchronized belongs here, not to the pages
+            TextSwitch {
+                text: qsTr("Update and sync at start")
+                description: qsTr("Otherwise only by hand: pull down → Update.")
+                checked: core.setting("start.update", "1") === "1"
+                automaticCheck: false
+                onClicked: {
+                    checked = !checked
+                    core.setSetting("start.update", checked ? "1" : "0")
+                }
+            }
+
+            // (327, Gemini) Both behaviour switches together, the account below
+            // "Sync und Update" (86): one pulley entry or two
+            TextSwitch {
+                visible: core.syncConfigured
+                text: qsTr("Sync and update together")
+                description: checked ? qsTr("\"Update\" in the pull-down menu first synchronizes, then updates the feeds.")
+                                     : qsTr("Two entries in the pull-down menu: \"Synchronize\" and \"Update\" (feeds only).")
+                checked: appWindow.syncWithUpdate
+                automaticCheck: false
+                onClicked: {
+                    appWindow.syncWithUpdate = !appWindow.syncWithUpdate
+                    core.setSetting("sync.withUpdate", appWindow.syncWithUpdate ? "1" : "0")
+                }
+            }
+
+            SectionHeader { text: qsTr("Account") }
 
             ComboBox {
                 id: backendBox
@@ -140,7 +179,7 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
+                color: Theme.secondaryColor
                 text: qsTr("gpodder.net or a server with the same API (e.g. oPodSync, mygpo): server address, user name and password of your account there.")
             }
 
@@ -176,7 +215,7 @@ Page {
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("Waiting for the login in the browser …")
-                    color: Theme.secondaryHighlightColor
+                    color: Theme.secondaryColor
                     font.pixelSize: Theme.fontSizeSmall
                 }
             }
@@ -192,9 +231,11 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
+                color: Theme.secondaryColor
                 text: qsTr("Or enter the user name and an app password by hand:")
             }
+
+            Item { width: 1; height: Theme.paddingMedium }
 
             TextField {
                 id: userField
@@ -235,20 +276,35 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
-                text: qsTr("Nextcloud: Settings → Security → Create new app password. The password is stored encrypted with Sailfish Secrets. Another server or user starts over with a first sync (nothing is lost on the server).")
+                color: Theme.secondaryColor
+                text: qsTr("Create it in Nextcloud under Settings → Security; it is stored encrypted.")
             }
 
             Item { width: 1; height: Theme.paddingMedium }
-Flow {
 
+            // (327, Gemini) Status left and small as on the backup page (was
+            // centred at the bottom)
+            Label {
+                visible: core.syncConfigured
                 x: Theme.horizontalPageMargin
-
                 width: parent.width - 2 * Theme.horizontalPageMargin
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.fontSizeExtraSmall
+                color: Theme.secondaryColor
+                text: core.syncing ? qsTr("Synchronizing …") : qsTr("Last sync: %1").arg(page.lastSyncText)
+            }
 
+            Item { width: 1; height: Theme.paddingSmall }
+
+            Flow {
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
                 spacing: Theme.paddingMedium
+                // (327, Gemini) Save only when something was changed (or no
+                // account yet); otherwise "Synchronize now" - not both
                 ActionPill {
                     kind: "primary"
+                    visible: page.accountDirty
                     text: qsTr("Save and synchronize")
                     enabled: !core.syncing && serverField.text.trim().length > 0
                              && userField.text.trim().length > 0 && passwordField.text.length > 0
@@ -259,8 +315,8 @@ Flow {
                 }
                 // Synchronize with the stored account (86) - without saving
                 ActionPill {
-                    kind: "secondary"
-                    visible: core.syncConfigured
+                    kind: "primary"
+                    visible: core.syncConfigured && !page.accountDirty
                     text: qsTr("Synchronize now")
                     enabled: !core.syncing
                     onClicked: {
@@ -286,29 +342,15 @@ Flow {
                 }
             }
 
-            // "Sync und Update" (86): one pulley entry or two
-            TextSwitch {
-                visible: core.syncConfigured
-                text: qsTr("Sync and update together")
-                description: checked ? qsTr("\"Update\" in the pull-down menu first synchronizes, then updates the feeds.")
-                                     : qsTr("Two entries in the pull-down menu: \"Synchronize\" and \"Update\" (feeds only).")
-                checked: appWindow.syncWithUpdate
-                automaticCheck: false
-                onClicked: {
-                    appWindow.syncWithUpdate = !appWindow.syncWithUpdate
-                    core.setSetting("sync.withUpdate", appWindow.syncWithUpdate ? "1" : "0")
-                }
-            }
 
             Label {
                 visible: core.syncConfigured
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
-                horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.highlightColor
-                text: core.syncing ? qsTr("Synchronizing …") : qsTr("Last sync: %1").arg(page.lastSyncText)
+                font.pixelSize: Theme.fontSizeExtraSmall
+                color: Theme.secondaryColor
+                text: qsTr("\"Remove account\" deletes the password and unsent changes on this phone only; the server and your subscriptions stay.")
             }
         }
 

@@ -362,8 +362,8 @@ Page {
                 // bar hint "playerBar", 1.2 uses "playerBar12"): say it is new
                 appWindow.showHint("discoverRing",
                                    core.setting("hint.playerBar", "0") === "1"
-                                   ? qsTr("New in 1.2: Discover – suggestions, trends and new podcasts. A swipe page; to take it out: Settings → General")
-                                   : qsTr("Discover is one of the swipe pages – to take it out: Settings → General"), page)
+                                   ? qsTr("New in 1.2: Discover – suggestions, trends and new podcasts. A swipe page; to take it out: Settings → Pages and navigation")
+                                   : qsTr("Discover is one of the swipe pages – to take it out: Settings → Pages and navigation"), page)
             }
         }
         if (status !== PageStatus.Active || !discovering) {
@@ -1092,7 +1092,7 @@ Page {
                         if (page.fallbackTerm.indexOf("itunes:") === 0) {
                             parts.push(qsTr("Its podcast in Podcast Index below."))
                         } else if (addressRow.noPodcast && page.fallbackTerm.length > 1 && core.searchAvailable) {
-                            parts.push(qsTr("Search results for \"%1\" below - tap to check the address again").arg(page.fallbackTerm))
+                            parts.push(qsTr("Search results for \"%1\" below – tap to check the address again").arg(page.fallbackTerm))
                         }
                         return parts.join(" ")
                     }
@@ -1238,7 +1238,7 @@ Page {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.secondaryHighlightColor
-                text: qsTr("Or enter the address of a feed or of the podcast's website, e.g. \"cre.fm\" or \"https://example.com/feed.xml\" - it is checked before subscribing.")
+                text: qsTr("Or enter the address of a feed or of the podcast's website, e.g. \"cre.fm\" or \"https://example.com/feed.xml\" – it is checked before subscribing.")
             }
             Label {
                 width: parent.width
@@ -1351,7 +1351,7 @@ Page {
             enabled: !page.searching && page.rows.length === 0 && page.searchText.trim().length > 0
                      && (!page.textIsAddress || ((page.probeState === "failed" || page.probeState === "empty" || page.probeState === "apple") && page.searchedTerm.length > 0))
                      && (!core.searchAvailable || page.error.length > 0 || page.searchedTerm.length > 0)
-            text: !core.searchAvailable ? qsTr("Search not available - enter a feed address")
+            text: !core.searchAvailable ? qsTr("Search not available – enter a feed address")
                 : (page.error.length > 0 ? qsTr("Search failed") : qsTr("Nothing found"))
             hintText: !core.searchAvailable ? qsTr("This build has no Podcast Index key (podcastindex.pri)")
                 : page.error
@@ -1420,7 +1420,7 @@ Page {
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: Theme.secondaryHighlightColor
-                    text: qsTr("Tap what you want to hear more of - \"For you\" follows it.")
+                    text: qsTr("Tap what you want to hear more of – \"For you\" follows it.")
                 }
                 Flow {
                     width: parent.width
@@ -1561,7 +1561,7 @@ Page {
                                                                                                  : qsTr("fyyd cannot be reached"))
                                                       : qsTr("Nothing new right now"))
                 : qsTr("Nothing trending")
-            hintText: page.tab === "forYou" ? qsTr("They grow with what you listen to - or set your interests above.")
+            hintText: page.tab === "forYou" ? qsTr("They grow with what you listen to – or set your interests above.")
                     : page.tab === "new" ? (page.newState === "failed" ? page.newError
                                             : page.newLanguage === "en" ? qsTr("Trailers of new and noteworthy shows, chosen by Podnews.")
                                                                         : qsTr("First episodes of German podcasts new on fyyd, chosen by Hörsuppe."))

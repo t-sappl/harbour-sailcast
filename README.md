@@ -11,11 +11,12 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 <img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
 <img src="screenshots/video.png" width="19%" alt="Video podcast on the episode page">
 <img src="screenshots/discover.png" width="19%" alt="Discover: For you">
-<img src="screenshots/add-podcast.png" width="19%" alt="Add podcast: listen without subscribing, statistics, similar podcasts">
-<img src="screenshots/podcast-page.png" width="19%" alt="Podcast page with groups and statistics">
+<img src="screenshots/add-podcast.png" width="19%" alt="Add podcast: folder suggestion, listen without subscribing, statistics">
+<img src="screenshots/podcast-page.png" width="19%" alt="Podcast page grouped by month, showing only unplayed">
 </p>
 <p>
 <img src="screenshots/episode-page.png" width="19%" alt="Episode page with bookmarks and chapters">
+<img src="screenshots/playlist.png" width="19%" alt="Playlist with now playing, statistics and recently heard">
 <img src="screenshots/player-bar.png" width="19%" alt="Playlist with the expanded player bar">
 <img src="screenshots/lock-screen.png" width="19%" alt="Lock screen with chapter and cover">
 </p>
@@ -51,7 +52,24 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
   subscribed, most unplayed; press and hold the skip buttons for 1 min steps;
   mark everything as played (all or all but the newest per podcast); the
   global speed in the settings; a playlist button in every episode row
-- **New episodes, Podcasts, Playlist** as three pages to swipe between (start page selectable)
+- **New episodes** (1.4): "New" – what came with the updates – and "All
+  unplayed"; set an episode aside without marking it played, "Clear New";
+  by date or grouped by podcast (groups fold and unfold); ➕ also downloads
+  the episode; per podcast "Show in New episodes"
+- **Downloads** (1.4): sorted by last downloaded, newest, oldest, podcast or
+  largest first, the real size in every row; select several and delete them
+  in one go; "Delete played" tile; archived downloads apart; optionally a
+  swipe page of its own
+- **Playlist** (1.4): sort (oldest, newest, shortest, last downloaded, by
+  podcast, Smart Shuffle), "Keep sorted", pins for episodes moved by hand,
+  auto-add per podcast (to the end or the front, with a limit)
+- **Listening statistics** (1.4): a line on the Podcasts page ("7 days:
+  3 h 20 min listened · 5 days in a row"); 7 days / 30 days / all – time
+  listened and saved, course, a year of activity, days in a row, weekdays,
+  records, folders, categories and a ranking of your podcasts
+- **Share my podcasts** (1.4): one web page with your podcasts by folder,
+  covers, latest episodes, an OPML file and search links – to send on or keep
+- **New episodes, Podcasts, Playlist** (and optionally Discover and Downloads) as pages to swipe between (start page selectable)
 - **Folders** for podcasts – collapsible, in the grid and the list, kept in OPML exports
 - **Podcast search** through [Podcast Index](https://podcastindex.org) with
   details (description, categories, website), or add a feed address (checked
@@ -60,7 +78,7 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 - **Share links to Sailcast** from the browser or other apps to add a podcast
 - **Search on the phone** in your podcasts, episode titles (optionally the descriptions) and bookmarks
   ("Search"); new podcasts are found in "Discover"
-- **Playlist** with drag sorting, "Now playing" and "Continue listening"
+- **Playlist** with drag sorting, "Now playing", "Continue listening" and "Recently finished"
 - **Player** on the episode page with a labelled toolbar (speed, download,
   playlist, bookmark, sleep timer): chapters (Podlove and `podcast:chapters`),
   skip times; lock screen and headset buttons (chapters, episodes or skip)
@@ -111,7 +129,7 @@ backup to the Nextcloud of the sync account.
 2. Back up the archive: `rclone copy ~/Music/Podcasts <remote>:Podcast-Archive`
 3. Stream from the cloud: run
    `rclone serve http <remote>:Podcast-Archive --addr 127.0.0.1:8080 --read-only`
-   on the phone and set Settings → Downloads and archive → cloud archive address to
+   on the phone and set Settings → Downloads and storage → Cloud archive address to
    `http://127.0.0.1:8080/`. Sailcast plays an episode from the local file, the
    original address or – if both are gone – from the cloud archive.
 

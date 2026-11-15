@@ -129,6 +129,12 @@ Column {
         Component {
             id: folderMenu
             ContextMenu {
+                // (329) From the pulley of the Podcasts page (only there while
+                // there is no folder yet): name, then its podcasts
+                MenuItem {
+                    text: qsTr("New folder …")
+                    onClicked: appWindow.newFolder()
+                }
                 MenuItem {
                     text: qsTr("Choose podcasts …")
                     onClicked: pageStack.push(Qt.resolvedUrl("pages/FolderPodcastsPage.qml"),

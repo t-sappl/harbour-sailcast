@@ -20,7 +20,41 @@ ComboBox {
         return 0
     }
 
+    // (327, Thomas: while subscribing, after a new folder the folder list
+    // came again without it; "Cancel" showed the folder already chosen) With
+    // many folders Silica shows the choice as a page of its own, which is
+    // still being closed when "New folder …" is tapped. The name dialog was
+    // pushed on top of it, and after saving the old list page came back.
+    // Now the dialog waits until the page with this box is on top again.
+    function ownerPage() {
+        var p = box.parent
+        while (p && !p.hasOwnProperty("backNavigation")) {
+            p = p.parent
+        }
+        return p
+    }
+
+    property int _waits: 0
+    Timer {
+        id: newFolderTimer
+        interval: 50
+        onTriggered: {
+            var owner = box.ownerPage()
+            if ((pageStack.busy || (owner && pageStack.currentPage !== owner)) && box._waits < 60) {
+                box._waits += 1
+                restart()
+                return
+            }
+            box._openNameDialog()
+        }
+    }
+
     function newFolder() {
+        _waits = 0
+        newFolderTimer.restart()
+    }
+
+    function _openNameDialog() {
         var dialog = pageStack.push(Qt.resolvedUrl("pages/FolderNameDialog.qml"))
         dialog.accepted.connect(function() {
             var id = core.createFolder(dialog.folderName)

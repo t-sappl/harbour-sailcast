@@ -178,7 +178,22 @@ Page {
     property real downloadProgress: core.downloadProgress(episodeId)
     property bool queued: core.isQueued(episodeId)
     // Bookmarks of this episode (47)
-    property var bookmarkList: core.bookmarks(episodeId)
+    property var bookmarkList: episodeId > 0 ? core.bookmarks(episodeId) : []
+    // (291, Thomas 9 Nov: the page opened empty - no title, all bookmarks)
+    // The values above are replaced by handlers (assignments break the
+    // bindings); a handler running before the pushed id arrived left the
+    // data of the default id. Refreshed whenever the id changes.
+    onEpisodeIdChanged: {
+        if (episodeId > 0) {
+            episode = core.episode(episodeId)
+            bookmarkList = core.bookmarks(episodeId)
+            downloading = core.isDownloading(episodeId)
+            downloadProgress = core.downloadProgress(episodeId)
+            queued = core.isQueued(episodeId)
+        } else {
+            bookmarkList = []
+        }
+    }
 
     // The bookmark is stored right away; a small panel at the bottom then
     // offers its name and note (89) - tap beside it or swipe it down when
@@ -202,6 +217,7 @@ Page {
     readonly property bool showHints: _hintCount < 5
     property int _hintCount: parseInt(core.setting("hint.toolbar", "0"))
     Component.onCompleted: {
+        console.warn("EpisodePage opened with id " + episodeId)
         sharePosition = shownPosition
         core.setSetting("hint.toolbar", "" + (_hintCount + 1))
         refreshUpNext()
@@ -237,7 +253,7 @@ Page {
         }
         onQueueChanged: page.queued = core.isQueued(page.episodeId)
         onBookmarksChanged: {
-            if (episodeId === 0 || episodeId === page.episodeId) {
+            if (page.episodeId > 0 && (episodeId === 0 || episodeId === page.episodeId)) {
                 page.bookmarkList = core.bookmarks(page.episodeId)
             }
         }
@@ -456,7 +472,12 @@ Page {
                         }
                         Label {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: page.pictureShown ? qsTr("Sound only") : qsTr("Video")
+                            // (274) "saves data" only when the feed has an audio
+                            // version (then the audio file replaces the video
+                            // stream); else only the picture is switched off
+                            text: page.pictureShown
+                                  ? (page.episode.hasVideoAlternate === true ? qsTr("Sound only · saves data") : qsTr("Sound only"))
+                                  : qsTr("Video")
                             font.pixelSize: Theme.fontSizeExtraSmall
                             color: videoSwitch.highlighted ? Theme.highlightColor : Theme.primaryColor
                         }
@@ -526,6 +547,11 @@ Page {
                     text: {
                         var e = page.episode
                         var parts = [TimeFormat.day(e.published, qsTr("today"), qsTr("yesterday"))]
+                        // (274) What the camera stands for: HLS is a stream
+                        // ("HLS" is a word for insiders), a file is plain
+                        if (page.isVideoEpisode && e.videoKind) {
+                            parts.unshift(e.videoKind === "stream" ? qsTr("Video stream") : qsTr("Video"))
+                        }
                         // Season / episode number from the feed (83)
                         if (e.episodeNumber > 0) {
                             parts.unshift(e.season > 0 ? qsTr("S%1 E%2").arg(e.season).arg(e.episodeNumber)
@@ -534,10 +560,15 @@ Page {
                         if (e.duration > 0) {
                             parts.push(TimeFormat.length(e.duration, qsTr("%1 h %2 min"), qsTr("%1 min")))
                         }
+                        // (323, blind test) The episode playing: the live position
+                        // (the saved one was still the old one: "12 min left"
+                        // beside a position of 0:03), as in the lists
+                        var live = page.isCurrent && player.duration > 0 && player.position > 0
+                        var left = live ? player.duration - player.position : e.remaining
                         if (e.played) {
                             parts.push(qsTr("played"))
-                        } else if (e.position > 0 && e.remaining > 0) {
-                            parts.push(qsTr("%1 left").arg(TimeFormat.length(e.remaining, qsTr("%1 h %2 min"), qsTr("%1 min"))))
+                        } else if ((live || e.position > 0) && left > 0) {
+                            parts.push(qsTr("%1 left").arg(TimeFormat.length(left, qsTr("%1 h %2 min"), qsTr("%1 min"))))
                         }
                         // (192) "downloaded" and "in playlist" are shown by the
                         // toolbar just below (delete / check mark) - the line wrapped
@@ -598,7 +629,9 @@ Page {
                         if (page.downloading) {
                             core.cancelDownload(page.episodeId)
                         } else if (page.episode.downloaded) {
-                            remorse.execute(qsTr("Deleting download"), function() { core.deleteDownload(page.episodeId) })
+                            // (320, code review) The page follows the player: the id is fixed now
+                            var deleteId = page.episodeId
+                            remorse.execute(qsTr("Deleting download"), function() { core.deleteDownload(deleteId) })
                         } else {
                             appWindow.requestDownload(page.episodeId)
                         }
@@ -613,10 +646,10 @@ Page {
                     // "+" / check mark (the theme's looked like a play button)
                     playlistMark: page.queued ? 1 : 0
                     label: page.showHints ? qsTr("Playlist") : ""
-                    HoldNameBubble { id: queueBubble; attached: true; name: page.queued ? qsTr("Remove from playlist") : qsTr("Add to end of playlist") }
+                    HoldNameBubble { id: queueBubble; attached: true; name: page.queued ? qsTr("Remove from playlist") : (core.setting("playlist.addTo", "end") === "next" ? qsTr("Add to playlist as next") : qsTr("Add to end of playlist")) }
                     onClicked: {
                         if (queueBubble.takeHeld()) return
-                        page.queued ? core.queueRemove(page.episodeId) : core.queueAdd(page.episodeId, false)
+                        page.queued ? core.queueRemove(page.episodeId) : core.queueAddDefault(page.episodeId)
                     }
                 }
                 // Bookmark at the current position (47)

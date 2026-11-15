@@ -222,7 +222,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.highlightColor
-                text: qsTr("No Wi-Fi connection - the episodes would be loaded over the mobile connection.")
+                text: qsTr("No Wi-Fi connection – the episodes would be loaded over the mobile connection.")
             }
             Item { width: 1; height: Theme.paddingSmall }
         }

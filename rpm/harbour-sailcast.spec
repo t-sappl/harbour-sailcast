@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.3
+Version:    1.4
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -59,6 +59,23 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Sun Nov 15 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.4-1
+- New episodes rebuilt: "New" and "All unplayed", set an episode aside
+  without marking it played, "Clear New", by date or grouped by podcast,
+  the playlist button also downloads, per podcast "Show in New
+  episodes". Downloads:
+  sorting incl. largest first, real file size, select several and delete
+  them in one go, "Delete played" tile, archived downloads apart,
+  optionally a swipe page. Playlist: sort (incl. Smart Shuffle), keep
+  sorted, pins, auto-add per podcast. Listening statistics: a line on
+  the Podcasts page and a page with time listened and saved, course, a
+  year of activity, days in a row, records, categories and a ranking.
+  Share my podcasts: one web page with your podcasts, latest episodes
+  and an OPML file. Settings regrouped into seven pages by purpose;
+  shorter pull-down menus. Player: resumes correctly after a long pause,
+  many fixes from two code reviews. Note: a backup made with 1.4 cannot
+  be opened by 1.3.
+
 * Fri Nov 06 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.3-1
 - First release on OpenRepos.
   Video podcasts: picture on the episode page, full screen, "sound only",

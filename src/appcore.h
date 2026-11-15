@@ -14,6 +14,7 @@
 #include "fyyd.h"
 #include "podnews.h"
 #include "feedtypes.h"
+#include "htmlexport.h"
 
 struct ForYouProfile;
 struct EpisodeRow;
@@ -33,6 +34,7 @@ class QTimer;
 struct ArchiveResult;
 class Archiver;
 class ChaptersLoader;
+struct PodcastRow;
 class Database;
 class DownloadManager;
 class FeedUpdater;
@@ -229,6 +231,13 @@ public:
     // on the phone), rhythm (text, "" = too few episodes), next (estimated
     // next episode, ms, 0 = none - only with a regular rhythm and not overdue)
     Q_INVOKABLE QVariantMap podcastStats(int podcastId) const;
+    // (297) Statistics page: days 7 / 30 / 0 = all; see the map in appcore.cpp
+    Q_INVOKABLE QVariantMap listeningStatistics(int days) const;
+    // (329) The line of the Podcasts page: seconds of the last 7 days (as the
+    // chip "7 days"), of the whole log, current days in a row; cheap
+    Q_INVOKABLE QVariantMap listeningOverview() const;
+    Q_INVOKABLE void resetListeningStatistics();
+    Q_INVOKABLE void resetListeningOf(int podcastId);
     // (163) Publishing rhythm from episode dates (Unix seconds, any order):
     // {rhythm, next (ms)} - see podcastStats; also for "Add podcast"
     static QVariantMap rhythmOf(QList<qint64> dates);
@@ -236,6 +245,29 @@ public:
     Q_INVOKABLE void markUnplayed(int episodeId);
     // (253) Out of "New episodes", stays unplayed
     Q_INVOKABLE void removeFromNew(int episodeId);
+    // (293) All of them (New episodes list, pulley)
+    // (322) upToEpisodeId: only what was there when "Clear New" was tapped (newEpisodesSnapshot)
+    Q_INVOKABLE void removeAllFromNew(int upToEpisodeId = -1);
+    Q_INVOKABLE int newEpisodesSnapshot() const;
+    // (304) Real number for the chip "New (n)" (the list stops at 100)
+    Q_INVOKABLE int homeNewCount() const;
+    // (302) Undo of "Set aside": the flag goes back
+    Q_INVOKABLE void restoreNew(int episodeId);
+    // (302) The user took the episode up (download started by hand): the
+    // "new" flag goes; to the playlist it goes in queueAddDefault/Placed
+    Q_INVOKABLE void noteDownloadByUser(int episodeId);
+    // (309) Episode put into the playlist by hand: loaded too (setting
+    // "playlist.download", default on; Wi-Fi rule, no video without Wi-Fi)
+    void downloadForPlaylist(int episodeId);
+    // (309) After an update with Wi-Fi: playlist episodes not loaded yet
+    void downloadPlaylistCatchUp();
+    // (310) Added by hand but not loaded then (no Wi-Fi): setting
+    // "playlist.pendingDownload", only these are caught up
+    QSet<int> pendingPlaylistDownloads() const;
+    void storePendingPlaylistDownloads(const QSet<int> &ids);
+    // (302) Podcasts not shown on the page "New episodes" (both views)
+    Q_INVOKABLE bool hiddenFromNew(int podcastId) const;
+    Q_INVOKABLE void setHiddenFromNew(int podcastId, bool hidden);
     Q_INVOKABLE void markAllPlayed(int podcastId);
     // (246) Settings: every podcast (archived ones too, not provisional),
     // optionally all but the newest episode of each; one message
@@ -243,6 +275,11 @@ public:
     // (248) For the dialog: podcasts with something to mark - podcastId,
     // title, count (what markEverythingPlayed would mark), archived
     Q_INVOKABLE QVariantList markablePodcasts(bool keepNewest) const;
+    // (274) For "Download unplayed episodes": per podcast (ended and
+    // listened-to-only ones left out) the newest `newest` unplayed episodes
+    // not downloaded yet (0 = all) - podcastId, title, count, bytes (as
+    // declared in the feed, often incomplete), ids
+    Q_INVOKABLE QVariantList unplayedToDownload(int newest) const;
     // Called by the player on pause, stop, seek and every 30 s
     Q_INVOKABLE void recordPlayback(int episodeId, int started, int position, int total);
     // (244) Listening log: seconds really listened (wall clock) since the
@@ -273,6 +310,13 @@ public:
     Q_INVOKABLE void cancelAllDownloads();
     // Files inside the archive folder are not deleted here
     Q_INVOKABLE void deleteDownload(int episodeId);
+    // (313) Several at once (selection mode): one message at the end
+    // about the ones that stay; returns the number deleted
+    Q_INVOKABLE int deleteDownloads(const QVariantList &episodeIds);
+    // (323) All downloads of a podcast that can go at once: {count, bytes};
+    // not the archive, not the episode in the player, not running ones
+    Q_INVOKABLE QVariantMap deletableDownloads(int podcastId) const;
+    Q_INVOKABLE int deletePodcastDownloads(int podcastId);
     // Moves a downloaded episode into the archive folder in Music (120)
     Q_INVOKABLE void keepEpisode(int episodeId);
     // All downloads of a podcast into its archive folder (121); returns the number
@@ -341,11 +385,34 @@ public:
 
     // --- Playlist ---
     Q_INVOKABLE void queueAdd(int episodeId, bool next);
+    // (277) Context menu "Play next" / "Add to end": explicit place; pinned
+    // there with "Sorted: keep"
+    Q_INVOKABLE void queueAddPlaced(int episodeId, bool next);
+    // (277) Releases the pin of one episode (re-sorts with "Sorted: keep")
+    Q_INVOKABLE void queueUnpin(int episodeId);
     Q_INVOKABLE void queueRemove(int episodeId);
     Q_INVOKABLE void queueMove(int episodeId, int newIndex);
     // Drag and drop: the shown order of the playlist (ids); episodes left out
     // (the one playing) stay in front
-    Q_INVOKABLE void queueSetOrder(const QVariantList &episodeIds);
+    // (275) movedId: the episode the user dragged - it becomes pinned
+    Q_INVOKABLE void queueSetOrder(const QVariantList &episodeIds, int movedId = -1);
+    // (275) Sorts the playlist once: "oldest", "newest", "shortest",
+    // "lastDownloaded", "byPodcast" or "smartShuffle" (podcasts in turn,
+    // the order within a podcast as set for it). The episode playing and
+    // pinned episodes stay at their place. With keep, new episodes added
+    // to the end later are put in the matching place (the choice is stored).
+    Q_INVOKABLE void queueSort(const QString &mode, bool keep);
+    // (276) The playlist button of the rows: to the end of the playlist or
+    // next after the episode playing, as set in Settings → Playback
+    // ("playlist.addTo": "end" = default, "next"). With "Sorted: keep" on the
+    // sorting decides the place (the explicit "Play next" of the context
+    // menu stays explicit).
+    Q_INVOKABLE void queueAddDefault(int episodeId);
+    Q_INVOKABLE bool isPinned(int episodeId) const;
+    // (286) Put into the playlist by Auto-Add (symbol at the handle)
+    Q_INVOKABLE bool isAutoAdded(int episodeId) const;
+    Q_INVOKABLE int pinnedCount() const;
+    Q_INVOKABLE void queueClearPins();
     Q_INVOKABLE void queueClear();
     Q_INVOKABLE bool isQueued(int episodeId) const;
     // Removes the finished episode from the playlist and returns the next
@@ -358,6 +425,11 @@ public:
     // (167) The next playlist episodes after the current one (at most
     // count) - "Up next" in the expanded player bar
     Q_INVOKABLE QVariantList upNext(int currentEpisodeId, int count) const;
+    // (275) "After an episode outside the playlist: play the next episode of
+    // this podcast": the next unplayed episode after the finished one in the
+    // podcast's own order (oldest or newest first, as set for it); -1 if
+    // there is none
+    Q_INVOKABLE int nextEpisodeOfPodcast(int finishedEpisodeId) const;
     // Number of episodes in progress, without the given one (the current)
     Q_INVOKABLE int inProgressCount(int excludeEpisodeId) const;
 
@@ -465,6 +537,14 @@ public:
     // Write to Downloads; return the path, empty on error (with a message)
     // folderIds (45): only these folders (0 = "Other podcasts"); empty = all
     Q_INVOKABLE QString exportOpml(const QVariantList &folderIds = QVariantList());
+    // (294) One web page of the subscriptions (folders, covers, last episodes
+    // with chapters and bookmarks, links, OPML inside); to Downloads.
+    // Feeds with a login or a key in the address are left out. With chapters
+    // the missing ones are loaded first (progress, cancel = write what is
+    // there). options: descriptions, episodes, chapters, bookmarks, statistics
+    Q_INVOKABLE QVariantMap htmlExportPreview(const QVariantList &folderIds = QVariantList()) const;
+    Q_INVOKABLE void startHtmlExport(const QVariantList &folderIds, const QVariantMap &options);
+    Q_INVOKABLE void cancelHtmlExport();
     Q_INVOKABLE QString exportDatabase();
 
     // --- Automatic database backup (83) ---
@@ -496,11 +576,18 @@ public:
     Q_INVOKABLE bool restoreBackup(const QString &path);
 
 signals:
+    void htmlExportProgress(int done, int total);
+    // building the page after the chapters (slices, no cancel)
+    void htmlExportBuilding(int done, int total);
+    // path empty = failed; cancelled = written with what was loaded
+    void htmlExportFinished(const QString &path, bool cancelled);
     void updatingChanged();
     void syncingChanged();
     void settingsChanged();
     void dataChanged();
     void episodeChanged(int episodeId);
+    // (320) Marked as played / states from the sync: the player checks its episode
+    void listenStateChanged();
     void queueChanged();
     // The running/waiting downloads changed (started, finished, cancelled)
     void downloadsChanged();
@@ -530,6 +617,8 @@ signals:
     void feedChecked(const QVariantMap &result);
     // Short text for the message banner
     void message(const QString &text);
+    // (320) A podcast went by the sync: its login password in the secret store goes with it
+    void podcastForgotten(int podcastId);
     void browserLoginActiveChanged();
     void devicesListed(const QVariantList &devices);
     void devicesFailed(const QString &error);
@@ -556,17 +645,28 @@ private:
     void mergeCaseDuplicates();
     bool ensureMergeBackup();
     bool isKept(const EpisodeRow &e) const;
+    void forgetPendingPlaylistDownload(int episodeId);
+    QStringList oldArchiveRoots() const;
+    void emitUpdateSummary();
+    bool storageAllows(qint64 bytes, bool quiet);
+    void saveResumable();
+    void forgetResumable(int episodeId);
+    void resumeDownloads();
+    QList<EpisodeRow> updateEpisodes(qint64 podcastId, int newEpisodes) const;
     // (244) The video version of an episode to play: its podcast prefers
     // video ("podcast.<id>.version" = "video") and the feed offers one
     ParsedAlternate videoAlternate(const EpisodeRow &e) const;
     bool podcastInMusic(qint64 podcastId) const;
     QList<EpisodeRow> misplacedEpisodes(qint64 podcastId) const;
+    QList<EpisodeRow> deletableDownloadRows(int podcastId) const;
+    QStringList categoryLabelsIn(const QStringList &categories, const QList<FyydCategory> &tree) const;
     void reloadQueue();
     void autoDownload(qint64 podcastId, int newEpisodes);
     void onArchiveFinished(const ArchiveResult &result);
     // episodes.json of archived podcasts is written again some time after
     // their listening state changed (and when the app closes)
     void archiveStateChanged(int episodeId);
+    void flushArchiveMetadata(qint64 podcastId);
     void writeArchiveMetadata();
     void cleanupOnStart();
     // Per-podcast "delete played downloads" (117): id -> days (-1 never)
@@ -583,6 +683,7 @@ private:
     // After episodes became played: out of the playlist (24) and, with
     // "cleanup.days" = 0, their downloads deleted right away
     void afterPlayed();
+    void afterMarkedPlayed();
     void cleanupRightAfterListening();
     void markImportedOlder();
 
@@ -592,6 +693,22 @@ private:
     DownloadManager *m_downloads;
     Archiver *m_archiver;
     ChaptersLoader *m_chapters;
+    // (294) HTML export: plan (which podcasts), build one podcast, work in slices
+    struct HtmlExportJob;
+    void deleteHtmlJob();
+    void planHtmlExport(const QVariantList &folderIds, HtmlExportJob *job) const;
+    HtmlExport::Podcast buildHtmlPodcast(const PodcastRow &podcast, const QVariantMap &options) const;
+    void stepHtmlExport();
+    void writeHtmlExport();
+    HtmlExportJob *m_htmlJob = nullptr;
+    void finishHtmlExport(bool cancelled);
+    void fillHtmlStatistics(HtmlExport::Statistics *st, int level) const;
+    // (294) HTML export in progress
+    ChaptersLoader *m_htmlChapters = nullptr;
+    QVariantList m_htmlFolders;
+    QVariantMap m_htmlOptions;
+    int m_htmlTotal = 0;
+    int m_htmlDone = 0;
     FeedProbe *m_probe;
     PodcastIndex *m_index;
     // Discover (137): own instances - ForYou counts the answers of its own
@@ -655,6 +772,12 @@ private:
     WebDavBackup *m_webdav;
     bool m_webdavManual = false;
     QNetworkConfigurationManager *m_networkConfig = nullptr;
+    bool m_updateSummaryPending = false;           // (289) update ended while the sync ran
+    QSet<int> m_resumable;                          // (289) downloads to continue after a restart
+    bool m_closing = false;
+    bool m_lowSpaceTold = false;                    // (289) storage message already shown
+    bool m_networkReady = false;                    // (289) connection list complete
+    QList<QPair<qint64, int> > m_autoDeferred;      // (289) automatic downloads waiting for it
     QTimer *m_metadataTimer;
     QSet<qint64> m_metadataDirty;   // podcasts whose episodes.json is outdated
     QSet<int> m_cancelled;          // downloads cancelled here: no error message
@@ -678,6 +801,19 @@ private:
     static int linkSeconds(const QString &url);
     QHash<int, qreal> m_downloadProgress;
     QSet<int> m_queue;      // cached ids of the playlist
+    QSet<int> m_pinned;     // (275) pinned ones among them
+    QSet<int> m_autoAdded;  // (286) put there by Auto-Add (never together with a pin)
+    // (302) Episodes whose "new" flag went when the user put them into the playlist
+    // (this session): taking them out again brings the flag back
+    QSet<int> m_triageByPlaylist;
+    QSet<int> m_downloadByPlaylist;   // (309) started by "to the playlist"
+    void triageByUser(int episodeId, bool viaPlaylist);
+    // (275) Puts an episode just added to the end where "Sorted: keep" wants it
+    void placeSorted(int episodeId);
+    bool keepSorted() const;
+    void queueAddImpl(int episodeId, bool next, bool sortIn, bool pin, bool autoAdded = false);
+    // (275) Auto-Add per podcast after a feed update
+    void autoAddToPlaylist(qint64 podcastId, int newEpisodes);
 };
 
 #endif // APPCORE_H

@@ -18,7 +18,9 @@ HEADERS += \
     $$PWD/archiver.h \
     $$PWD/chaptersloader.h \
     $$PWD/database.h \
+    $$PWD/demostats.h \
     $$PWD/gpodderdevices.h \
+    $$PWD/htmlexport.h \
     $$PWD/nextcloudlogin.h \
     $$PWD/urlmask.h \
     $$PWD/downloadmanager.h \
@@ -46,7 +48,9 @@ SOURCES += \
     $$PWD/archiver.cpp \
     $$PWD/chaptersloader.cpp \
     $$PWD/database.cpp \
+    $$PWD/demostats.cpp \
     $$PWD/gpodderdevices.cpp \
+    $$PWD/htmlexport.cpp \
     $$PWD/nextcloudlogin.cpp \
     $$PWD/downloadmanager.cpp \
     $$PWD/feedparser.cpp \

@@ -19,6 +19,7 @@
 #include <QJsonObject>
 #include <QLocale>
 #include <QSaveFile>
+#include <QSqlQuery>
 #include <QSharedPointer>
 #include <QStandardPaths>
 #include <QStringList>
@@ -31,11 +32,14 @@
 #include "archiver.h"
 #include "chaptersloader.h"
 #include "database.h"
+#include "demostats.h"
 #include "downloadmanager.h"
 #include "feedparser.h"
 #include "feedprobe.h"
 #include "feedupdater.h"
 #include "foryou.h"
+#include "htmlexport.h"
+#include "urlmask.h"
 #include "fyyd.h"
 #include "gpodderimport.h"
 #include "opml.h"
@@ -218,6 +222,61 @@ int cmdExportOpml(Database &db, const QString &path)
         return 1;
     }
     out() << entries.size() << " feeds written to " << path << nl;
+    return 0;
+}
+
+int cmdExportHtml(Database &db, const QString &path)
+{
+    // (294) The page without covers and rhythm; feeds with a login or key are left out
+    const QList<PodcastRow> podcasts = db.podcasts();
+    const QList<FolderRow> folders = db.folders();
+    QList<HtmlExport::Folder> list;
+    int skipped = 0;
+    int count = 0;
+    for (int f = -1; f < folders.size(); ++f) {
+        HtmlExport::Folder folder;
+        folder.name = f < 0 ? QString() : folders.at(f).name;
+        const qint64 id = f < 0 ? 0 : folders.at(f).id;
+        for (int i = 0; i < podcasts.size(); ++i) {
+            const PodcastRow &p = podcasts.at(i);
+            bool known = false;
+            for (int k = 0; k < folders.size(); ++k) {
+                known = known || folders.at(k).id == p.folderId;
+            }
+            if ((f < 0 ? known : p.folderId != id) || p.provisional) {
+                continue;
+            }
+            if (!p.authUser.isEmpty() || UrlMask::maskText(p.url) != p.url) {
+                ++skipped;
+                continue;
+            }
+            HtmlExport::Podcast h;
+            h.title = p.title;
+            h.author = p.author;
+            h.language = p.language;
+            h.categories = p.categories;
+            h.description = p.description;
+            h.link = p.link;
+            h.feedUrl = p.url;
+            h.episodeCount = p.episodeCount;
+            folder.podcasts.append(h);
+            ++count;
+        }
+        folder.countText = QStringLiteral("%1 podcasts").arg(folder.podcasts.size());
+        list.append(folder);
+    }
+    HtmlExport::Options options;
+    options.labels.subtitle = QStringLiteral("%1 podcasts \u00b7 exported %2").arg(count)
+            .arg(QDate::currentDate().toString(QStringLiteral("d MMM yyyy")));
+    if (skipped > 0) {
+        options.labels.privateNote = QStringLiteral("%1 private feeds (with a password or a personal link) are not part of this page.").arg(skipped);
+    }
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly) || file.write(HtmlExport::build(list, options).toUtf8()) < 0 || !file.commit()) {
+        err() << "Export failed: " << path << nl;
+        return 1;
+    }
+    out() << count << " podcasts written to " << path << " (" << skipped << " private feeds left out)" << nl;
     return 0;
 }
 
@@ -842,6 +901,174 @@ int cmdAuth(Database &db, const QString &dbPath, qint64 id, const QString &user)
     return 0;
 }
 
+// (296) A copy of the database file next to it before the listening log is changed
+bool backupDatabase(Database &db, const QString &dbPath)
+{
+    db.checkpointForCopy();
+    QString target = dbPath + QStringLiteral(".bak");
+    if (QFile::exists(target)) {
+        target = dbPath + QStringLiteral(".bak-") + QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+    }
+    if (!QFile::copy(dbPath, target)) {
+        err() << "Cannot write the backup " << target << " - nothing changed." << nl;
+        return false;
+    }
+    out() << "Backup: " << target << nl;
+    return true;
+}
+
+void printListeningSummary(Database &db)
+{
+    const ListeningSummary s = db.listeningSummary();
+    out() << "Listening log: " << s.days << " days, " << QString::number(s.seconds / 3600.0, 'f', 1) << " h listened ("
+          << QString::number(s.mediaSeconds / 3600.0, 'f', 1) << " h of episodes), " << s.episodes
+          << " episodes, longest streak " << s.longestStreak << " days" << nl;
+    for (int i = 0; i < s.top.size(); ++i) {
+        out() << "  " << (i + 1) << ". " << s.top.at(i).first << "  "
+              << QString::number(s.top.at(i).second / 3600.0, 'f', 1) << " h" << nl;
+    }
+}
+
+// (314) One day of the listening log, per episode (checking a long day)
+int cmdListeningDay(Database &db, const QString &dayArg)
+{
+    const int day = dayArg.isEmpty() ? QDate::currentDate().toString(QStringLiteral("yyyyMMdd")).toInt()
+                                     : dayArg.toInt();
+    QSqlQuery q(db.handle());
+    q.prepare(QStringLiteral("SELECT l.episode_id, l.podcast_title, COALESCE(e.title, ''), l.seconds, l.media_seconds"
+                             " FROM listening_log l LEFT JOIN episodes e ON e.id = l.episode_id"
+                             " WHERE l.day = ? ORDER BY l.seconds DESC"));
+    q.addBindValue(day);
+    if (!q.exec()) {
+        err() << "Could not read the listening log." << nl;
+        return 1;
+    }
+    qint64 sum = 0;
+    out() << "Listening log of " << day << " (real time / episode time):" << nl;
+    while (q.next()) {
+        const qint64 secs = q.value(3).toLongLong();
+        sum += secs;
+        out() << "  " << QString::number(secs / 60).rightJustified(4) << " min / "
+              << QString::number(q.value(4).toLongLong() / 60).rightJustified(4) << " min  "
+              << q.value(1).toString() << " - " << q.value(2).toString() << " [" << q.value(0).toLongLong() << "]" << nl;
+    }
+    out() << "Total: " << sum / 3600 << " h " << (sum % 3600) / 60 << " min" << nl;
+    return 0;
+}
+
+int cmdClearStats(Database &db, const QString &dbPath)
+{
+    if (!backupDatabase(db, dbPath)) {
+        return 1;
+    }
+    if (!db.replaceListeningLog(QList<ListeningEntry>())) {
+        err() << "Could not clear the listening log." << nl;
+        return 1;
+    }
+    out() << "The listening log is empty." << nl;
+    return 0;
+}
+
+// (296) Made-up listening log from the real podcasts (for screenshots)
+int cmdSeedDemoStats(Database &db, const QString &dbPath, const QString &weightsFile, const QString &templateFile,
+                     int months, double hours, unsigned seed)
+{
+    QList<DemoStats::Podcast> podcasts;
+    const QHash<qint64, qint64> real = db.listeningByPodcast();
+    qint64 realTotal = 0;
+    const QList<PodcastRow> rows = db.podcasts();
+    for (const PodcastRow &p : rows) {
+        if (p.provisional) {
+            continue;
+        }
+        DemoStats::Podcast dp;
+        dp.id = p.id;
+        dp.title = p.title;
+        const QList<EpisodeRow> episodes = db.episodes(p.id, -1, Database::AllEpisodes, true);
+        for (const EpisodeRow &e : episodes) {
+            DemoStats::Episode de;
+            de.id = e.id;
+            de.duration = e.duration;
+            dp.episodes << de;
+        }
+        podcasts << dp;
+        realTotal += real.value(p.id);
+    }
+    if (podcasts.isEmpty()) {
+        err() << "The database has no subscribed podcasts." << nl;
+        return 1;
+    }
+    // Weights: from the real listening if there is some, else a made-up spread
+    DemoStats::defaultWeights(&podcasts, seed);
+    if (realTotal > 0) {
+        for (DemoStats::Podcast &dp : podcasts) {
+            const double share = 100.0 * double(real.value(dp.id)) / double(realTotal);
+            if (share > 0) {
+                dp.weight = share;
+            }
+        }
+    }
+    if (!templateFile.isEmpty()) {
+        QSaveFile file(templateFile);
+        if (!file.open(QIODevice::WriteOnly) || file.write(DemoStats::weightsTemplate(podcasts).toUtf8()) < 0 || !file.commit()) {
+            err() << "Cannot write " << templateFile << nl;
+            return 1;
+        }
+        out() << podcasts.size() << " podcasts written to " << templateFile
+              << " - change the numbers, then run seed-demo-stats --weights " << templateFile << nl;
+        return 0;
+    }
+    if (!weightsFile.isEmpty()) {
+        QFile file(weightsFile);
+        if (!file.open(QIODevice::ReadOnly)) {
+            err() << "Cannot read " << weightsFile << nl;
+            return 1;
+        }
+        QStringList unmatched;
+        DemoStats::applyWeights(&podcasts, QString::fromUtf8(file.readAll()), &unmatched);
+        for (const QString &line : unmatched) {
+            err() << "No podcast found for: " << line << nl;
+        }
+    }
+    double perDay = hours;
+    if (perDay <= 0) {
+        const ListeningSummary s = db.listeningSummary();
+        perDay = (s.days >= 5 && s.seconds > 0) ? qBound(0.5, s.seconds / 3600.0 / s.days, 4.0) : 1.5;
+    }
+    DemoStats::Options options;
+    options.today = QDate::currentDate();
+    options.months = months;
+    options.hoursPerDay = perDay;
+    options.seed = seed;
+    const QList<DemoStats::Entry> generated = DemoStats::generate(podcasts, options);
+    if (generated.isEmpty()) {
+        err() << "Nothing generated (all weights 0, or no episodes)." << nl;
+        return 1;
+    }
+    if (!backupDatabase(db, dbPath)) {
+        return 1;
+    }
+    QList<ListeningEntry> entries;
+    for (const DemoStats::Entry &g : generated) {
+        ListeningEntry e;
+        e.day = g.day;
+        e.episodeId = g.episodeId;
+        e.podcastId = g.podcastId;
+        e.podcastTitle = g.podcastTitle;
+        e.seconds = g.seconds;
+        e.mediaSeconds = g.mediaSeconds;
+        entries << e;
+    }
+    if (!db.replaceListeningLog(entries)) {
+        err() << "Could not write the listening log (the backup is untouched)." << nl;
+        return 1;
+    }
+    out() << "Made-up listening log written (" << months << " months, about " << QString::number(perDay, 'f', 1)
+          << " h per day, seed " << seed << ")." << nl;
+    printListeningSummary(db);
+    return 0;
+}
+
 int cmdStats(Database &db)
 {
     const DatabaseStats s = db.stats();
@@ -1456,7 +1683,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("sailcast-cli"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.3 (build 269)"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.4 (build 332)"));
 
     const QString defaultDb = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
             + QStringLiteral("/sailcast-cli/sailcast.db");
@@ -1468,6 +1695,7 @@ int main(int argc, char *argv[])
             "  import-opml FILE       add the feeds of an OPML file\n"
             "  import-gpodder FILE    import a gpodder-sailfish database (file \"Database\")\n"
             "  export-opml FILE       write all subscriptions to an OPML file\n"
+            "  export-html FILE       write all subscriptions as one web page\n"
             "  subscribe URL          add a feed and load it\n"
             "  remove ID              remove a podcast and its episodes\n"
             "  update [ID ...]        update all (or the given) podcasts\n"
@@ -1503,6 +1731,14 @@ int main(int argc, char *argv[])
             "  auth ID USER           set the login of a feed (asks for the password)\n"
             "  auth ID                remove the login of a feed\n"
             "  stats                  totals\n"
+            "  seed-demo-stats        replace the listening log by a made-up one from the real\n"
+            "                         podcasts (for screenshots; copy of the file as .bak first)\n"
+            "                         --template FILE: write the podcasts with their weights\n"
+            "                         --weights FILE: use the weights of that file\n"
+            "                         --months N (12)  --hours H (per day, default 1.5 or from the\n"
+            "                         real log)  --seed N (1)\n"
+            "  clear-stats            empty the listening log (copy as .bak first)\n"
+            "  listening-day [YYYYMMDD] the listening log of one day per episode (default today)\n"
             "  merge-duplicates       merge subscriptions whose addresses differ only in case\n"
             "\nSync:\n"
             "  sync-setup nextcloud|gpodder SERVER USER [DEVICE]\n"
@@ -1548,6 +1784,26 @@ int main(int argc, char *argv[])
                                                             "of the strongest subscriptions (as the app's setting off)."));
     QCommandLineOption rawOption(QStringLiteral("raw"),
                                  QStringLiteral("discover: print the raw answers (stderr)."));
+    QCommandLineOption weightsOption(QStringLiteral("weights"),
+                                     QStringLiteral("seed-demo-stats: file with \"Podcast = weight\" lines."),
+                                     QStringLiteral("file"));
+    QCommandLineOption templateOption(QStringLiteral("template"),
+                                      QStringLiteral("seed-demo-stats: write the weights file to edit."),
+                                      QStringLiteral("file"));
+    QCommandLineOption monthsOption(QStringLiteral("months"),
+                                    QStringLiteral("seed-demo-stats: length of the made-up log (default 12)."),
+                                    QStringLiteral("count"), QStringLiteral("12"));
+    QCommandLineOption hoursOption(QStringLiteral("hours"),
+                                   QStringLiteral("seed-demo-stats: hours per day with listening."),
+                                   QStringLiteral("hours"), QStringLiteral("0"));
+    QCommandLineOption seedOption(QStringLiteral("seed"),
+                                  QStringLiteral("seed-demo-stats: the same seed gives the same log (default 1)."),
+                                  QStringLiteral("number"), QStringLiteral("1"));
+    parser.addOption(weightsOption);
+    parser.addOption(templateOption);
+    parser.addOption(monthsOption);
+    parser.addOption(hoursOption);
+    parser.addOption(seedOption);
     parser.addOption(dbOption);
     parser.addOption(limitOption);
     parser.addOption(freshOption);
@@ -1691,6 +1947,21 @@ int main(int argc, char *argv[])
     }
     if (command == QLatin1String("export-opml")) {
         return needArg(QStringLiteral("FILE")) ? cmdExportOpml(db, args.first()) : 1;
+    }
+    if (command == QLatin1String("seed-demo-stats")) {
+        return cmdSeedDemoStats(db, dbPath, parser.value(weightsOption), parser.value(templateOption),
+                                qBound(1, parser.value(monthsOption).toInt(), 36),
+                                parser.value(hoursOption).replace(QLatin1Char(','), QLatin1Char('.')).toDouble(),
+                                parser.value(seedOption).toUInt());
+    }
+    if (command == QLatin1String("clear-stats")) {
+        return cmdClearStats(db, dbPath);
+    }
+    if (command == QLatin1String("listening-day")) {
+        return cmdListeningDay(db, args.isEmpty() ? QString() : args.first());
+    }
+    if (command == QLatin1String("export-html")) {
+        return needArg(QStringLiteral("FILE")) ? cmdExportHtml(db, args.first()) : 1;
     }
     if (command == QLatin1String("import-gpodder")) {
         return needArg(QStringLiteral("FILE")) ? cmdImportGpodder(db, args.first()) : 1;

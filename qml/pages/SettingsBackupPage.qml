@@ -80,12 +80,14 @@ Page {
             width: parent.width
 
             PageHeader {
-                title: qsTr("Backup")
+                // (326, settings restructured) "Back up database" of Import and
+                // export is gone - "Back up now" here does the same
+                title: qsTr("Backup and restore")
             }
 
             ComboBox {
                 label: qsTr("Back up automatically")
-                description: qsTr("Playlist, folders, bookmarks and settings are not on the sync server - a backup keeps them.")
+                description: qsTr("Playlist, folders, bookmarks and settings are not on the sync server – a backup keeps them.")
                 currentIndex: page.indexOf(page.backupOptions, parseInt(core.setting("backup.days", "7")), 2)
                 menu: ContextMenu {
                     MenuItem {
@@ -111,7 +113,7 @@ Page {
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
+                color: Theme.secondaryColor
                 // settingsVersion: re-read after "Back up now"
                 text: {
                     var dummy = page.settingsVersion
@@ -147,12 +149,9 @@ Page {
             }
 
             Item { width: 1; height: Theme.paddingLarge }
-Flow {
-
+            Flow {
                 x: Theme.horizontalPageMargin
-
                 width: parent.width - 2 * Theme.horizontalPageMargin
-
                 spacing: Theme.paddingMedium
                 ActionPill {
                     kind: "primary"

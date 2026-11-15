@@ -107,7 +107,7 @@ Page {
         ViewPlaceholder {
             enabled: page.categories.length === 0
             text: qsTr("Categories are loading")
-            hintText: qsTr("They come from fyyd - try again in a moment")
+            hintText: qsTr("They come from fyyd – try again in a moment")
         }
 
         VerticalScrollDecorator {}

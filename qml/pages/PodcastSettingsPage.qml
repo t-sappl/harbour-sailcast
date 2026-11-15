@@ -2,6 +2,7 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "../"
+import "../TimeFormat.js" as TimeFormat
 
 // Settings of one podcast (35): own speed, skip intro and outro. Stored as
 // settings "podcast.<id>.rate/.skipIntro/.skipOutro" (0 = off / global),
@@ -69,6 +70,9 @@ Page {
         }
     }
 
+    // (275) Auto-Add to the playlist: "" = off, "end" or "top"; limit per update
+    readonly property string autoAdd: core.setting(key("autoAdd"), "")
+    readonly property string autoAddLimit: core.setting(key("autoAddLimit"), "3")
     readonly property string autoDownload: core.setting(key("autoDownload"), "")
     readonly property bool globalAutoDownload: core.setting("downloads.auto", "0") === "1"
     // (211) Download location ("podcast.<id>.inMusic": "1", "0", empty = global)
@@ -225,7 +229,7 @@ Page {
 
             TextSwitch {
                 text: qsTr("Include in \"Update\"")
-                description: qsTr("Off: the podcast is only updated on its own page (pull down → Update). Subscription and listening state are still synchronized.")
+                description: qsTr("Off: the podcast is only updated on its own page (pull down → Update), with automatic download and playlist as usual. Subscription and listening state are still synchronized. A folder set to \"Update only by hand\" does the same for all podcasts in it.")
                 checked: !core.podcast(page.podcastId).manualUpdate
                 automaticCheck: false
                 onClicked: {
@@ -234,14 +238,140 @@ Page {
                 }
             }
 
+            // (302) Hidden podcasts: setting home.hiddenPodcasts
+            TextSwitch {
+                // (323, blind test) Positive, not "Don't show" (switching it off
+                // was a double negative); what is stored stays "hidden"
+                text: qsTr("Show in New episodes")
+                description: qsTr("Off: the podcast's episodes stay out of the page New episodes (both views). Playlist, downloads and the podcast page work as usual.")
+                checked: !core.hiddenFromNew(page.podcastId)
+                automaticCheck: false
+                onClicked: {
+                    checked = !checked
+                    core.setHiddenFromNew(page.podcastId, !checked)
+                }
+            }
+
             // (255) Was "Stop updates (archived)" in the Archive section:
             // "archived" now only means the folder with copies
             TextSwitch {
                 text: qsTr("Podcast has ended")
-                description: qsTr("For a podcast that has ended: no more updates and no error messages. Episodes, downloads and the listening state are kept.")
+                description: qsTr("For a podcast that has ended: no more automatic updates, no automatic downloads and no adding to the playlist. \"Update\" on its own page still works. Episodes, downloads and the listening state are kept; \"Delete played downloads\" leaves its downloads alone.")
                 checked: page.podcast.archived === true
                 automaticCheck: false
                 onClicked: core.setArchived(page.podcastId, !checked)
+            }
+
+            // (326, settings restructured) Same order as the global settings:
+            // update, playback, playlist, downloads
+            SectionHeader { text: qsTr("Playback") }
+
+            ComboBox {
+                label: qsTr("Speed")
+                currentIndex: page.indexOf(page.speeds, page.number("rate"))
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.speeds
+                        MenuItem {
+                            text: modelData > 0
+                                  ? page.speedText(modelData)
+                                  : qsTr("As set globally (%1)").arg(page.speedText(appWindow.player.globalRate))
+                            onClicked: page.store("rate", modelData)
+                        }
+                    }
+                }
+            }
+
+            ComboBox {
+                label: qsTr("Skip intro")
+                currentIndex: page.indexOf(page.skipTimes, page.number("skipIntro"))
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.skipTimes
+                        MenuItem {
+                            text: modelData > 0 ? qsTr("%1 s").arg(modelData) : qsTr("Off")
+                            onClicked: page.store("skipIntro", modelData)
+                        }
+                    }
+                }
+            }
+
+            ComboBox {
+                // (253, usability audit #15) "Skip outro" read as "skip over
+                // the outro while it still plays" - it actually ends the
+                // episode early, the hint text below says so
+                label: qsTr("Skip the end (outro)")
+                currentIndex: page.indexOf(page.skipTimes, page.number("skipOutro"))
+                menu: ContextMenu {
+                    Repeater {
+                        model: page.skipTimes
+                        MenuItem {
+                            text: modelData > 0 ? qsTr("%1 s").arg(modelData) : qsTr("Off")
+                            onClicked: page.store("skipOutro", modelData)
+                        }
+                    }
+                }
+            }
+
+            Label {
+                x: Theme.horizontalPageMargin
+                width: parent.width - 2 * Theme.horizontalPageMargin
+                wrapMode: Text.Wrap
+                font.pixelSize: Theme.fontSizeExtraSmall
+                color: Theme.secondaryHighlightColor
+                text: qsTr("An episode that starts from the beginning starts after the intro. The outro ends the episode early: it counts as played and the next one follows. With a speed of its own, the speed on the episode page changes this podcast's speed.")
+            }
+
+            SectionHeader { text: qsTr("Playlist") }
+
+            ComboBox {
+                label: qsTr("Add new episodes to the playlist")
+                // (323, blind test) Shorter: one paragraph of terms was too much
+                description: qsTr("After a feed update, new unplayed episodes are added to the playlist. \"To the front\" means right after the episode playing; \"Sorted in\" follows the sorting of the playlist. The circle arrow at the handle stays until you move the episode.")
+                currentIndex: page.autoAdd === "end" ? 1 : (page.autoAdd === "top" ? 2 : (page.autoAdd === "sorted" ? 3 : 0))
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("Off")
+                        onClicked: core.setSetting(page.key("autoAdd"), "")
+                    }
+                    MenuItem {
+                        text: qsTr("To the end")
+                        onClicked: core.setSetting(page.key("autoAdd"), "end")
+                    }
+                    MenuItem {
+                        text: qsTr("To the front")
+                        onClicked: core.setSetting(page.key("autoAdd"), "top")
+                    }
+                    MenuItem {
+                        text: qsTr("Sorted in")
+                        onClicked: core.setSetting(page.key("autoAdd"), "sorted")
+                    }
+                }
+            }
+
+            ComboBox {
+                visible: page.autoAdd !== ""
+                label: qsTr("At most per update")
+                description: qsTr("Of the episodes found in one update the newest ones; the others are not added later.")
+                currentIndex: page.autoAddLimit === "all" ? 0 : (page.autoAddLimit === "1" ? 1 : (page.autoAddLimit === "5" ? 3 : 2))
+                menu: ContextMenu {
+                    MenuItem {
+                        text: qsTr("All new episodes")
+                        onClicked: core.setSetting(page.key("autoAddLimit"), "all")
+                    }
+                    MenuItem {
+                        text: qsTr("1 episode")
+                        onClicked: core.setSetting(page.key("autoAddLimit"), "1")
+                    }
+                    MenuItem {
+                        text: qsTr("3 episodes")
+                        onClicked: core.setSetting(page.key("autoAddLimit"), "3")
+                    }
+                    MenuItem {
+                        text: qsTr("5 episodes")
+                        onClicked: core.setSetting(page.key("autoAddLimit"), "5")
+                    }
+                }
             }
 
             SectionHeader { text: qsTr("Downloads") }
@@ -250,7 +380,7 @@ Page {
                 label: qsTr("Download new episodes")
                 // (245) Video podcasts: the files are large
                 description: core.podcast(page.podcastId).video === true
-                             ? qsTr("After a feed update, up to 3 new episodes – this is a video podcast, its files are large")
+                             ? qsTr("After a feed update, up to 3 new episodes – this is a video podcast, its files are large (loaded only on Wi-Fi)")
                              : qsTr("After a feed update, up to 3 new episodes")
                 currentIndex: page.autoDownload === "1" ? 1 : (page.autoDownload === "0" ? 2 : 0)
                 menu: ContextMenu {
@@ -339,6 +469,27 @@ Page {
                                             podcastTitle: page.podcast.title || page.podcastTitle })
             }
 
+            // (323, blind test) All downloads of the podcast at once (before:
+            // only filter + "Delete several" on the downloads page); the
+            // archive and the episode in the player stay
+            ActionPill {
+                kind: "destructive"
+                x: Theme.horizontalPageMargin
+                property var info: {
+                    page.locationRevision
+                    return core.deletableDownloads(page.podcastId)
+                }
+                visible: (info.count || 0) > 0
+                text: qsTr("Delete %n downloads (%1)", "", info.count || 0)
+                      .arg(TimeFormat.size(info.bytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
+                onClicked: {
+                    var id = page.podcastId
+                    remorse.execute(qsTr("Deleting %n downloads", "", info.count || 0) + " · "
+                                    + TimeFormat.size(info.bytes || 0, qsTr("%1 MB"), qsTr("%1 GB")),
+                                    function() { core.deletePodcastDownloads(id) }, 5000)
+                }
+            }
+
             Item { width: 1; height: Theme.paddingMedium }
 
             // (121, from the pulley since 143) Keep the downloads in Music
@@ -348,64 +499,6 @@ Page {
                 visible: (page.podcast.downloadedCount || 0) > 0
                 text: qsTr("Save downloads in Music")
                 onClicked: core.keepPodcastDownloads(page.podcastId)
-            }
-
-            SectionHeader { text: qsTr("Playback") }
-
-            ComboBox {
-                label: qsTr("Speed")
-                currentIndex: page.indexOf(page.speeds, page.number("rate"))
-                menu: ContextMenu {
-                    Repeater {
-                        model: page.speeds
-                        MenuItem {
-                            text: modelData > 0
-                                  ? page.speedText(modelData)
-                                  : qsTr("As set globally (%1)").arg(page.speedText(appWindow.player.globalRate))
-                            onClicked: page.store("rate", modelData)
-                        }
-                    }
-                }
-            }
-
-            ComboBox {
-                label: qsTr("Skip intro")
-                currentIndex: page.indexOf(page.skipTimes, page.number("skipIntro"))
-                menu: ContextMenu {
-                    Repeater {
-                        model: page.skipTimes
-                        MenuItem {
-                            text: modelData > 0 ? qsTr("%1 s").arg(modelData) : qsTr("Off")
-                            onClicked: page.store("skipIntro", modelData)
-                        }
-                    }
-                }
-            }
-
-            ComboBox {
-                // (253, usability audit #15) "Skip outro" read as "skip over
-                // the outro while it still plays" - it actually ends the
-                // episode early, the hint text below says so
-                label: qsTr("Skip the end (outro)")
-                currentIndex: page.indexOf(page.skipTimes, page.number("skipOutro"))
-                menu: ContextMenu {
-                    Repeater {
-                        model: page.skipTimes
-                        MenuItem {
-                            text: modelData > 0 ? qsTr("%1 s").arg(modelData) : qsTr("Off")
-                            onClicked: page.store("skipOutro", modelData)
-                        }
-                    }
-                }
-            }
-
-            Label {
-                x: Theme.horizontalPageMargin
-                width: parent.width - 2 * Theme.horizontalPageMargin
-                wrapMode: Text.Wrap
-                font.pixelSize: Theme.fontSizeExtraSmall
-                color: Theme.secondaryHighlightColor
-                text: qsTr("An episode that starts from the beginning starts after the intro. The outro ends the episode early: it counts as played and the next one follows. With a speed of its own, the speed on the episode page changes this podcast's speed.")
             }
 
             SectionHeader { text: qsTr("Archive") }

@@ -28,6 +28,16 @@ QString safe(const QString &name, int maxLength)
     if (result.size() > maxLength) {
         result = result.left(maxLength).trimmed();
     }
+    // (321, code review) File names are limited in bytes (255), not in
+    // characters: Japanese or Cyrillic titles of 150 characters were too long
+    // (".part", date and ending come on top)
+    while (result.toUtf8().size() > 200 && !result.isEmpty()) {
+        result.chop(1);
+        if (!result.isEmpty() && result.at(result.size() - 1).isHighSurrogate()) {
+            result.chop(1);
+        }
+    }
+    result = result.trimmed();
     // Leading dots would hide the file, trailing dots/spaces are not
     // allowed on Windows file systems
     while (result.startsWith(QLatin1Char('.'))) {

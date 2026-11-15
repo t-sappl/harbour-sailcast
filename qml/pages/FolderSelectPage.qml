@@ -3,7 +3,7 @@ import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "../"
 
-// Which folders go into the OPML export (45). selected: list of folder ids
+// Which folders go into the OPML export (45) or the web page (330). selected: list of folder ids
 // (0 = "Other podcasts"); [] = everything (also folders made later),
 // [-1] = nothing (export not possible).
 // (248) The switches show what is exported: all on for "everything" (until

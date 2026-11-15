@@ -298,8 +298,8 @@ Dialog {
                     }
                     if (dialog.noAudio) {
                         return dialog.result.discovered === true
-                                ? qsTr("The feed found on this website has no episodes with audio - it is not a podcast")
-                                : qsTr("The feed has no episodes with audio - it is not a podcast")
+                                ? qsTr("The feed found on this website has no episodes with audio – it is not a podcast")
+                                : qsTr("The feed has no episodes with audio – it is not a podcast")
                     }
                     if (dialog.checkState === "ok" && dialog.result.discovered === true) {
                         return qsTr("Feed of this website: %1").arg(core.maskUrl(dialog.result.url))

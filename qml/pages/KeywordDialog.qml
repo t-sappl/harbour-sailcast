@@ -25,6 +25,8 @@ Dialog {
 
     SilicaFlickable {
         anchors.fill: parent
+        anchors.bottomMargin: appWindow.playerBarHeight
+        anchors.rightMargin: appWindow.playerPanelWidth
         contentHeight: column.height + Theme.paddingLarge
 
         Column {
@@ -93,7 +95,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
-                text: qsTr("No translation known - if the English word differs, enter it above.")
+                text: qsTr("No translation known – if the English word differs, enter it above.")
             }
 
             Item { width: 1; height: Theme.paddingLarge }

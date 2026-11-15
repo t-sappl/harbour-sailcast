@@ -41,7 +41,17 @@ MprisPlayer {
 
     onPlayRequested: appWindow.player.resume()
     onPauseRequested: appWindow.player.pause()
-    onPlayPauseRequested: appWindow.player.toggle()
+    // Headset key while Sailcast is paused: Sailfish sends it here even when
+    // another player (e.g. a radio station) is playing - then it means "pause
+    // that one" - or was paused after Sailcast - then it means "go on with
+    // that one". Sailcast must not start itself in both cases.
+    onPlayPauseRequested: {
+        if (!appWindow.player.playing
+                && (appWindow.pauseOtherPlayers() > 0 || appWindow.resumeOtherPlayer())) {
+            return
+        }
+        appWindow.player.toggle()
+    }
     onStopRequested: appWindow.player.pause()
     onNextRequested: appWindow.player.remoteNext()
     onPreviousRequested: appWindow.player.remotePrevious()

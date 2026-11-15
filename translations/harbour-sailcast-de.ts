@@ -36,8 +36,8 @@
         <translation>Danke</translation>
     </message>
     <message>
-        <source>Search and Discover: Podcast Index (podcastindex.org) and fyyd (fyyd.de); new podcasts from Hörsuppe's list "Nullnummern" on fyyd and Podnews' "New Podcasts". Behavior and formats of gPodder (Thomas Perl and contributors, ISC license) served as reference. Lock screen controls: Amber.Mpris.</source>
-        <translation>Suche und Entdecken: Podcast Index (podcastindex.org) und fyyd (fyyd.de); neue Podcasts aus Hörsuppes Liste „Nullnummern“ auf fyyd und Podnews' „New Podcasts“. Verhalten und Formate von gPodder (Thomas Perl und Mitwirkende, ISC-Lizenz) dienten als Vorbild. Steuerung am Sperrbildschirm: Amber.Mpris.</translation>
+        <source>Search and Discover: Podcast Index (podcastindex.org) and fyyd (fyyd.de); new podcasts from Hörsuppe&apos;s list &quot;Nullnummern&quot; on fyyd and Podnews&apos; &quot;New Podcasts&quot;. Behavior and formats of gPodder (Thomas Perl and contributors, ISC license) served as reference. Lock screen controls: Amber.Mpris.</source>
+        <translation>Suche und Entdecken: Podcast Index (podcastindex.org) und fyyd (fyyd.de); neue Podcasts aus Hörsuppes Liste „Nullnummern“ auf fyyd und Podnews&apos; „New Podcasts“. Verhalten und Formate von gPodder (Thomas Perl und Mitwirkende, ISC-Lizenz) dienten als Vorbild. Steuerung am Sperrbildschirm: Amber.Mpris.</translation>
     </message>
 </context>
 <context>
@@ -78,11 +78,11 @@
         <translation>Bereits abonniert</translation>
     </message>
     <message>
-        <source>The feed found on this website has no episodes with audio - it is not a podcast</source>
+        <source>The feed found on this website has no episodes with audio – it is not a podcast</source>
         <translation>Der gefundene Feed enthält keine Folgen mit Audio – kein Podcast</translation>
     </message>
     <message>
-        <source>The feed has no episodes with audio - it is not a podcast</source>
+        <source>The feed has no episodes with audio – it is not a podcast</source>
         <translation>Der Feed enthält keine Folgen mit Audio – kein Podcast</translation>
     </message>
     <message>
@@ -213,7 +213,7 @@
         <translation>Unter dieser Adresse wurde keine Nextcloud gefunden</translation>
     </message>
     <message>
-        <source>The server did not start the login - is it a Nextcloud?</source>
+        <source>The server did not start the login – is it a Nextcloud?</source>
         <translation>Der Server hat die Anmeldung nicht gestartet – ist es eine Nextcloud?</translation>
     </message>
     <message>
@@ -241,26 +241,16 @@
         <translation>Geräte konnten nicht geladen werden: %1</translation>
     </message>
     <message>
-        <source>The devices now share their subscriptions - synchronize to get them</source>
+        <source>The devices now share their subscriptions – synchronize to get them</source>
         <translation>Die Geräte teilen jetzt ihre Abos – synchronisieren, um sie zu holen</translation>
     </message>
     <message>
         <source>The devices could not be grouped: %1</source>
         <translation>Die Geräte konnten nicht gruppiert werden: %1</translation>
     </message>
-    <message numerus="yes">
-        <source>%n new episodes</source>
-        <translation>
-            <numerusform>%n neue Folge</numerusform>
-            <numerusform>%n neue Folgen</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
-        <source>%n feeds failed</source>
-        <translation>
-            <numerusform>%n Feed fehlgeschlagen</numerusform>
-            <numerusform>%n Feeds fehlgeschlagen</numerusform>
-        </translation>
+    <message>
+        <source>Removed by the sync: %1</source>
+        <translation>Durch den Sync entfernt: %1</translation>
     </message>
     <message>
         <source>Synchronized: %1 listening states, %2 subscription changes</source>
@@ -271,6 +261,10 @@
         <translation>Sync fehlgeschlagen: %1</translation>
     </message>
     <message>
+        <source>No space left – download stopped (%1 MB free)</source>
+        <translation>Kein Speicherplatz mehr – Download gestoppt (%1 MB frei)</translation>
+    </message>
+    <message>
         <source>Download failed: %1</source>
         <translation>Download fehlgeschlagen: %1</translation>
     </message>
@@ -278,9 +272,43 @@
         <source>Archiving failed: %1</source>
         <translation>Archivieren fehlgeschlagen: %1</translation>
     </message>
+    <message numerus="yes">
+        <source>%n new episodes</source>
+        <translation>
+            <numerusform>%n neue Folge</numerusform>
+            <numerusform>%n neue Folgen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>No new episodes</source>
+        <translation>Keine neuen Folgen</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n feeds failed</source>
+        <translation>
+            <numerusform>%n Feed fehlgeschlagen</numerusform>
+            <numerusform>%n Feeds fehlgeschlagen</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Cannot subscribe: %1</source>
         <translation>Abonnieren nicht möglich: %1</translation>
+    </message>
+    <message>
+        <source>d MMM</source>
+        <translation>d. MMM</translation>
+    </message>
+    <message>
+        <source>No category</source>
+        <translation>Ohne Kategorie</translation>
+    </message>
+    <message>
+        <source>Gone podcasts</source>
+        <translation>Entfernte Podcasts</translation>
+    </message>
+    <message>
+        <source>Other podcasts</source>
+        <translation>Sonstige Podcasts</translation>
     </message>
     <message>
         <source>irregular</source>
@@ -325,6 +353,10 @@
         </translation>
     </message>
     <message>
+        <source>Not while an episode of this podcast is loaded in the player</source>
+        <translation>Nicht, solange eine Folge dieses Podcasts im Player geladen ist</translation>
+    </message>
+    <message>
         <source>Cannot unsubscribe: %1</source>
         <translation>Abo kann nicht beendet werden: %1</translation>
     </message>
@@ -337,7 +369,7 @@
         <translation>Ähnlich wie %1</translation>
     </message>
     <message>
-        <source>Keyword "%1"</source>
+        <source>Keyword &quot;%1&quot;</source>
         <translation>Stichwort „%1“</translation>
     </message>
     <message numerus="yes">
@@ -356,7 +388,7 @@
         <translation>Im Trend</translation>
     </message>
     <message>
-        <source>The feed needs a login (HTTP %1) - after subscribing, set it on the podcast page</source>
+        <source>The feed needs a login (HTTP %1) – after subscribing, set it on the podcast page</source>
         <translation>Der Feed braucht eine Anmeldung (HTTP %1) – nach dem Abonnieren auf der Podcast-Seite eintragen</translation>
     </message>
     <message>
@@ -403,8 +435,42 @@
         </translation>
     </message>
     <message>
+        <source>Not enough space: about %1 MB needed, %2 MB free (%3 MB stay free)</source>
+        <translation>Nicht genug Platz: etwa %1 MB nötig, %2 MB frei (%3 MB bleiben frei)</translation>
+    </message>
+    <message>
+        <source>Not enough space: %1 MB free (%2 MB stay free)</source>
+        <translation>Nicht genug Platz: %1 MB frei (%2 MB bleiben frei)</translation>
+    </message>
+    <message>
+        <source>A file of this episode is already in the Music folder – loading to the phone</source>
+        <translation>Eine Datei dieser Folge liegt schon im Musik-Ordner – es wird auf das Telefon geladen</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n interrupted downloads continue</source>
+        <translation>
+            <numerusform>%n unterbrochener Download läuft weiter</numerusform>
+            <numerusform>%n unterbrochene Downloads laufen weiter</numerusform>
+        </translation>
+    </message>
+    <message>
         <source>The file is part of the archive and stays</source>
         <translation>Die Datei gehört zum Archiv und bleibt erhalten</translation>
+    </message>
+    <message>
+        <source>Not while this episode is loaded in the player</source>
+        <translation>Nicht, solange diese Folge im Player geladen ist</translation>
+    </message>
+    <message>
+        <source>The file could not be deleted</source>
+        <translation>Die Datei konnte nicht gelöscht werden</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n episodes stay: archive or playing now</source>
+        <translation>
+            <numerusform>%n Folge bleibt: Archiv oder gerade im Player</numerusform>
+            <numerusform>%n Folgen bleiben: Archiv oder gerade im Player</numerusform>
+        </translation>
     </message>
     <message>
         <source>Already saved in %1</source>
@@ -413,6 +479,10 @@
     <message>
         <source>Saved in %1</source>
         <translation>Gespeichert in %1</translation>
+    </message>
+    <message>
+        <source>Not while this episode is loaded in the player – save it afterwards</source>
+        <translation>Nicht, solange diese Folge im Player geladen ist – danach speichern</translation>
     </message>
     <message>
         <source>Cannot save the episode: %1</source>
@@ -472,6 +542,18 @@
         <source>No unplayed downloads outside the playlist</source>
         <translation>Keine ungehörten Downloads außerhalb der Playlist</translation>
     </message>
+    <message>
+        <source>podcast set to &quot;Never&quot;</source>
+        <translation>Podcast auf „Nie“</translation>
+    </message>
+    <message>
+        <source>archived podcast</source>
+        <translation>archivierter Podcast</translation>
+    </message>
+    <message>
+        <source>saved in Music or Videos</source>
+        <translation>in Musik oder Videos gespeichert</translation>
+    </message>
     <message numerus="yes">
         <source>%n downloads deleted</source>
         <translation>
@@ -480,11 +562,22 @@
         </translation>
     </message>
     <message numerus="yes">
+        <source>%n kept</source>
+        <translation>
+            <numerusform>%n behalten</numerusform>
+            <numerusform>%n behalten</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
         <source>%n played downloads deleted</source>
         <translation>
             <numerusform>%n gehörter Download gelöscht</numerusform>
             <numerusform>%n gehörte Downloads gelöscht</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Storage almost full – automatic downloads stopped</source>
+        <translation>Speicher fast voll – automatische Downloads gestoppt</translation>
     </message>
     <message>
         <source>An archive is already running</source>
@@ -535,7 +628,7 @@
         <translation>Keine Feeds in %1</translation>
     </message>
     <message numerus="yes">
-        <source>%n podcasts added - loading the episodes</source>
+        <source>%n podcasts added – loading the episodes</source>
         <translation>
             <numerusform>%n Podcast hinzugefügt – Folgen werden geladen</numerusform>
             <numerusform>%n Podcasts hinzugefügt – Folgen werden geladen</numerusform>
@@ -567,6 +660,18 @@
         <source>Please wait until updates and downloads are finished</source>
         <translation>Bitte warten, bis Aktualisierung und Downloads fertig sind</translation>
     </message>
+    <message>
+        <source>not a database file</source>
+        <translation>keine Datenbankdatei</translation>
+    </message>
+    <message>
+        <source>Backup failed: %1</source>
+        <translation>Sicherung fehlgeschlagen: %1</translation>
+    </message>
+    <message>
+        <source>The previous data is back.</source>
+        <translation>Die bisherigen Daten sind wieder da.</translation>
+    </message>
     <message numerus="yes">
         <source>Database taken over: %n podcasts</source>
         <translation>
@@ -579,8 +684,284 @@
         <translation>Export fehlgeschlagen: %1</translation>
     </message>
     <message>
-        <source>Backup failed: %1</source>
-        <translation>Sicherung fehlgeschlagen: %1</translation>
+        <source>%1 min</source>
+        <translation>%1 Min.</translation>
+    </message>
+    <message>
+        <source>%1 h</source>
+        <translation>%1 h</translation>
+    </message>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation>%1 Std. %2 Min.</translation>
+    </message>
+    <message>
+        <source>Listening statistics (since %1)</source>
+        <translation>Hörstatistik (seit %1)</translation>
+    </message>
+    <message>
+        <source>Listening statistics</source>
+        <translation>Hörstatistik</translation>
+    </message>
+    <message>
+        <source>Total listening time</source>
+        <translation>Gesamte Hörzeit</translation>
+    </message>
+    <message>
+        <source>Time saved</source>
+        <translation>Zeit gespart</translation>
+    </message>
+    <message>
+        <source>Episodes listened to</source>
+        <translation>Folgen gehört</translation>
+    </message>
+    <message>
+        <source>Per listening day</source>
+        <translation>Ø pro Hörtag</translation>
+    </message>
+    <message>
+        <source>Days in a row (record, all time)</source>
+        <translation>Tage in Folge (Rekord gesamt)</translation>
+    </message>
+    <message>
+        <source>Listening time: the time actually listened. Time saved: how much less time was needed by playing faster. Episodes: listened to for at least one minute.</source>
+        <translation>Hörzeit: die tatsächlich gehörte Zeit. Zeit gespart: so viel weniger Zeit wurde durch schnelleres Abspielen gebraucht. Folgen: mindestens eine Minute gehört.</translation>
+    </message>
+    <message>
+        <source>Days in a row: consecutive days on which something was listened to.</source>
+        <translation>Tage in Folge: Tage hintereinander, an denen gehört wurde.</translation>
+    </message>
+    <message>
+        <source>Top podcasts</source>
+        <translation>Top-Podcasts</translation>
+    </message>
+    <message>
+        <source>Weekdays</source>
+        <translation>Wochentage</translation>
+    </message>
+    <message>
+        <source>Counts only what was played in Sailcast on this device</source>
+        <translation>Zählt nur die Wiedergabe in Sailcast auf diesem Gerät.</translation>
+    </message>
+    <message>
+        <source>Days with listening</source>
+        <translation>Tage mit Hören</translation>
+    </message>
+    <message>
+        <source>Over time, per day</source>
+        <translation>Verlauf pro Tag</translation>
+    </message>
+    <message>
+        <source>Over time, per week</source>
+        <translation>Verlauf pro Woche</translation>
+    </message>
+    <message>
+        <source>Over time, per month</source>
+        <translation>Verlauf pro Monat</translation>
+    </message>
+    <message>
+        <source>Activity in the last year</source>
+        <translation>Aktivität im letzten Jahr</translation>
+    </message>
+    <message>
+        <source>Categories</source>
+        <translation>Kategorien</translation>
+    </message>
+    <message>
+        <source>Each podcast counts only for its first category.</source>
+        <translation>Jeder Podcast zählt nur für seine erste Kategorie.</translation>
+    </message>
+    <message>
+        <source>Records</source>
+        <translation>Rekorde</translation>
+    </message>
+    <message>
+        <source>Longest listening day</source>
+        <translation>Längster Hörtag</translation>
+    </message>
+    <message>
+        <source>Most listened podcast</source>
+        <translation>Meistgehörter Podcast</translation>
+    </message>
+    <message>
+        <source>Favourite weekday</source>
+        <translation>Lieblingswochentag</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n podcasts</source>
+        <translation>
+            <numerusform>%n Podcast</numerusform>
+            <numerusform>%n Podcasts</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>My podcasts</source>
+        <translation>Meine Podcasts</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n folders</source>
+        <translation>
+            <numerusform>%n Ordner</numerusform>
+            <numerusform>%n Ordner</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>exported %1</source>
+        <translation>exportiert am %1</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n private feeds (with a password or a personal link) are not part of this page.</source>
+        <translation>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) sind nicht enthalten.</numerusform>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) sind nicht enthalten.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Tap a folder or a podcast to see details and the latest episodes.</source>
+        <translation>Tippe auf einen Ordner oder Podcast, um Details und die letzten Folgen aufzuklappen.</translation>
+    </message>
+    <message>
+        <source>Subscribe: opens the podcast in your podcast app, if it supports such links</source>
+        <translation>Abonnieren: öffnet den Podcast in deiner Podcast-App, sofern sie solche Links unterstützt</translation>
+    </message>
+    <message>
+        <source>Feed address: link to the RSS feed, to paste into any podcast app</source>
+        <translation>Feed-Adresse: Link zum RSS-Feed, zum Einfügen in jede Podcast-App</translation>
+    </message>
+    <message>
+        <source>Save list: a file (OPML) that almost every podcast app can import – all podcasts, one folder or the ones you tick</source>
+        <translation>Liste speichern: eine Datei (OPML), die fast jede Podcast-App importieren kann – alle Podcasts, ein Ordner oder die angehakten</translation>
+    </message>
+    <message>
+        <source>Search: looks for the podcast by name on fyyd, Podcast Index, Spotify or Apple Podcasts, where it is listed</source>
+        <translation>Suche: sucht den Podcast nach Namen auf fyyd, Podcast Index, Spotify oder Apple Podcasts, sofern dort vorhanden</translation>
+    </message>
+    <message>
+        <source>Save all as a list (OPML)</source>
+        <translation>Alle als Liste speichern (OPML)</translation>
+    </message>
+    <message>
+        <source>Save list</source>
+        <translation>Liste speichern</translation>
+    </message>
+    <message>
+        <source>Category</source>
+        <translation>Kategorie</translation>
+    </message>
+    <message>
+        <source>Language</source>
+        <translation>Sprache</translation>
+    </message>
+    <message>
+        <source>Episodes</source>
+        <translation>Folgen</translation>
+    </message>
+    <message>
+        <source>Rhythm</source>
+        <translation>Rhythmus</translation>
+    </message>
+    <message>
+        <source>Listened</source>
+        <translation>Gehört</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>Abonnieren</translation>
+    </message>
+    <message>
+        <source>Feed address</source>
+        <translation>Feed-Adresse</translation>
+    </message>
+    <message>
+        <source>Website</source>
+        <translation>Webseite</translation>
+    </message>
+    <message>
+        <source>Last episodes</source>
+        <translation>Letzte Folgen</translation>
+    </message>
+    <message>
+        <source>More episodes (%1)</source>
+        <translation>Weitere Folgen (%1)</translation>
+    </message>
+    <message>
+        <source>fyyd</source>
+        <translation>fyyd</translation>
+    </message>
+    <message>
+        <source>Podcast Index</source>
+        <translation>Podcast Index</translation>
+    </message>
+    <message>
+        <source>Spotify</source>
+        <translation>Spotify</translation>
+    </message>
+    <message>
+        <source>Apple Podcasts</source>
+        <translation>Apple Podcasts</translation>
+    </message>
+    <message>
+        <source>Sailcast on GitHub</source>
+        <translation>Sailcast auf GitHub</translation>
+    </message>
+    <message>
+        <source>More about Sailfish OS</source>
+        <translation>Mehr zu Sailfish OS</translation>
+    </message>
+    <message>
+        <source>Sailcast is a free, open-source podcast app for Sailfish OS, a Linux-based mobile operating system. It sorts podcasts into folders and offers chapters, bookmarks, a playlist and synchronisation with gpodder.net and Nextcloud.</source>
+        <translation>Sailcast ist eine freie Open-Source-Podcast-App für Sailfish OS, ein Linux-basiertes Betriebssystem für Smartphones. Sie sortiert Podcasts in Ordner und bietet Kapitel, Lesezeichen, eine Playlist und den Abgleich mit gpodder.net und Nextcloud.</translation>
+    </message>
+    <message>
+        <source>The podcast search uses fyyd and Podcast Index.</source>
+        <translation>Die Podcast-Suche nutzt fyyd und den Podcast Index.</translation>
+    </message>
+    <message>
+        <source>Chapters</source>
+        <translation>Kapitel</translation>
+    </message>
+    <message>
+        <source>Bookmarks</source>
+        <translation>Lesezeichen</translation>
+    </message>
+    <message>
+        <source>Description</source>
+        <translation>Beschreibung</translation>
+    </message>
+    <message>
+        <source>%1 selected</source>
+        <translation>%1 ausgewählt</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Alle</translation>
+    </message>
+    <message>
+        <source>Deselect</source>
+        <translation>Abwählen</translation>
+    </message>
+    <message>
+        <source>Save selection as a list</source>
+        <translation>Auswahl speichern</translation>
+    </message>
+    <message>
+        <source>Made with Sailcast for Sailfish OS</source>
+        <translation>Erstellt mit Sailcast für Sailfish OS</translation>
+    </message>
+    <message>
+        <source>h</source>
+        <translation>h</translation>
+    </message>
+    <message>
+        <source>min</source>
+        <translation>min</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n private feeds (with a password or a personal link) were left out</source>
+        <translation>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) wurden weggelassen</numerusform>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) wurden weggelassen</numerusform>
+        </translation>
     </message>
     <message>
         <source>A Nextcloud backup is already running</source>
@@ -591,7 +972,7 @@
         <translation>Nextcloud-Sicherung: Das Passwort fehlt</translation>
     </message>
     <message>
-        <source>Backup saved - copying it to the Nextcloud …</source>
+        <source>Backup saved – copying it to the Nextcloud …</source>
         <translation>Sicherung gespeichert – kopiere in die Nextcloud …</translation>
     </message>
     <message>
@@ -609,10 +990,6 @@
     <message>
         <source>%1 (from %2)</source>
         <translation>%1 (ab %2)</translation>
-    </message>
-    <message>
-        <source>Other podcasts</source>
-        <translation>Sonstige Podcasts</translation>
     </message>
 </context>
 <context>
@@ -641,12 +1018,38 @@
         <translation>%1 GB</translation>
     </message>
     <message>
-        <source>Downloads all episodes, the feed, the cover and the listening state into this folder. Episodes already downloaded are moved there, files already in the folder are kept. Can be cancelled and continued later.</source>
-        <translation>Lädt alle Folgen, den Feed, das Cover und den Hörstand in diesen Ordner. Bereits geladene Folgen werden dorthin verschoben, vorhandene Dateien bleiben. Kann abgebrochen und später fortgesetzt werden.</translation>
+        <source>Downloads all episodes, the feed, the cover and the listening state into this folder. Episodes already downloaded are moved there (not the one playing), files already in the folder are kept. Videos go to the Videos folder. Episodes that come later are not added by themselves – copy again. Can be cancelled and continued later.</source>
+        <translation>Lädt alle Folgen, den Feed, das Cover und den Hörstand in diesen Ordner. Schon geladene Folgen werden dorthin verschoben (nicht die laufende), Dateien, die schon im Ordner liegen, bleiben. Videos kommen in den Videos-Ordner. Spätere Folgen kommen nicht von selbst dazu – dann erneut kopieren. Kann abgebrochen und später fortgesetzt werden.</translation>
     </message>
     <message>
-        <source>No Wi-Fi connection - the episodes would be loaded over the mobile connection.</source>
+        <source>No Wi-Fi connection – the episodes would be loaded over the mobile connection.</source>
         <translation>Keine WLAN-Verbindung – die Folgen würden über die Mobilverbindung geladen.</translation>
+    </message>
+</context>
+<context>
+    <name>ArchiveFoldersPage</name>
+    <message>
+        <source>Archive folders</source>
+        <translation>Archivordner</translation>
+    </message>
+    <message>
+        <source>Takes over the episodes, files and listening state of an archived podcast – without network.</source>
+        <translation>Übernimmt Folgen, Dateien und Hörstand eines archivierten Podcasts – ohne Netz.</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n episodes</source>
+        <translation>
+            <numerusform>%n Folge</numerusform>
+            <numerusform>%n Folgen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>subscribed</source>
+        <translation>abonniert</translation>
+    </message>
+    <message>
+        <source>No archived podcasts in %1</source>
+        <translation>Keine archivierten Podcasts in %1</translation>
     </message>
 </context>
 <context>
@@ -745,7 +1148,7 @@
         <translation>Kategorien werden geladen</translation>
     </message>
     <message>
-        <source>They come from fyyd - try again in a moment</source>
+        <source>They come from fyyd – try again in a moment</source>
         <translation>Sie kommen von fyyd – gleich noch einmal versuchen</translation>
     </message>
 </context>
@@ -776,7 +1179,7 @@
         <translation>Keine aktiven Podcasts gefunden</translation>
     </message>
     <message>
-        <source>Podcast Index and fyyd know none in your languages right now - or they cannot be reached.</source>
+        <source>Podcast Index and fyyd know none in your languages right now – or they cannot be reached.</source>
         <translation>Podcast Index und fyyd kennen gerade keine in deinen Sprachen – oder sie sind nicht erreichbar.</translation>
     </message>
 </context>
@@ -866,7 +1269,7 @@
         <translation>Eine Gruppe antippen wählt alle ihre Folgen aus oder ab. Bereits heruntergeladene Folgen stehen nicht in der Liste. Die Downloads kommen in die Warteschlange, einige laden gleichzeitig; abbrechen lassen sie sich auf der Seite Downloads.</translation>
     </message>
     <message>
-        <source>No Wi-Fi connection - the episodes would be loaded over the mobile connection.</source>
+        <source>No Wi-Fi connection – the episodes would be loaded over the mobile connection.</source>
         <translation>Keine WLAN-Verbindung – die Folgen würden über die Mobilverbindung geladen.</translation>
     </message>
     <message>
@@ -899,6 +1302,77 @@
     </message>
 </context>
 <context>
+    <name>DownloadUnplayedDialog</name>
+    <message>
+        <source>1 episode</source>
+        <translation>1 Folge</translation>
+    </message>
+    <message>
+        <source>%1 episodes</source>
+        <translation>%1 Folgen</translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
+    <message>
+        <source>Download unplayed</source>
+        <translation>Ungehörte laden</translation>
+    </message>
+    <message>
+        <source>Download</source>
+        <translation>Herunterladen</translation>
+    </message>
+    <message>
+        <source>Downloads the unplayed episodes of the chosen podcasts that are not on the phone yet. Ended podcasts are left out. &quot;Newest&quot; counts the ones that are not on the phone yet. The downloads can be cancelled on the downloads page.</source>
+        <translation>Lädt die ungespielten Folgen der gewählten Podcasts, die noch nicht auf dem Telefon sind. Beendete Podcasts bleiben außen vor. „Neueste“ zählt die, die noch nicht auf dem Telefon sind. Die Downloads lassen sich auf der Downloads-Seite abbrechen.</translation>
+    </message>
+    <message>
+        <source>Newest 1</source>
+        <translation>Neueste 1</translation>
+    </message>
+    <message>
+        <source>Newest 3</source>
+        <translation>Neueste 3</translation>
+    </message>
+    <message>
+        <source>All unplayed</source>
+        <translation>Alle ungehörten</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Alle</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Keine</translation>
+    </message>
+    <message>
+        <source>about %1</source>
+        <translation>etwa %1</translation>
+    </message>
+    <message>
+        <source>free %1</source>
+        <translation>frei %1</translation>
+    </message>
+    <message>
+        <source>No Wi-Fi connection – you are asked before the episodes load over the mobile connection.</source>
+        <translation>Kein WLAN – du wirst gefragt, bevor die Folgen über die Mobilverbindung geladen werden.</translation>
+    </message>
+    <message>
+        <source>Nothing to download</source>
+        <translation>Nichts zu laden</translation>
+    </message>
+    <message>
+        <source>All unplayed episodes are on the phone already</source>
+        <translation>Alle ungehörten Folgen sind schon auf dem Telefon</translation>
+    </message>
+</context>
+<context>
     <name>DownloadsMenuItem</name>
     <message>
         <source>Downloads (%1)</source>
@@ -912,8 +1386,141 @@
 <context>
     <name>DownloadsPage</name>
     <message>
+        <source>newest episode first</source>
+        <translation>neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>oldest episode first</source>
+        <translation>älteste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>by podcast</source>
+        <translation>nach Podcast</translation>
+    </message>
+    <message>
+        <source>largest first</source>
+        <translation>größte zuerst</translation>
+    </message>
+    <message>
+        <source>last downloaded first</source>
+        <translation>zuletzt geladen zuerst</translation>
+    </message>
+    <message>
+        <source>Press and hold another episode to mark all episodes in between</source>
+        <translation>Halte eine weitere Folge gedrückt, um alle Folgen dazwischen zu markieren</translation>
+    </message>
+    <message numerus="yes">
+        <source>Deleting %n downloads</source>
+        <translation>
+            <numerusform>Lösche %n Download</numerusform>
+            <numerusform>Lösche %n Downloads</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n in the playlist</source>
+        <translation>
+            <numerusform>%n in der Playlist</numerusform>
+            <numerusform>%n in der Playlist</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Newest</source>
+        <translation>Neueste</translation>
+    </message>
+    <message>
+        <source>Oldest</source>
+        <translation>Älteste</translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation>Nach Podcast</translation>
+    </message>
+    <message>
+        <source>Largest</source>
+        <translation>Größte</translation>
+    </message>
+    <message>
+        <source>Last downloaded</source>
+        <translation>Zuletzt geladen</translation>
+    </message>
+    <message>
+        <source>Archived</source>
+        <translation>Archiviert</translation>
+    </message>
+    <message>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
+    <message>
+        <source>1 episode</source>
+        <translation>1 Folge</translation>
+    </message>
+    <message>
+        <source>%1 episodes</source>
+        <translation>%1 Folgen</translation>
+    </message>
+    <message>
+        <source>Ended podcasts, files saved with &quot;Save in Music&quot; and copied archives – also their files that are still on the phone. &quot;Delete played downloads&quot; leaves them alone.</source>
+        <translation>Beendete Podcasts, mit „In Musik speichern“ gesicherte Dateien und kopierte Archive – auch deren Dateien, die noch auf dem Telefon liegen. „Gespielte Downloads löschen“ lässt sie in Ruhe.</translation>
+    </message>
+    <message>
+        <source>Archive settings</source>
+        <translation>Archiv-Einstellungen</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n selected</source>
+        <translation>
+            <numerusform>%n ausgewählt</numerusform>
+            <numerusform>%n ausgewählt</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Löschen</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Abbrechen</translation>
+    </message>
+    <message>
+        <source>Invert selection</source>
+        <translation>Auswahl umkehren</translation>
+    </message>
+    <message>
+        <source>Select all not in the playlist</source>
+        <translation>Alle nicht in der Playlist auswählen</translation>
+    </message>
+    <message>
+        <source>Select all</source>
+        <translation>Alle auswählen</translation>
+    </message>
+    <message>
         <source>Download settings</source>
         <translation>Download-Einstellungen</translation>
+    </message>
+    <message>
+        <source>Hide filter</source>
+        <translation>Filter ausblenden</translation>
+    </message>
+    <message>
+        <source>Filter</source>
+        <translation>Filtern</translation>
+    </message>
+    <message>
+        <source>Download unplayed …</source>
+        <translation>Ungehörte laden …</translation>
+    </message>
+    <message>
+        <source>Delete several …</source>
+        <translation>Mehrere löschen …</translation>
     </message>
     <message>
         <source>Cancel all downloads</source>
@@ -924,48 +1531,35 @@
         <translation>Downloads werden abgebrochen</translation>
     </message>
     <message>
-        <source>Delete played downloads</source>
-        <translation>Gehörte Downloads löschen</translation>
-    </message>
-    <message>
-        <source>Deleting played downloads</source>
-        <translation>Gehörte Downloads werden gelöscht</translation>
-    </message>
-    <message>
-        <source>Add unplayed to the playlist (%1)</source>
-        <translation>Ungehörte zur Playlist (%1)</translation>
-    </message>
-    <message>
-        <source>Adding %1 episodes to the playlist</source>
-        <translation>%1 Folgen kommen in die Playlist</translation>
-    </message>
-    <message>
         <source>Downloads</source>
         <translation>Downloads</translation>
     </message>
     <message>
-        <source>%1 MB</source>
-        <translation>%1 MB</translation>
+        <source>total incl. archive</source>
+        <translation>gesamt inkl. Archiv</translation>
     </message>
     <message>
-        <source>%1 GB</source>
-        <translation>%1 GB</translation>
+        <source>Delete played</source>
+        <translation>Gehörte löschen</translation>
     </message>
     <message>
-        <source>downloads</source>
-        <translation>Downloads</translation>
-    </message>
-    <message>
-        <source>played, can be deleted</source>
-        <translation>gehört, löschbar</translation>
+        <source>already played</source>
+        <translation>bereits gehört</translation>
     </message>
     <message>
         <source>free on the phone</source>
         <translation>frei am Telefon</translation>
     </message>
+    <message numerus="yes">
+        <source>Deleting %n played downloads</source>
+        <translation>
+            <numerusform>Lösche %n gehörten Download</numerusform>
+            <numerusform>Lösche %n gehörte Downloads</numerusform>
+        </translation>
+    </message>
     <message>
-        <source>%1 of them are in Music and Videos</source>
-        <translation>%1 davon in Musik und Videos</translation>
+        <source>%1 of them (%2) are in Music and Videos</source>
+        <translation>Davon %1 (%2) in Musik und Videos</translation>
     </message>
     <message>
         <source>Running</source>
@@ -980,8 +1574,20 @@
         <translation>wartet</translation>
     </message>
     <message>
+        <source>Filter downloads</source>
+        <translation>Downloads filtern</translation>
+    </message>
+    <message>
+        <source>Archived: %1 · %2</source>
+        <translation>Archiviert: %1 · %2</translation>
+    </message>
+    <message>
         <source>Downloaded</source>
         <translation>Heruntergeladen</translation>
+    </message>
+    <message>
+        <source>No matches</source>
+        <translation>Keine Treffer</translation>
     </message>
     <message>
         <source>No downloads</source>
@@ -995,6 +1601,18 @@
 <context>
     <name>EpisodeDelegate</name>
     <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
+    <message>
+        <source>Set aside</source>
+        <translation>Weglegen</translation>
+    </message>
+    <message>
         <source>Play next</source>
         <translation>Als Nächstes abspielen</translation>
     </message>
@@ -1007,16 +1625,8 @@
         <translation>Aus der Playlist entfernen</translation>
     </message>
     <message>
-        <source>Download</source>
-        <translation>Herunterladen</translation>
-    </message>
-    <message>
-        <source>Cancel download</source>
-        <translation>Download abbrechen</translation>
-    </message>
-    <message>
-        <source>Delete download</source>
-        <translation>Download löschen</translation>
+        <source>Release pin</source>
+        <translation>Pin lösen</translation>
     </message>
     <message>
         <source>Mark as played</source>
@@ -1031,8 +1641,24 @@
         <translation>Ältere als gehört markieren</translation>
     </message>
     <message>
-        <source>Remove from New episodes</source>
-        <translation>Aus „Neue Folgen“ entfernen</translation>
+        <source>Download</source>
+        <translation>Herunterladen</translation>
+    </message>
+    <message>
+        <source>Cancel download</source>
+        <translation>Download abbrechen</translation>
+    </message>
+    <message>
+        <source>Delete download</source>
+        <translation>Download löschen</translation>
+    </message>
+    <message>
+        <source>Delete several …</source>
+        <translation>Mehrere löschen …</translation>
+    </message>
+    <message>
+        <source>Delete all of this podcast …</source>
+        <translation>Alle dieses Podcasts löschen …</translation>
     </message>
     <message>
         <source>Subscribe to the podcast</source>
@@ -1059,6 +1685,10 @@
         <translation>gestern</translation>
     </message>
     <message>
+        <source>set aside</source>
+        <translation>weggelegt</translation>
+    </message>
+    <message>
         <source>S%1 E%2</source>
         <translation>S%1 F%2</translation>
     </message>
@@ -1083,7 +1713,7 @@
         <translation>%1 Min.</translation>
     </message>
     <message>
-        <source>Tap "› N chapters" to unfold the chapters in the list</source>
+        <source>Tap &quot;› N chapters&quot; to unfold the chapters in the list</source>
         <translation>„› N Kapitel“ antippen, um die Kapitel in der Liste aufzuklappen</translation>
     </message>
     <message numerus="yes">
@@ -1094,12 +1724,35 @@
         </translation>
     </message>
     <message>
+        <source>Undo</source>
+        <translation>Rückgängig</translation>
+    </message>
+    <message>
+        <source>Add to playlist as next</source>
+        <translation>Als Nächstes zur Playlist hinzufügen</translation>
+    </message>
+    <message>
         <source>Pause</source>
         <translation>Pause</translation>
     </message>
     <message>
         <source>Play</source>
         <translation>Abspielen</translation>
+    </message>
+</context>
+<context>
+    <name>EpisodeListModel</name>
+    <message>
+        <source>Season %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Without season</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Without date</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -1173,6 +1826,10 @@
         <translation>Das Video wird weiter geladen – das spart keine Daten</translation>
     </message>
     <message>
+        <source>Sound only · saves data</source>
+        <translation>Nur Ton · spart Daten</translation>
+    </message>
+    <message>
         <source>Sound only</source>
         <translation>Nur Ton</translation>
     </message>
@@ -1187,6 +1844,10 @@
     <message>
         <source>yesterday</source>
         <translation>gestern</translation>
+    </message>
+    <message>
+        <source>Video stream</source>
+        <translation>Videostream</translation>
     </message>
     <message>
         <source>S%1 E%2</source>
@@ -1247,6 +1908,10 @@
     <message>
         <source>Remove from playlist</source>
         <translation>Aus der Playlist entfernen</translation>
+    </message>
+    <message>
+        <source>Add to playlist as next</source>
+        <translation>Als Nächstes zur Playlist hinzufügen</translation>
     </message>
     <message>
         <source>Add to end of playlist</source>
@@ -1363,14 +2028,6 @@
         <translation>Podcast-Einstellungen</translation>
     </message>
     <message>
-        <source>End search</source>
-        <translation>Suche beenden</translation>
-    </message>
-    <message>
-        <source>Search episodes</source>
-        <translation>Folgen durchsuchen</translation>
-    </message>
-    <message>
         <source>Add unplayed to the playlist (%1)</source>
         <translation>Ungehörte zur Playlist (%1)</translation>
     </message>
@@ -1381,6 +2038,14 @@
     <message>
         <source>Mark as played / unplayed …</source>
         <translation>Als gehört / ungehört markieren …</translation>
+    </message>
+    <message>
+        <source>End search</source>
+        <translation>Suche beenden</translation>
+    </message>
+    <message>
+        <source>Search episodes</source>
+        <translation>Folgen durchsuchen</translation>
     </message>
     <message>
         <source>Update</source>
@@ -1413,8 +2078,8 @@
         </translation>
     </message>
     <message>
-        <source>Ended - not updated any more</source>
-        <translation>Beendet - wird nicht mehr aktualisiert</translation>
+        <source>Ended – not updated any more</source>
+        <translation>Beendet – wird nicht mehr aktualisiert</translation>
     </message>
     <message>
         <source>Archive folder: %1</source>
@@ -1448,7 +2113,7 @@
         <translation>Alle ungehört lassen</translation>
     </message>
     <message>
-        <source>Not subscribed - you can listen to the episodes. Without a subscription the podcast disappears after 30 days without listening.</source>
+        <source>Not subscribed – you can listen to the episodes. Without a subscription the podcast disappears after 30 days without listening.</source>
         <translation>Nicht abonniert – du kannst die Folgen trotzdem anhören. Ohne Abo verschwindet der Podcast nach 30 Tagen ohne Hören wieder.</translation>
     </message>
     <message>
@@ -1465,7 +2130,7 @@
     </message>
     <message>
         <source>%1 h</source>
-        <translation>%1 Std.</translation>
+        <translation>%1 h</translation>
     </message>
     <message>
         <source>listened</source>
@@ -1581,7 +2246,7 @@
         <translation>Ordner</translation>
     </message>
     <message>
-        <source>"Other podcasts": no folder</source>
+        <source>&quot;Other podcasts&quot;: no folder</source>
         <translation>„Andere Podcasts“: kein Ordner</translation>
     </message>
     <message>
@@ -1615,7 +2280,7 @@
         <translation>Die Podcasts, ihre Folgen, Downloads und Lesezeichen werden entfernt.</translation>
     </message>
     <message>
-        <source>The podcasts are kept and move to "Other podcasts".</source>
+        <source>The podcasts are kept and move to &quot;Other podcasts&quot;.</source>
         <translation>Die Podcasts bleiben und kommen zu „Sonstige Podcasts“.</translation>
     </message>
 </context>
@@ -1694,6 +2359,10 @@
         <translation>Ordnernamen antippen zum Ein-/Ausklappen, gedrückt halten für Optionen</translation>
     </message>
     <message>
+        <source>New folder …</source>
+        <translation>Neuer Ordner …</translation>
+    </message>
+    <message>
         <source>Choose podcasts …</source>
         <translation>Podcasts auswählen …</translation>
     </message>
@@ -1710,7 +2379,7 @@
         <translation>Nach unten</translation>
     </message>
     <message>
-        <source>Include in "Update"</source>
+        <source>Include in &quot;Update&quot;</source>
         <translation>Bei „Aktualisieren“ einbeziehen</translation>
     </message>
     <message>
@@ -1845,7 +2514,7 @@
         <translation>Name des neuen Geräts</translation>
     </message>
     <message>
-        <source>A new device starts without subscriptions - choose the device of your other app above, or share the subscriptions below.</source>
+        <source>A new device starts without subscriptions – choose the device of your other app above, or share the subscriptions below.</source>
         <translation>Ein neues Gerät startet ohne Abos – oben das Gerät der anderen App wählen oder unten die Abos teilen.</translation>
     </message>
     <message>
@@ -1857,12 +2526,16 @@
         <translation>Legt die unten angehakten Geräte mit diesem in eine Sync-Gruppe: Ein auf einem Gerät abonnierter Podcast erscheint auf allen. Nicht angehakte Geräte verlassen die Gruppe.</translation>
     </message>
     <message>
-        <source>No other device checked - nothing is shared.</source>
+        <source>No other device checked – nothing is shared.</source>
         <translation>Kein anderes Gerät angehakt – es wird nichts geteilt.</translation>
     </message>
 </context>
 <context>
     <name>HomePage</name>
+    <message>
+        <source>&quot;New&quot; shows what you haven&apos;t looked at yet. ➕ (playlist and download) or Set aside take an episode out – it stays in &quot;All unplayed&quot;.</source>
+        <translation>„Neu“ zeigt, was du noch nicht gesichtet hast. ➕ (Playlist und Download) oder Weglegen nehmen eine Folge heraus – sie bleibt unter „Alle ungehörten“.</translation>
+    </message>
     <message>
         <source>New episodes</source>
         <translation>Neue Folgen</translation>
@@ -1874,6 +2547,26 @@
     <message>
         <source>Synchronizing</source>
         <translation>Synchronisiere</translation>
+    </message>
+    <message>
+        <source>New (%1)</source>
+        <translation>Neu (%1)</translation>
+    </message>
+    <message>
+        <source>New</source>
+        <translation>Neu</translation>
+    </message>
+    <message>
+        <source>All unplayed</source>
+        <translation>Alle ungehörten</translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation>Nach Podcast</translation>
+    </message>
+    <message>
+        <source>By date</source>
+        <translation>Nach Datum</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -1888,6 +2581,25 @@
         <translation>Lesezeichen (%1)</translation>
     </message>
     <message>
+        <source>Fold all</source>
+        <translation>Alle zuklappen</translation>
+    </message>
+    <message>
+        <source>Unfold all</source>
+        <translation>Alle aufklappen</translation>
+    </message>
+    <message>
+        <source>Clear New</source>
+        <translation>Neu leeren</translation>
+    </message>
+    <message numerus="yes">
+        <source>Clearing %n new episodes</source>
+        <translation>
+            <numerusform>%n neue Folge wird geleert</numerusform>
+            <numerusform>%n neue Folgen werden geleert</numerusform>
+        </translation>
+    </message>
+    <message>
         <source>Search my podcasts</source>
         <translation>Meine Podcasts durchsuchen</translation>
     </message>
@@ -1900,16 +2612,223 @@
         <translation>Aktualisieren</translation>
     </message>
     <message>
+        <source>Open podcast</source>
+        <translation>Podcast öffnen</translation>
+    </message>
+    <message>
+        <source>Mark all as played</source>
+        <translation>Alle als gehört markieren</translation>
+    </message>
+    <message>
+        <source>Podcast settings</source>
+        <translation>Podcast-Einstellungen</translation>
+    </message>
+    <message numerus="yes">
+        <source>+ %n more on the podcast page</source>
+        <translation>
+            <numerusform>+ %n weitere auf der Podcast-Seite</numerusform>
+            <numerusform>+ %n weitere auf der Podcast-Seite</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Show fewer</source>
+        <translation>Weniger anzeigen</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n more new</source>
+        <translation>
+            <numerusform>%n weitere neue</numerusform>
+            <numerusform>%n weitere neue</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n more unplayed</source>
+        <translation>
+            <numerusform>%n weitere ungehörte</numerusform>
+            <numerusform>%n weitere ungehörte</numerusform>
+        </translation>
+    </message>
+    <message>
         <source>Database error</source>
         <translation>Datenbankfehler</translation>
+    </message>
+    <message>
+        <source>Nothing new</source>
+        <translation>Nichts Neues</translation>
     </message>
     <message>
         <source>All caught up</source>
         <translation>Alles gehört</translation>
     </message>
     <message>
-        <source>No unplayed episodes</source>
+        <source>Episodes you have set aside or started are in &quot;All unplayed&quot;</source>
+        <translation>Weggelegte und angefangene Folgen findest du unter „Alle ungehörten“</translation>
+    </message>
+    <message>
+        <source>No unplayed episodes waiting</source>
         <translation>Keine ungehörten Folgen</translation>
+    </message>
+</context>
+<context>
+    <name>HtmlExportPage</name>
+    <message>
+        <source>Saved as %1</source>
+        <translation>Gespeichert als %1</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>Laden</translation>
+    </message>
+    <message numerus="yes">
+        <source>Downloads are set to Wi-Fi only. Load the chapters of %n episodes over the mobile connection anyway?</source>
+        <translation>
+            <numerusform>Downloads sind auf WLAN beschränkt. Die Kapitel von %n Folgen trotzdem über das Mobilnetz laden?</numerusform>
+            <numerusform>Downloads sind auf WLAN beschränkt. Die Kapitel von %n Folgen trotzdem über das Mobilnetz laden?</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Everything</source>
+        <translation>Alles</translation>
+    </message>
+    <message>
+        <source>None</source>
+        <translation>Keine</translation>
+    </message>
+    <message>
+        <source>Other podcasts</source>
+        <translation>Sonstige Podcasts</translation>
+    </message>
+    <message>
+        <source>Saved as %1 (with the chapters loaded so far)</source>
+        <translation>Gespeichert als %1 (mit den bisher geladenen Kapiteln)</translation>
+    </message>
+    <message>
+        <source>Share my podcasts</source>
+        <translation>Meine Podcasts teilen</translation>
+    </message>
+    <message numerus="yes">
+        <source>One HTML file with your podcasts (%n podcasts) in Downloads: folders, covers, links, OPML per folder. Opens in any browser, also without internet.</source>
+        <translation>
+            <numerusform>Eine HTML-Datei mit deinen Podcasts (%n Podcasts) in Downloads: Ordner, Cover, Links, OPML je Ordner. Öffnet in jedem Browser, auch ohne Internet.</numerusform>
+            <numerusform>Eine HTML-Datei mit deinen Podcasts (%n Podcasts) in Downloads: Ordner, Cover, Links, OPML je Ordner. Öffnet in jedem Browser, auch ohne Internet.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>%n private feeds (with a password or a personal link) are left out.</source>
+        <translation>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) bleiben weg.</numerusform>
+            <numerusform>%n private Feeds (mit Passwort oder persönlichem Link) bleiben weg.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Folders</source>
+        <translation>Ordner</translation>
+    </message>
+    <message>
+        <source>Content</source>
+        <translation>Inhalt</translation>
+    </message>
+    <message>
+        <source>Descriptions</source>
+        <translation>Beschreibungen</translation>
+    </message>
+    <message>
+        <source>Episodes</source>
+        <translation>Folgen</translation>
+    </message>
+    <message numerus="yes">
+        <source>All %n episodes: 5 shown, the others folded under &quot;More episodes&quot;. Makes the file bigger.</source>
+        <translation>
+            <numerusform>Alle %n Folgen: 5 sichtbar, die übrigen unter „Weitere Folgen“ zugeklappt. Macht die Datei größer.</numerusform>
+            <numerusform>Alle %n Folgen: 5 sichtbar, die übrigen unter „Weitere Folgen“ zugeklappt. Macht die Datei größer.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Title, date, length and whether you heard it</source>
+        <translation>Titel, Datum, Länge und ob du sie gehört hast</translation>
+    </message>
+    <message>
+        <source>Last 5</source>
+        <translation>Letzte 5</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Alle</translation>
+    </message>
+    <message>
+        <source>Descriptions of these episodes</source>
+        <translation>Beschreibungen dieser Folgen</translation>
+    </message>
+    <message>
+        <source>Already on the phone with the episodes, nothing is loaded</source>
+        <translation>Schon mit den Folgen am Handy, es wird nichts geladen</translation>
+    </message>
+    <message>
+        <source>Chapters of these episodes</source>
+        <translation>Kapitel dieser Folgen</translation>
+    </message>
+    <message numerus="yes">
+        <source>Loads the chapters of %n episodes from the internet first.</source>
+        <translation>
+            <numerusform>Lädt vorher die Kapitel von %n Folgen aus dem Internet.</numerusform>
+            <numerusform>Lädt vorher die Kapitel von %n Folgen aus dem Internet.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>All known chapters are already loaded.</source>
+        <translation>Alle bekannten Kapitel sind schon geladen.</translation>
+    </message>
+    <message>
+        <source>Chapters only inside the audio file are missing for episodes that are not downloaded.</source>
+        <translation>Kapitel, die nur in der Audiodatei stecken, fehlen bei nicht geladenen Folgen.</translation>
+    </message>
+    <message>
+        <source>Bookmarks of these episodes</source>
+        <translation>Lesezeichen dieser Folgen</translation>
+    </message>
+    <message>
+        <source>Your own bookmarks with their notes – private</source>
+        <translation>Deine Lesezeichen mit Notizen – privat</translation>
+    </message>
+    <message>
+        <source>Listening statistics</source>
+        <translation>Hörstatistik</translation>
+    </message>
+    <message>
+        <source>Contains detailed listening habits: top podcasts, weekdays, time per podcast – private</source>
+        <translation>Enthält genaue Hörgewohnheiten: Top-Podcasts, Wochentage, Zeit je Podcast – privat</translation>
+    </message>
+    <message>
+        <source>Total time, time saved by speed, episodes – folded at the top of the page</source>
+        <translation>Gesamtzeit, durch Tempo gespart, Folgen – zugeklappt oben in der Seite</translation>
+    </message>
+    <message>
+        <source>Not in the page</source>
+        <translation>Nicht in der Seite</translation>
+    </message>
+    <message>
+        <source>Totals only</source>
+        <translation>Nur Summen</translation>
+    </message>
+    <message>
+        <source>Building the page %1 / %2</source>
+        <translation>Baue die Seite %1 / %2</translation>
+    </message>
+    <message>
+        <source>Loading chapters %1 / %2</source>
+        <translation>Lade Kapitel %1 / %2</translation>
+    </message>
+    <message>
+        <source>Stop and save what is loaded</source>
+        <translation>Abbrechen und Geladenes speichern</translation>
+    </message>
+    <message>
+        <source>Save to Downloads</source>
+        <translation>In Downloads speichern</translation>
+    </message>
+    <message>
+        <source>Share</source>
+        <translation>Teilen</translation>
     </message>
 </context>
 <context>
@@ -1947,56 +2866,71 @@
         <translation>Ordner für importierte Podcasts</translation>
     </message>
     <message>
-        <source>For podcasts the file puts in no folder; folders named in the file are taken over</source>
-        <translation>Für Podcasts, die in der Datei in keinem Ordner sind; Ordner aus der Datei werden übernommen</translation>
-    </message>
-    <message>
-        <source>OPML file</source>
-        <translation>OPML-Datei</translation>
-    </message>
-    <message>
-        <source>Adds the podcasts of a subscription list from another app</source>
-        <translation>Fügt die Podcasts einer Abo-Liste aus einer anderen App hinzu</translation>
+        <source>For an OPML file that names no folder; folders named in it are kept.</source>
+        <translation>Für eine OPML-Datei ohne Ordnerangabe; Ordner aus der Datei werden übernommen.</translation>
     </message>
     <message>
         <source>Only the newest episode unplayed</source>
         <translation>Nur die neueste Folge ungehört</translation>
     </message>
     <message>
-        <source>After loading, all older episodes of the imported podcasts are marked as played</source>
-        <translation>Nach dem Laden werden alle älteren Folgen der importierten Podcasts als gehört markiert</translation>
+        <source>After an OPML import, all older episodes are marked as played.</source>
+        <translation>Nach einem OPML-Import werden alle älteren Folgen als gehört markiert.</translation>
+    </message>
+    <message>
+        <source>OPML file</source>
+        <translation>OPML-Datei</translation>
+    </message>
+    <message>
+        <source>Adds the podcasts of a subscription list (OPML) from another app.</source>
+        <translation>Fügt die Podcasts einer Abo-Liste (OPML) aus einer anderen App hinzu.</translation>
     </message>
     <message>
         <source>gpodder-sailfish</source>
         <translation>gpodder-sailfish</translation>
     </message>
     <message>
-        <source>Subscriptions, played episodes and positions from the file "Database". Copy it to Downloads first: ~/.local/share/org.gpodder/gpodder_sailfish/Database</source>
-        <translation>Abos, gehörte Folgen und Positionen aus der Datei „Database“. Vorher nach Downloads kopieren: ~/.local/share/org.gpodder/gpodder_sailfish/Database</translation>
+        <source>Subscriptions, played episodes and positions from its file &quot;Database&quot; – copy it to Downloads first (~/.local/share/org.gpodder/gpodder_sailfish/).</source>
+        <translation>Abos, gehörte Folgen und Positionen aus seiner Datei „Database“ – vorher nach Downloads kopieren (~/.local/share/org.gpodder/gpodder_sailfish/).</translation>
     </message>
     <message>
-        <source>Sailcast database</source>
-        <translation>Sailcast-Datenbank</translation>
+        <source>Archive folders</source>
+        <translation>Archivordner</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n podcasts</source>
+        <translation>
+            <numerusform>%n Podcast</numerusform>
+            <numerusform>%n Podcasts</numerusform>
+        </translation>
     </message>
     <message>
-        <source>Replaces everything (podcasts, listening state, playlist, sync account) with a copy, e.g. a backup or the database of the desktop tool</source>
-        <translation>Ersetzt alles (Podcasts, Hörstand, Playlist, Sync-Konto) durch eine Kopie, z. B. eine Sicherung oder die Datenbank des Desktop-Werkzeugs</translation>
+        <source>Takes over the episodes, files and listening state of an archived podcast – without network.</source>
+        <translation>Übernimmt Folgen, Dateien und Hörstand eines archivierten Podcasts – ohne Netz.</translation>
+    </message>
+    <message>
+        <source>No archived podcasts in %1</source>
+        <translation>Keine archivierten Podcasts in %1</translation>
     </message>
     <message>
         <source>Export</source>
-        <translation>Export</translation>
+        <translation>Exportieren</translation>
     </message>
     <message>
-        <source>Folders</source>
-        <translation>Ordner</translation>
+        <source>OPML folders</source>
+        <translation>OPML-Ordner</translation>
+    </message>
+    <message>
+        <source>The chosen folders as an OPML file in Downloads. Private feed addresses with a key are included.</source>
+        <translation>Die gewählten Ordner als OPML-Datei in Downloads. Private Feed-Adressen mit Schlüssel sind enthalten.</translation>
+    </message>
+    <message>
+        <source>Your subscriptions as an OPML file in Downloads. Private feed addresses with a key are included.</source>
+        <translation>Deine Abos als OPML-Datei in Downloads. Private Feed-Adressen mit Schlüssel sind enthalten.</translation>
     </message>
     <message>
         <source>Save OPML file</source>
         <translation>OPML-Datei speichern</translation>
-    </message>
-    <message>
-        <source>The subscriptions (with their folders), in Downloads. Private feed addresses with a key are included.</source>
-        <translation>Die Abos (mit ihren Ordnern) in Downloads. Private Feed-Adressen mit Schlüssel sind enthalten.</translation>
     </message>
     <message>
         <source>Saved as %1</source>
@@ -2007,39 +2941,32 @@
         <translation>OPML-Datei teilen</translation>
     </message>
     <message>
-        <source>Saves the file and opens the sharing menu (e-mail, Bluetooth, …)</source>
-        <translation>Speichert die Datei und öffnet das Teilen-Menü (E-Mail, Bluetooth, …)</translation>
+        <source>Share my podcasts</source>
+        <translation>Meine Podcasts teilen</translation>
     </message>
     <message>
-        <source>Back up database</source>
-        <translation>Datenbank sichern</translation>
+        <source>An overview of your podcasts with covers, latest episodes and links – to send on or keep. Podcasts with a login are left out.</source>
+        <translation>Eine Übersicht deiner Podcasts mit Covern, letzten Folgen und Links – zum Weiterschicken oder Aufheben. Podcasts mit Login bleiben draußen.</translation>
     </message>
     <message>
-        <source>A copy of the whole database in Downloads (no passwords)</source>
-        <translation>Eine Kopie der ganzen Datenbank in Downloads (ohne Passwörter)</translation>
+        <source>Clean up and replace</source>
+        <translation>Aufräumen und ersetzen</translation>
     </message>
     <message>
-        <source>Archive folders</source>
-        <translation>Archivordner</translation>
+        <source>Mark podcasts as played</source>
+        <translation>Podcasts als gehört markieren</translation>
     </message>
     <message>
-        <source>Takes over the episodes, files and listening state of an archived podcast – without network.</source>
-        <translation>Übernimmt Folgen, Dateien und Hörstand eines archivierten Podcasts – ohne Netz.</translation>
+        <source>Of all or chosen podcasts – all episodes, or all but the newest of each</source>
+        <translation>Aller oder gewählter Podcasts – alle Folgen oder alle außer der neuesten</translation>
     </message>
     <message>
-        <source>No archived podcasts in %1</source>
-        <translation>Keine archivierten Podcasts in %1</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n episodes</source>
-        <translation>
-            <numerusform>%n Folge</numerusform>
-            <numerusform>%n Folgen</numerusform>
-        </translation>
+        <source>Sailcast database</source>
+        <translation>Sailcast-Datenbank</translation>
     </message>
     <message>
-        <source>subscribed</source>
-        <translation>abonniert</translation>
+        <source>Replaces your entire Sailcast database (podcasts, listening state, playlist, sync account) with another file. Own backups: Backup and restore.</source>
+        <translation>Ersetzt deine gesamte Sailcast-Datenbank (Podcasts, Hörstand, Playlist, Sync-Konto) durch eine andere Datei. Eigene Sicherungen: Sichern und wiederherstellen.</translation>
     </message>
 </context>
 <context>
@@ -2073,7 +3000,7 @@
         <translation>Kategorien werden geladen</translation>
     </message>
     <message>
-        <source>They come from fyyd - try again in a moment</source>
+        <source>They come from fyyd – try again in a moment</source>
         <translation>Sie kommen von fyyd – gleich noch einmal versuchen</translation>
     </message>
 </context>
@@ -2100,7 +3027,7 @@
         <translation>Meine Interessen</translation>
     </message>
     <message>
-        <source>Decides what "For you" suggests</source>
+        <source>Decides what &quot;For you&quot; suggests</source>
         <translation>Bestimmt, was „Für dich“ vorschlägt</translation>
     </message>
     <message>
@@ -2120,7 +3047,7 @@
         <translation>Dunkler = mehr gehört. Tippen: mehr, weniger, nie, normal.</translation>
     </message>
     <message>
-        <source>Nothing heard yet - tap what interests you: more, less, never, normal.</source>
+        <source>Nothing heard yet – tap what interests you: more, less, never, normal.</source>
         <translation>Noch nichts gehört – tippe an, was dich interessiert: mehr, weniger, nie, normal.</translation>
     </message>
     <message>
@@ -2191,7 +3118,7 @@
         <translation>z. B. classical</translation>
     </message>
     <message>
-        <source>No translation known - if the English word differs, enter it above.</source>
+        <source>No translation known – if the English word differs, enter it above.</source>
         <translation>Keine Übersetzung bekannt – falls das englische Wort anders lautet, oben eintragen.</translation>
     </message>
     <message>
@@ -2260,11 +3187,11 @@
         <translation>Auch in Beschreibungen</translation>
     </message>
     <message>
-        <source>Finds your podcasts (title, author), episode titles and descriptions and bookmarks (name, note). New podcasts: "Discover".</source>
+        <source>Finds your podcasts (title, author), episode titles and descriptions and bookmarks (name, note). New podcasts: &quot;Discover&quot;.</source>
         <translation>Findet deine Podcasts (Titel, Autor), Folgentitel und -beschreibungen und Lesezeichen (Name, Notiz). Neue Podcasts: „Entdecken“.</translation>
     </message>
     <message>
-        <source>Finds your podcasts (title, author), episode titles and bookmarks (name, note). New podcasts: "Discover".</source>
+        <source>Finds your podcasts (title, author), episode titles and bookmarks (name, note). New podcasts: &quot;Discover&quot;.</source>
         <translation>Findet deine Podcasts (Titel, Autor), Folgentitel und Lesezeichen (Name, Notiz). Neue Podcasts: „Entdecken“.</translation>
     </message>
     <message>
@@ -2284,7 +3211,7 @@
         <translation>Lesezeichen</translation>
     </message>
     <message>
-        <source>Search for a new podcast: "%1"</source>
+        <source>Search for a new podcast: &quot;%1&quot;</source>
         <translation>Neuen Podcast suchen: „%1“</translation>
     </message>
     <message>
@@ -2508,7 +3435,7 @@
         <translation>Ausgewählt: %1</translation>
     </message>
     <message>
-        <source>Episodes kept with "Save in Music", archived podcasts and the episode playing stay where they are.</source>
+        <source>Episodes kept with &quot;Save in Music&quot;, archived podcasts and the episode playing stay where they are.</source>
         <translation>Mit „In Musik speichern“ behaltene Folgen, archivierte Podcasts und die laufende Folge bleiben, wo sie sind.</translation>
     </message>
     <message>
@@ -2632,8 +3559,8 @@
         <translation>Videos nur im WLAN – herunterladen oder später ansehen</translation>
     </message>
     <message>
-        <source>Skipped episodes count as played - "Recently heard" on the playlist page brings them back, where you left them</source>
-        <translation>Übersprungene Folgen gelten als gehört – „Zuletzt gehört“ auf der Playlist-Seite holt sie zurück, an derselben Stelle</translation>
+        <source>Skipped episodes count as played – &quot;Recently finished&quot; on the playlist page brings them back, where you left them</source>
+        <translation>Übersprungene Folgen gelten als gehört – „Zuletzt beendet“ auf der Playlist-Seite holt sie zurück, an derselben Stelle</translation>
     </message>
     <message>
         <source>Cannot play: %1</source>
@@ -2752,6 +3679,46 @@
 <context>
     <name>PlaylistPage</name>
     <message>
+        <source>Oldest first</source>
+        <translation>Älteste zuerst</translation>
+    </message>
+    <message>
+        <source>Newest first</source>
+        <translation>Neueste zuerst</translation>
+    </message>
+    <message>
+        <source>Shortest first</source>
+        <translation>Kürzeste zuerst</translation>
+    </message>
+    <message>
+        <source>Last downloaded first</source>
+        <translation>Zuletzt geladen zuerst</translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation>Nach Podcast</translation>
+    </message>
+    <message>
+        <source>Smart Shuffle</source>
+        <translation>Smart Shuffle</translation>
+    </message>
+    <message>
+        <source>%1 pinned</source>
+        <translation>%1 fixiert</translation>
+    </message>
+    <message>
+        <source>Sort</source>
+        <translation>Sortieren</translation>
+    </message>
+    <message>
+        <source>Kept sorted: %1</source>
+        <translation>Sortiert gehalten: %1</translation>
+    </message>
+    <message>
+        <source>Sort · %1</source>
+        <translation>Sortieren · %1</translation>
+    </message>
+    <message>
         <source>Drag an episode by its handle to set the play order, below the list to remove it</source>
         <translation>Eine Episode am Griff ziehen, um die Wiedergabereihenfolge festzulegen, unterhalb der Liste, um sie zu entfernen</translation>
     </message>
@@ -2792,12 +3759,16 @@
         <translation>Läuft gerade</translation>
     </message>
     <message>
-        <source>Nothing in the playlist - add episodes with "Play next" or "Add to end of playlist" in their menu</source>
+        <source>Nothing in the playlist – add episodes with &quot;Play next&quot; or &quot;Add to end of playlist&quot; in their menu</source>
         <translation>Nichts in der Playlist – Folgen über „Als Nächstes abspielen“ oder „Ans Ende der Playlist“ in ihrem Menü hinzufügen</translation>
     </message>
     <message>
         <source>Clear playlist</source>
         <translation>Playlist leeren</translation>
+    </message>
+    <message>
+        <source>Clearing playlist, the playing episode goes on</source>
+        <translation>Playlist wird geleert, die laufende Folge spielt weiter</translation>
     </message>
     <message>
         <source>Clearing playlist</source>
@@ -2812,10 +3783,6 @@
         <translation>Meine Podcasts durchsuchen</translation>
     </message>
     <message>
-        <source>Play playlist</source>
-        <translation>Playlist abspielen</translation>
-    </message>
-    <message>
         <source>Release here to remove</source>
         <translation>Zum Entfernen hier loslassen</translation>
     </message>
@@ -2828,15 +3795,15 @@
         <translation>Alle anzeigen</translation>
     </message>
     <message>
-        <source>Recently heard (%1)</source>
-        <translation>Zuletzt gehört (%1)</translation>
+        <source>Recently finished (%1)</source>
+        <translation>Zuletzt beendet (%1)</translation>
     </message>
     <message>
         <source>The playlist is empty</source>
         <translation>Die Playlist ist leer</translation>
     </message>
     <message>
-        <source>Add episodes with "Play next" or "Add to end of playlist" in their menu</source>
+        <source>Add episodes with &quot;Play next&quot; or &quot;Add to end of playlist&quot; in their menu</source>
         <translation>Folgen über „Als Nächstes abspielen“ oder „Ans Ende der Playlist“ in ihrem Menü hinzufügen</translation>
     </message>
 </context>
@@ -2966,7 +3933,7 @@
     </message>
     <message>
         <source>Order</source>
-        <translation>Reihenfolge</translation>
+        <translation>Sortierung</translation>
     </message>
     <message>
         <source>Oldest first for series heard from the beginning</source>
@@ -3001,20 +3968,108 @@
         <translation>Aktualisieren</translation>
     </message>
     <message>
-        <source>Include in "Update"</source>
+        <source>Include in &quot;Update&quot;</source>
         <translation>Bei „Aktualisieren“ einbeziehen</translation>
     </message>
     <message>
-        <source>Off: the podcast is only updated on its own page (pull down → Update). Subscription and listening state are still synchronized.</source>
-        <translation>Aus: Der Podcast wird nur auf seiner eigenen Seite aktualisiert (herunterziehen → Aktualisieren). Abo und Hörstand werden weiter abgeglichen.</translation>
+        <source>Off: the podcast is only updated on its own page (pull down → Update), with automatic download and playlist as usual. Subscription and listening state are still synchronized. A folder set to &quot;Update only by hand&quot; does the same for all podcasts in it.</source>
+        <translation>Aus: Der Podcast wird nur auf seiner eigenen Seite aktualisiert (nach unten ziehen → Aktualisieren), mit automatischem Download und Playlist wie üblich. Abo und Hörstand werden weiter synchronisiert. Ein Ordner mit „Nur von Hand aktualisieren“ macht das für alle Podcasts darin.</translation>
+    </message>
+    <message>
+        <source>Show in New episodes</source>
+        <translation>In Neue Folgen zeigen</translation>
+    </message>
+    <message>
+        <source>Off: the podcast&apos;s episodes stay out of the page New episodes (both views). Playlist, downloads and the podcast page work as usual.</source>
+        <translation>Aus: Die Folgen des Podcasts erscheinen nicht auf der Seite Neue Folgen (beide Ansichten). Playlist, Downloads und die Podcast-Seite funktionieren wie gewohnt.</translation>
     </message>
     <message>
         <source>Podcast has ended</source>
         <translation>Podcast ist beendet</translation>
     </message>
     <message>
-        <source>For a podcast that has ended: no more updates and no error messages. Episodes, downloads and the listening state are kept.</source>
-        <translation>Für einen beendeten Podcast: keine Aktualisierung und keine Fehlermeldungen mehr. Folgen, Downloads und Hörstand bleiben erhalten.</translation>
+        <source>For a podcast that has ended: no more automatic updates, no automatic downloads and no adding to the playlist. &quot;Update&quot; on its own page still works. Episodes, downloads and the listening state are kept; &quot;Delete played downloads&quot; leaves its downloads alone.</source>
+        <translation>Für einen beendeten Podcast: keine automatischen Updates, keine automatischen Downloads und kein Hinzufügen zur Playlist. „Aktualisieren“ auf seiner eigenen Seite geht weiter. Folgen, Downloads und der Hörstand bleiben erhalten; „Gespielte Downloads löschen“ lässt seine Downloads in Ruhe.</translation>
+    </message>
+    <message>
+        <source>Playback</source>
+        <translation>Wiedergabe</translation>
+    </message>
+    <message>
+        <source>Speed</source>
+        <translation>Tempo</translation>
+    </message>
+    <message>
+        <source>As set globally (%1)</source>
+        <translation>Wie allgemein eingestellt (%1)</translation>
+    </message>
+    <message>
+        <source>Skip intro</source>
+        <translation>Intro überspringen</translation>
+    </message>
+    <message>
+        <source>%1 s</source>
+        <translation>%1 s</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>Aus</translation>
+    </message>
+    <message>
+        <source>Skip the end (outro)</source>
+        <translation>Das Ende überspringen (Outro)</translation>
+    </message>
+    <message>
+        <source>An episode that starts from the beginning starts after the intro. The outro ends the episode early: it counts as played and the next one follows. With a speed of its own, the speed on the episode page changes this podcast&apos;s speed.</source>
+        <translation>Eine Folge, die von vorn beginnt, startet nach dem Intro. Beim Ende überspringen endet die Folge früher: Sie gilt als gehört, und die nächste folgt. Hat der Podcast ein eigenes Tempo, ändert der Tempo-Regler auf der Folgenseite dieses Tempo.</translation>
+    </message>
+    <message>
+        <source>Playlist</source>
+        <translation>Playlist</translation>
+    </message>
+    <message>
+        <source>Add new episodes to the playlist</source>
+        <translation>Neue Folgen zur Playlist hinzufügen</translation>
+    </message>
+    <message>
+        <source>After a feed update, new unplayed episodes are added to the playlist. &quot;To the front&quot; means right after the episode playing; &quot;Sorted in&quot; follows the sorting of the playlist. The circle arrow at the handle stays until you move the episode.</source>
+        <translation>Nach einem Feed-Update kommen neue, ungehörte Folgen in die Playlist. „An den Anfang“ heißt direkt nach der laufenden Folge, „Einsortiert“ folgt der Sortierung der Playlist. Der Kreispfeil am Griff bleibt, bis du die Folge verschiebst.</translation>
+    </message>
+    <message>
+        <source>To the end</source>
+        <translation>Ans Ende</translation>
+    </message>
+    <message>
+        <source>To the front</source>
+        <translation>An den Anfang</translation>
+    </message>
+    <message>
+        <source>Sorted in</source>
+        <translation>Einsortiert</translation>
+    </message>
+    <message>
+        <source>At most per update</source>
+        <translation>Höchstens pro Update</translation>
+    </message>
+    <message>
+        <source>Of the episodes found in one update the newest ones; the others are not added later.</source>
+        <translation>Von den Folgen eines Updates die neuesten; die übrigen werden später nicht nachgetragen.</translation>
+    </message>
+    <message>
+        <source>All new episodes</source>
+        <translation>Alle neuen Folgen</translation>
+    </message>
+    <message>
+        <source>1 episode</source>
+        <translation>1 Folge</translation>
+    </message>
+    <message>
+        <source>3 episodes</source>
+        <translation>3 Folgen</translation>
+    </message>
+    <message>
+        <source>5 episodes</source>
+        <translation>5 Folgen</translation>
     </message>
     <message>
         <source>Downloads</source>
@@ -3025,8 +4080,8 @@
         <translation>Neue Folgen herunterladen</translation>
     </message>
     <message>
-        <source>After a feed update, up to 3 new episodes – this is a video podcast, its files are large</source>
-        <translation>Nach einem Feed-Update bis zu 3 neue Folgen – ein Video-Podcast, die Dateien sind groß</translation>
+        <source>After a feed update, up to 3 new episodes – this is a video podcast, its files are large (loaded only on Wi-Fi)</source>
+        <translation>Nach einem Feed-Update bis zu 3 neue Folgen – ein Video-Podcast, die Dateien sind groß (nur im WLAN geladen)</translation>
     </message>
     <message>
         <source>After a feed update, up to 3 new episodes</source>
@@ -3049,7 +4104,7 @@
         <translation>Speicherort</translation>
     </message>
     <message>
-        <source>For new downloads. Music/Podcasts/&lt;podcast&gt; (video episodes: Videos/Podcasts/&lt;podcast&gt;) is visible to other apps, also the music player. To keep the episodes there, set "Delete played downloads" below to "Never".</source>
+        <source>For new downloads. Music/Podcasts/&lt;podcast&gt; (video episodes: Videos/Podcasts/&lt;podcast&gt;) is visible to other apps, also the music player. To keep the episodes there, set &quot;Delete played downloads&quot; below to &quot;Never&quot;.</source>
         <translation>Für neue Downloads. Music/Podcasts/&lt;Podcast&gt; (Videofolgen: Videos/Podcasts/&lt;Podcast&gt;) ist für andere Apps sichtbar, auch für den Musikplayer. Damit die Folgen dort bleiben, unten „Gehörte Downloads löschen“ auf „Nie“ stellen.</translation>
     </message>
     <message>
@@ -3087,48 +4142,38 @@
         <translation>Gehörte Downloads löschen</translation>
     </message>
     <message>
-        <source>Never: downloads of this podcast are kept – also with "Delete played downloads" on the downloads page</source>
+        <source>Never: downloads of this podcast are kept – also with &quot;Delete played downloads&quot; on the downloads page</source>
         <translation>Nie: Downloads dieses Podcasts bleiben – auch bei „Gehörte Downloads löschen“ auf der Downloads-Seite</translation>
-    </message>
-    <message>
-        <source>As set globally (%1)</source>
-        <translation>Wie allgemein eingestellt (%1)</translation>
     </message>
     <message>
         <source>Download episodes …</source>
         <translation>Folgen herunterladen …</translation>
     </message>
+    <message numerus="yes">
+        <source>Delete %n downloads (%1)</source>
+        <translation>
+            <numerusform>%n Download löschen (%1)</numerusform>
+            <numerusform>%n Downloads löschen (%1)</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
+    <message numerus="yes">
+        <source>Deleting %n downloads</source>
+        <translation>
+            <numerusform>Lösche %n Download</numerusform>
+            <numerusform>Lösche %n Downloads</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Save downloads in Music</source>
         <translation>Downloads in Musik speichern</translation>
-    </message>
-    <message>
-        <source>Playback</source>
-        <translation>Wiedergabe</translation>
-    </message>
-    <message>
-        <source>Speed</source>
-        <translation>Tempo</translation>
-    </message>
-    <message>
-        <source>Skip intro</source>
-        <translation>Intro überspringen</translation>
-    </message>
-    <message>
-        <source>%1 s</source>
-        <translation>%1 s</translation>
-    </message>
-    <message>
-        <source>Off</source>
-        <translation>Aus</translation>
-    </message>
-    <message>
-        <source>Skip the end (outro)</source>
-        <translation>Das Ende überspringen (Outro)</translation>
-    </message>
-    <message>
-        <source>An episode that starts from the beginning starts after the intro. The outro ends the episode early: it counts as played and the next one follows. With a speed of its own, the speed on the episode page changes this podcast's speed.</source>
-        <translation>Eine Folge, die von vorn beginnt, startet nach dem Intro. Beim Ende überspringen endet die Folge früher: Sie gilt als gehört, und die nächste folgt. Hat der Podcast ein eigenes Tempo, ändert der Tempo-Regler auf der Folgenseite dieses Tempo.</translation>
     </message>
     <message>
         <source>Archive</source>
@@ -3186,28 +4231,20 @@
         <translation>Import und Export</translation>
     </message>
     <message>
-        <source>Bookmarks (%1)</source>
-        <translation>Lesezeichen (%1)</translation>
-    </message>
-    <message>
-        <source>Search my podcasts</source>
-        <translation>Meine Podcasts durchsuchen</translation>
-    </message>
-    <message>
-        <source>Discover</source>
-        <translation>Entdecken</translation>
+        <source>Listening statistics</source>
+        <translation>Hörstatistik</translation>
     </message>
     <message>
         <source>New folder</source>
         <translation>Neuer Ordner</translation>
     </message>
     <message>
-        <source>Show as list</source>
-        <translation>Als Liste zeigen</translation>
+        <source>Discover</source>
+        <translation>Entdecken</translation>
     </message>
     <message>
-        <source>Show as grid</source>
-        <translation>Als Raster zeigen</translation>
+        <source>Search my podcasts</source>
+        <translation>Meine Podcasts durchsuchen</translation>
     </message>
     <message>
         <source>Synchronize</source>
@@ -3221,12 +4258,12 @@
 <context>
     <name>PodcastsPage</name>
     <message>
-        <source>newest episode</source>
-        <translation>neueste Folge</translation>
+        <source>newest episode first</source>
+        <translation>neueste Folge zuerst</translation>
     </message>
     <message>
-        <source>last subscribed</source>
-        <translation>zuletzt abonniert</translation>
+        <source>last subscribed first</source>
+        <translation>zuletzt abonnierte zuerst</translation>
     </message>
     <message>
         <source>unplayed episodes</source>
@@ -3237,12 +4274,63 @@
         <translation>alphabetisch</translation>
     </message>
     <message>
+        <source>Newest first</source>
+        <translation>Neueste zuerst</translation>
+    </message>
+    <message>
+        <source>Last subscribed</source>
+        <translation>Zuletzt abonniert</translation>
+    </message>
+    <message>
+        <source>Most unplayed</source>
+        <translation>Meiste ungehörte</translation>
+    </message>
+    <message>
+        <source>Alphabetical</source>
+        <translation>Alphabetisch</translation>
+    </message>
+    <message>
+        <source>Newest episode first</source>
+        <translation>Neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Last subscribed first</source>
+        <translation>Zuletzt abonnierte zuerst</translation>
+    </message>
+    <message>
+        <source>Unplayed episodes</source>
+        <translation>Ungehörte Folgen</translation>
+    </message>
+    <message>
         <source>Press and hold a podcast:
 settings · move to folder
 New folder: pull down</source>
         <translation>Einen Podcast gedrückt halten:
 Einstellungen · In Ordner verschieben
 Neuer Ordner: nach unten ziehen</translation>
+    </message>
+    <message>
+        <source>7 days: %1 listened</source>
+        <translation>7 Tage: %1 gehört</translation>
+    </message>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation>%1 Std. %2 Min.</translation>
+    </message>
+    <message>
+        <source>%1 min</source>
+        <translation>%1 Min.</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n days in a row</source>
+        <translation>
+            <numerusform>%n Tag in Folge</numerusform>
+            <numerusform>%n Tage in Folge</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Total: %1 listened</source>
+        <translation>Gesamt: %1 gehört</translation>
     </message>
     <message>
         <source>Podcasts</source>
@@ -3265,8 +4353,12 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Ordner ausblenden</translation>
     </message>
     <message>
-        <source>Sorted: %1</source>
-        <translation>Sortiert: %1</translation>
+        <source>Show as list</source>
+        <translation>Als Liste zeigen</translation>
+    </message>
+    <message>
+        <source>Show as grid</source>
+        <translation>Als Raster zeigen</translation>
     </message>
 </context>
 <context>
@@ -3280,7 +4372,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Ersetzt alles in Sailcast auf diesem Telefon durch den Stand der Sicherung: Abos, Hörstand, Playlist, Ordner, Lesezeichen und Einstellungen. Heruntergeladene Dateien bleiben; Passwörter sind nicht Teil einer Sicherung.</translation>
     </message>
     <message>
-        <source>The current state is kept on this phone as "Before the last restore" - restoring that one undoes this step. The next sync brings listening states that are newer on the server.</source>
+        <source>The current state is kept on this phone as &quot;Before the last restore&quot; – restoring that one undoes this step. The next sync brings listening states that are newer on the server.</source>
         <translation>Der aktuelle Stand bleibt auf dem Telefon als „Vor der letzten Wiederherstellung“ – diesen wiederherzustellen macht den Schritt rückgängig. Der nächste Sync holt Hörstände, die am Server neuer sind.</translation>
     </message>
 </context>
@@ -3360,6 +4452,10 @@ Neuer Ordner: nach unten ziehen</translation>
         <source>Discover</source>
         <translation>Entdecken</translation>
     </message>
+    <message>
+        <source>Downloads</source>
+        <translation>Downloads</translation>
+    </message>
 </context>
 <context>
     <name>SearchPage</name>
@@ -3372,12 +4468,12 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>%1 · noch nichts eingestellt</translation>
     </message>
     <message>
-        <source>New in 1.2: Discover – suggestions, trends and new podcasts. A swipe page; to take it out: Settings → General</source>
-        <translation>Neu in 1.2: Entdecken – Vorschläge, Trends und neue Podcasts. Eine Wischseite; herausnehmen: Einstellungen → Allgemein</translation>
+        <source>New in 1.2: Discover – suggestions, trends and new podcasts. A swipe page; to take it out: Settings → Pages and navigation</source>
+        <translation>Neu in 1.2: Entdecken – Vorschläge, Trends und neue Podcasts. Eine Wischseite; herausnehmen: Einstellungen → Seiten und Navigation</translation>
     </message>
     <message>
-        <source>Discover is one of the swipe pages – to take it out: Settings → General</source>
-        <translation>Entdecken ist eine der Wischseiten – herausnehmen: Einstellungen → Allgemein</translation>
+        <source>Discover is one of the swipe pages – to take it out: Settings → Pages and navigation</source>
+        <translation>Entdecken ist eine der Wischseiten – herausnehmen: Einstellungen → Seiten und Navigation</translation>
     </message>
     <message>
         <source>Cannot load the episodes: %1</source>
@@ -3420,7 +4516,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Neu</translation>
     </message>
     <message>
-        <source>Tap "My interests" to change what "For you" suggests</source>
+        <source>Tap &quot;My interests&quot; to change what &quot;For you&quot; suggests</source>
         <translation>„Meine Interessen“ antippen, um zu ändern, was „Für dich“ vorschlägt</translation>
     </message>
     <message>
@@ -3464,7 +4560,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Der Podcast dazu im Podcast Index unten.</translation>
     </message>
     <message>
-        <source>Search results for "%1" below - tap to check the address again</source>
+        <source>Search results for &quot;%1&quot; below – tap to check the address again</source>
         <translation>Darunter Suchtreffer für „%1“ – tippen, um die Adresse erneut zu prüfen</translation>
     </message>
     <message>
@@ -3495,11 +4591,11 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Adresse aus der Zwischenablage: %1</translation>
     </message>
     <message>
-        <source>Search by title, topic or author, e.g. "Geschichte", "motorcycle" or "Kurvendiskussion". Tap a result to see details and the latest episodes, then subscribe.</source>
+        <source>Search by title, topic or author, e.g. &quot;Geschichte&quot;, &quot;motorcycle&quot; or &quot;Kurvendiskussion&quot;. Tap a result to see details and the latest episodes, then subscribe.</source>
         <translation>Nach Titel, Thema oder Autor suchen, z. B. „Geschichte“, „Motorrad“ oder „Kurvendiskussion“. Einen Treffer antippen für Details und die neuesten Folgen, dann abonnieren.</translation>
     </message>
     <message>
-        <source>Or enter the address of a feed or of the podcast's website, e.g. "cre.fm" or "https://example.com/feed.xml" - it is checked before subscribing.</source>
+        <source>Or enter the address of a feed or of the podcast&apos;s website, e.g. &quot;cre.fm&quot; or &quot;https://example.com/feed.xml&quot; – it is checked before subscribing.</source>
         <translation>Oder die Adresse eines Feeds bzw. der Webseite des Podcasts eingeben, z. B. „cre.fm“ oder „https://example.com/feed.xml“ – sie wird vor dem Abonnieren geprüft.</translation>
     </message>
     <message>
@@ -3507,7 +4603,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Eine vorher kopierte Adresse (z. B. aus dem Browser) wird gleich hier angeboten.</translation>
     </message>
     <message>
-        <source>Search not available - enter a feed address</source>
+        <source>Search not available – enter a feed address</source>
         <translation>Suche nicht verfügbar – Feed-Adresse eingeben</translation>
     </message>
     <message>
@@ -3535,7 +4631,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Was interessiert dich?</translation>
     </message>
     <message>
-        <source>Tap what you want to hear more of - "For you" follows it.</source>
+        <source>Tap what you want to hear more of – &quot;For you&quot; follows it.</source>
         <translation>Tippe an, wovon du mehr hören willst – „Für dich“ richtet sich danach.</translation>
     </message>
     <message>
@@ -3551,7 +4647,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Mehr Möglichkeiten</translation>
     </message>
     <message>
-        <source>More podcasts similar to your favourites: switch on "Recommendations from my subscriptions" in My interests</source>
+        <source>More podcasts similar to your favourites: switch on &quot;Recommendations from my subscriptions&quot; in My interests</source>
         <translation>Mehr Podcasts wie deine Lieblinge: „Empfehlungen aus meinen Abos“ in Meine Interessen einschalten</translation>
     </message>
     <message>
@@ -3575,7 +4671,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Nichts im Trend</translation>
     </message>
     <message>
-        <source>They grow with what you listen to - or set your interests above.</source>
+        <source>They grow with what you listen to – or set your interests above.</source>
         <translation>Sie wachsen mit dem, was du hörst – oder stelle oben deine Interessen ein.</translation>
     </message>
     <message>
@@ -3594,15 +4690,15 @@ Neuer Ordner: nach unten ziehen</translation>
 <context>
     <name>SettingsBackupPage</name>
     <message>
-        <source>Backup</source>
-        <translation>Sicherung</translation>
+        <source>Backup and restore</source>
+        <translation>Sichern und wiederherstellen</translation>
     </message>
     <message>
         <source>Back up automatically</source>
         <translation>Automatisch sichern</translation>
     </message>
     <message>
-        <source>Playlist, folders, bookmarks and settings are not on the sync server - a backup keeps them.</source>
+        <source>Playlist, folders, bookmarks and settings are not on the sync server – a backup keeps them.</source>
         <translation>Playlist, Ordner, Lesezeichen und Einstellungen liegen nicht am Sync-Server – eine Sicherung bewahrt sie.</translation>
     </message>
     <message>
@@ -3642,7 +4738,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>In die Nextcloud sichern</translation>
     </message>
     <message>
-        <source>Into the folder "Sailcast-Backups" of the sync account, the newest 5 are kept.</source>
+        <source>Into the folder &quot;Sailcast-Backups&quot; of the sync account, the newest 5 are kept.</source>
         <translation>In den Ordner „Sailcast-Backups“ des Sync-Kontos, die neuesten 5 bleiben.</translation>
     </message>
     <message>
@@ -3660,40 +4756,40 @@ Neuer Ordner: nach unten ziehen</translation>
         <source>%1 of %2</source>
         <translation>%1 von %2</translation>
     </message>
-    <message>
-        <source>Downloads and archive</source>
-        <translation>Downloads und Archiv</translation>
-    </message>
-    <message>
-        <source>Show downloaded episodes</source>
-        <translation>Heruntergeladene Folgen anzeigen</translation>
-    </message>
     <message numerus="yes">
-        <source>%n episodes</source>
+        <source>%n podcasts</source>
         <translation>
-            <numerusform>%n Folge</numerusform>
-            <numerusform>%n Folgen</numerusform>
+            <numerusform>%n Podcast</numerusform>
+            <numerusform>%n Podcasts</numerusform>
         </translation>
     </message>
     <message>
-        <source>Downloads</source>
-        <translation>Downloads</translation>
+        <source>none</source>
+        <translation>keine</translation>
+    </message>
+    <message>
+        <source>Downloads and storage</source>
+        <translation>Downloads und Speicher</translation>
+    </message>
+    <message>
+        <source>Mobile data</source>
+        <translation>Mobile Daten</translation>
     </message>
     <message>
         <source>Only on Wi-Fi</source>
         <translation>Nur über WLAN</translation>
     </message>
     <message>
-        <source>Over the mobile connection, a download started by hand asks first; automatic downloads wait.</source>
-        <translation>Über die Mobilverbindung fragt ein von Hand gestarteter Download erst nach; automatische Downloads warten.</translation>
+        <source>On mobile data, a download by hand asks first and automatic downloads wait for Wi-Fi.</source>
+        <translation>Über mobile Daten fragt ein Download von Hand zuerst, automatische Downloads warten auf WLAN.</translation>
     </message>
     <message>
         <source>Stream videos without Wi-Fi</source>
         <translation>Videos ohne WLAN streamen</translation>
     </message>
     <message>
-        <source>Video downloads always ask without Wi-Fi. "Never": with an audio version in the feed that one plays.</source>
-        <translation>Video-Downloads fragen ohne WLAN immer nach. „Nie“: Bietet der Feed eine Audio-Fassung, wird diese gespielt.</translation>
+        <source>&quot;Never&quot;: with an audio version in the feed the sound plays instead.</source>
+        <translation>„Nie“: Gibt es im Feed eine Audioversion, läuft stattdessen der Ton.</translation>
     </message>
     <message>
         <source>Ask</source>
@@ -3708,55 +4804,36 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Nie</translation>
     </message>
     <message>
+        <source>Automatic downloads</source>
+        <translation>Automatische Downloads</translation>
+    </message>
+    <message>
         <source>Download new episodes</source>
         <translation>Neue Folgen herunterladen</translation>
     </message>
     <message>
-        <source>After every feed update, up to 3 new episodes per podcast are downloaded automatically. Can be changed for each podcast in its settings.</source>
-        <translation>Nach jeder Aktualisierung werden pro Podcast bis zu 3 neue Folgen automatisch heruntergeladen. Pro Podcast in dessen Einstellungen änderbar.</translation>
+        <source>Up to 3 per podcast after a feed update. Also in each podcast&apos;s settings.</source>
+        <translation>Bis zu 3 je Podcast nach einem Feed-Update. Auch in den Einstellungen jedes Podcasts.</translation>
     </message>
     <message>
-        <source>Downloads in the Music folder</source>
-        <translation>Downloads im Musik-Ordner</translation>
+        <source>Download playlist episodes</source>
+        <translation>Folgen der Playlist laden</translation>
     </message>
     <message>
-        <source>New downloads go to Music/Podcasts/&lt;podcast&gt; (video episodes to Videos/Podcasts/&lt;podcast&gt;) - visible to other apps, also the music player. They are cleaned up as set below; "Save in Music" keeps an episode for good. Can be changed for each podcast in its settings.</source>
-        <translation>Neue Downloads kommen nach Music/Podcasts/&lt;Podcast&gt; (Videofolgen nach Videos/Podcasts/&lt;Podcast&gt;) – sichtbar für andere Apps, auch den Musikplayer. Sie werden wie unten eingestellt aufgeräumt; „In Musik speichern“ behält eine Folge dauerhaft. Pro Podcast in dessen Einstellungen änderbar.</translation>
+        <source>What you add to the playlist is downloaded, so it plays without a connection. Off: it is streamed.</source>
+        <translation>Was du in die Playlist legst, wird geladen und spielt ohne Verbindung. Aus: es wird gestreamt.</translation>
     </message>
     <message>
-        <source>Podcasts in the Music folder</source>
-        <translation>Podcasts im Musik-Ordner</translation>
-    </message>
-    <message>
-        <source>On: new downloads of the podcast go to Music/Podcasts/&lt;podcast&gt;. Existing downloads can be moved afterwards.</source>
-        <translation>Ein: Neue Downloads des Podcasts landen in Musik/Podcasts/&lt;Podcast&gt;. Vorhandene Downloads lassen sich danach verschieben.</translation>
-    </message>
-    <message>
-        <source>Move downloads</source>
-        <translation>Downloads verschieben</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n downloads</source>
-        <translation>
-            <numerusform>%n Download</numerusform>
-            <numerusform>%n Downloads</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>%1 MB</source>
-        <translation>%1 MB</translation>
-    </message>
-    <message>
-        <source>%1 GB</source>
-        <translation>%1 GB</translation>
+        <source>Clean up</source>
+        <translation>Aufräumen</translation>
     </message>
     <message>
         <source>Delete played downloads</source>
         <translation>Gehörte Downloads löschen</translation>
     </message>
     <message>
-        <source>Can be changed for each podcast in its settings.</source>
-        <translation>Pro Podcast in dessen Einstellungen änderbar.</translation>
+        <source>Also in each podcast&apos;s settings.</source>
+        <translation>Auch in den Einstellungen jedes Podcasts.</translation>
     </message>
     <message>
         <source>Right after listening</source>
@@ -3778,20 +4855,59 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Downloads nie löschen</translation>
     </message>
     <message>
-        <source>On: played downloads of the podcast are kept – also with "Delete played downloads" on the downloads page. Off: as set above.</source>
+        <source>On: played downloads of the podcast are kept – also with &quot;Delete played downloads&quot; on the downloads page. Off: as set above.</source>
         <translation>Ein: Gehörte Downloads des Podcasts bleiben – auch bei „Gehörte Downloads löschen“ auf der Downloads-Seite. Aus: wie oben eingestellt.</translation>
+    </message>
+    <message>
+        <source>Downloads in the Music folder</source>
+        <translation>Downloads im Musik-Ordner</translation>
     </message>
     <message>
         <source>Downloads on the phone</source>
         <translation>Downloads auf dem Telefon</translation>
     </message>
     <message>
-        <source>"Right after listening": as soon as an episode is played; otherwise checked at every start. Never in archived podcasts or the archive folder.</source>
-        <translation>„Gleich nach dem Hören“: sobald eine Folge gehört ist; sonst bei jedem Start geprüft. Nie bei archivierten Podcasts oder im Archivordner.</translation>
+        <source>Archived podcasts and the archive folder are never cleaned up. A deleted download stays in the playlist and streams.</source>
+        <translation>Archivierte Podcasts und der Archivordner werden nie aufgeräumt. Ein gelöschter Download bleibt in der Playlist und wird gestreamt.</translation>
     </message>
     <message>
         <source>Clean up now</source>
         <translation>Jetzt aufräumen</translation>
+    </message>
+    <message>
+        <source>Storage</source>
+        <translation>Speicher</translation>
+    </message>
+    <message>
+        <source>New downloads go to Music/Podcasts/&lt;podcast&gt; (videos: Videos/Podcasts), visible to other apps. Also in each podcast&apos;s settings.</source>
+        <translation>Neue Downloads kommen nach Music/Podcasts/&lt;Podcast&gt; (Videos: Videos/Podcasts), sichtbar für andere Apps. Auch in den Einstellungen jedes Podcasts.</translation>
+    </message>
+    <message>
+        <source>Exceptions: not in Music</source>
+        <translation>Ausnahmen: nicht im Musik-Ordner</translation>
+    </message>
+    <message>
+        <source>Exceptions: in Music</source>
+        <translation>Ausnahmen: im Musik-Ordner</translation>
+    </message>
+    <message>
+        <source>On: new downloads of the podcast go to Music/Podcasts/&lt;podcast&gt;. Existing downloads can be moved afterwards.</source>
+        <translation>Ein: Neue Downloads des Podcasts landen in Musik/Podcasts/&lt;Podcast&gt;. Vorhandene Downloads lassen sich danach verschieben.</translation>
+    </message>
+    <message numerus="yes">
+        <source>Move %n downloads (%1) …</source>
+        <translation>
+            <numerusform>%n Download verschieben (%1) …</numerusform>
+            <numerusform>%n Downloads verschieben (%1) …</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 MB</source>
+        <translation>%1 MB</translation>
+    </message>
+    <message>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
     </message>
     <message>
         <source>Archive</source>
@@ -3802,47 +4918,23 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Archivordner</translation>
     </message>
     <message>
-        <source>One folder per podcast with all episodes, the feed, the cover and episodes.json. The app may only write inside Music (Sailjail). Empty: %1</source>
-        <translation>Ein Ordner pro Podcast mit allen Folgen, dem Feed, dem Cover und episodes.json. Die App darf nur innerhalb von Musik schreiben (Sailjail). Leer: %1</translation>
+        <source>Copies kept for good, one folder per podcast with feed and cover (podcast settings: &quot;Copy podcast to archive folder&quot;). Inside Music, may be the downloads folder above; never cleaned up. Empty: %1</source>
+        <translation>Dauerhafte Kopien, ein Ordner je Podcast mit Feed und Cover (Podcast-Einstellungen: „Podcast in Archivordner kopieren“). Innerhalb von Music, darf der Download-Ordner oben sein; wird nie aufgeräumt. Leer: %1</translation>
     </message>
     <message>
         <source>Cloud archive address</source>
         <translation>Adresse des Cloud-Archivs</translation>
     </message>
     <message>
-        <source>Played when an episode is neither on the phone nor available at its original address, e.g. "rclone serve http" of the archive copy in the cloud.</source>
-        <translation>Wird abgespielt, wenn eine Folge weder auf dem Telefon noch unter ihrer Originaladresse verfügbar ist, z. B. „rclone serve http“ der Archivkopie in der Cloud.</translation>
+        <source>Played when an episode is gone from the phone and its original address, e.g. &quot;rclone serve http&quot;.</source>
+        <translation>Wird gespielt, wenn eine Folge weder auf dem Telefon noch unter ihrer Adresse liegt, z. B. „rclone serve http“.</translation>
     </message>
 </context>
 <context>
     <name>SettingsGeneralPage</name>
     <message>
-        <source>General</source>
-        <translation>Allgemein</translation>
-    </message>
-    <message>
-        <source>Synchronize and update on start</source>
-        <translation>Beim Start synchronisieren und aktualisieren</translation>
-    </message>
-    <message>
-        <source>Otherwise only by hand: pull down → Update.</source>
-        <translation>Sonst nur von Hand: herunterziehen → Aktualisieren.</translation>
-    </message>
-    <message>
-        <source>Discover as a ring page</source>
-        <translation>Entdecken als Ringseite</translation>
-    </message>
-    <message>
-        <source>Swipe from New episodes to Discover and on to Podcasts. Off: Discover is in the Podcasts pull-down menu instead.</source>
-        <translation>Von Neue Folgen zu Entdecken und weiter zu den Podcasts wischen. Aus: Entdecken steht stattdessen im Pulley der Podcasts.</translation>
-    </message>
-    <message>
-        <source>Tab "New" in Discover</source>
-        <translation>Reiter „Neu“ in Entdecken</translation>
-    </message>
-    <message>
-        <source>New podcasts: German from fyyd (first episodes, chosen by Hörsuppe), English from Podnews (trailers). Shown when German or English is one of your languages.</source>
-        <translation>Neue Podcasts: deutschsprachige von fyyd (erste Folgen, zusammengestellt von der Hörsuppe), englischsprachige von Podnews (Trailer). Sichtbar, wenn Deutsch oder Englisch zu deinen Sprachen gehört.</translation>
+        <source>Pages and navigation</source>
+        <translation>Seiten und Navigation</translation>
     </message>
     <message>
         <source>Start page</source>
@@ -3865,16 +4957,44 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Playlist</translation>
     </message>
     <message>
-        <source>Episodes</source>
-        <translation>Folgen</translation>
+        <source>New episodes: group by podcast</source>
+        <translation>Neue Episoden: nach Podcast gruppieren</translation>
     </message>
     <message>
-        <source>Mark podcasts as played …</source>
-        <translation>Podcasts als gehört markieren …</translation>
+        <source>A header per podcast. Also a switch on the page.</source>
+        <translation>Eine Überschrift je Podcast. Auch als Schalter auf der Seite.</translation>
     </message>
     <message>
-        <source>Of all or chosen podcasts – all episodes, or all but the newest of each</source>
-        <translation>Aller oder gewählter Podcasts – alle Folgen oder alle außer der neuesten</translation>
+        <source>Podcasts: listening summary</source>
+        <translation>Podcasts: Hörübersicht</translation>
+    </message>
+    <message>
+        <source>A line under the header, tap for the listening statistics. Off: they are in the pull-down menu.</source>
+        <translation>Eine Zeile unter dem Seitenkopf, antippen öffnet die Hörstatistik. Aus: sie ist im Pulldown-Menü.</translation>
+    </message>
+    <message>
+        <source>Discover as a ring page</source>
+        <translation>Entdecken als Ringseite</translation>
+    </message>
+    <message>
+        <source>Swipe to Discover. Off: it is in the Podcasts pull-down menu.</source>
+        <translation>Zu Entdecken wischen. Aus: im Pulley-Menü der Podcasts.</translation>
+    </message>
+    <message>
+        <source>Downloads as a ring page</source>
+        <translation>Downloads als Ringseite</translation>
+    </message>
+    <message>
+        <source>Swipe from New episodes to Downloads. Off: it is in the pull-down menus.</source>
+        <translation>Von Neue Folgen zu den Downloads wischen. Aus: in den Pulley-Menüs.</translation>
+    </message>
+    <message>
+        <source>Tab &quot;New&quot; in Discover</source>
+        <translation>Reiter „Neu“ in Entdecken</translation>
+    </message>
+    <message>
+        <source>New podcasts in German (fyyd, Hörsuppe) and English (Podnews), if one of them is your language.</source>
+        <translation>Neue Podcasts auf Deutsch (fyyd, Hörsuppe) und Englisch (Podnews), wenn eine davon deine Sprache ist.</translation>
     </message>
 </context>
 <context>
@@ -3951,20 +5071,16 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <source>General</source>
-        <translation>Allgemein</translation>
+        <source>Pages and navigation</source>
+        <translation>Seiten und Navigation</translation>
     </message>
     <message>
         <source>Start: %1</source>
         <translation>Start: %1</translation>
     </message>
     <message>
-        <source>update on start</source>
-        <translation>Update beim Start</translation>
-    </message>
-    <message>
-        <source>no update on start</source>
-        <translation>kein Update beim Start</translation>
+        <source>Downloads as a ring page</source>
+        <translation>Downloads als Ringseite</translation>
     </message>
     <message>
         <source>Synchronization</source>
@@ -3983,20 +5099,28 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>zuletzt %1</translation>
     </message>
     <message>
-        <source>Playback</source>
-        <translation>Wiedergabe</translation>
+        <source>update on start</source>
+        <translation>Update beim Start</translation>
+    </message>
+    <message>
+        <source>Playback and playlist</source>
+        <translation>Wiedergabe und Playlist</translation>
     </message>
     <message>
         <source>skip %1/%2 s</source>
         <translation>Sprung %1/%2 s</translation>
     </message>
     <message>
-        <source>cover: %1</source>
-        <translation>Cover: %1</translation>
+        <source>add as next</source>
+        <translation>als Nächstes einreihen</translation>
     </message>
     <message>
-        <source>Downloads and archive</source>
-        <translation>Downloads und Archiv</translation>
+        <source>add to the end</source>
+        <translation>ans Ende einreihen</translation>
+    </message>
+    <message>
+        <source>Downloads and storage</source>
+        <translation>Downloads und Speicher</translation>
     </message>
     <message>
         <source>Wi-Fi only</source>
@@ -4007,8 +5131,16 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>neue Folgen automatisch</translation>
     </message>
     <message>
-        <source>Backup</source>
-        <translation>Sicherung</translation>
+        <source>Import and export</source>
+        <translation>Import und Export</translation>
+    </message>
+    <message>
+        <source>OPML · gpodder-sailfish · archive folders · share</source>
+        <translation>OPML · gpodder-sailfish · Archivordner · teilen</translation>
+    </message>
+    <message>
+        <source>Backup and restore</source>
+        <translation>Sichern und wiederherstellen</translation>
     </message>
     <message>
         <source>off</source>
@@ -4026,32 +5158,79 @@ Neuer Ordner: nach unten ziehen</translation>
         <source>last %1</source>
         <translation>zuletzt %1</translation>
     </message>
-    <message>
-        <source>Import and export</source>
-        <translation>Import und Export</translation>
-    </message>
-    <message>
-        <source>Subscription lists of other apps, databases, archive folders</source>
-        <translation>Abo-Listen anderer Apps, Datenbanken, Archivordner</translation>
-    </message>
 </context>
 <context>
     <name>SettingsPlaybackPage</name>
     <message>
-        <source>Playback</source>
-        <translation>Wiedergabe</translation>
+        <source>Playback and playlist</source>
+        <translation>Wiedergabe und Playlist</translation>
     </message>
     <message>
         <source>Speed</source>
         <translation>Tempo</translation>
     </message>
     <message>
-        <source>For all podcasts without their own speed (podcast settings)</source>
-        <translation>Für alle Podcasts ohne eigene Geschwindigkeit (Podcast-Einstellungen)</translation>
+        <source>For all podcasts without their own speed (podcast settings).</source>
+        <translation>Für alle Podcasts ohne eigene Geschwindigkeit (Podcast-Einstellungen).</translation>
+    </message>
+    <message>
+        <source>Skip back</source>
+        <translation>Zurückspringen</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n s</source>
+        <translation>
+            <numerusform>%n s</numerusform>
+            <numerusform>%n s</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Skip forward</source>
+        <translation>Vorspringen</translation>
+    </message>
+    <message>
+        <source>Rewind after a long pause</source>
+        <translation>Nach langer Pause zurückspringen</translation>
+    </message>
+    <message>
+        <source>After more than 5 minutes of pause, playback continues a little earlier.</source>
+        <translation>Nach mehr als 5 Minuten Pause geht es etwas früher weiter.</translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation>Aus</translation>
+    </message>
+    <message>
+        <source>Playlist</source>
+        <translation>Playlist</translation>
+    </message>
+    <message>
+        <source>Add to the playlist</source>
+        <translation>Zur Playlist hinzufügen</translation>
+    </message>
+    <message>
+        <source>Not while the playlist is kept sorted: the sorting decides the place.</source>
+        <translation>Nicht, solange die Playlist sortiert gehalten wird: Dann bestimmt die Sortierung den Platz.</translation>
+    </message>
+    <message>
+        <source>Where the playlist button puts an episode. Several taps in a row reverse the order with &quot;Next&quot;.</source>
+        <translation>Wohin der Playlist-Knopf eine Folge setzt. Mehrere Tipps hintereinander kehren die Reihenfolge bei „Als Nächstes“ um.</translation>
+    </message>
+    <message>
+        <source>To the end of the playlist</source>
+        <translation>Ans Ende der Playlist</translation>
+    </message>
+    <message>
+        <source>Next, after the episode playing</source>
+        <translation>Als Nächstes, nach der laufenden Folge</translation>
     </message>
     <message>
         <source>After an episode outside the playlist</source>
         <translation>Nach einer Folge außerhalb der Playlist</translation>
+    </message>
+    <message>
+        <source>Episodes started on the playlist page are always followed by the next playlist episode. &quot;Load&quot; puts it into the player bar, paused.</source>
+        <translation>Auf eine auf der Playlist-Seite gestartete Folge folgt immer die nächste der Playlist. „Laden“ legt sie pausiert in die Player-Leiste.</translation>
     </message>
     <message>
         <source>Load the next playlist episode</source>
@@ -4066,35 +5245,20 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Anhalten</translation>
     </message>
     <message>
-        <source>Episodes started on the playlist page are always followed by the next playlist episode. "Load" puts it into the player bar, paused - one tap continues.</source>
-        <translation>Auf der Playlist-Seite gestartete Folgen werden immer von der nächsten Playlist-Folge gefolgt. „Laden“ legt sie pausiert in die Player-Leiste – ein Tipp setzt fort.</translation>
+        <source>Play the next episode of this podcast</source>
+        <translation>Nächste Folge dieses Podcasts abspielen</translation>
     </message>
     <message>
-        <source>Rewind after a long pause</source>
-        <translation>Nach langer Pause zurückspringen</translation>
-    </message>
-    <message>
-        <source>After more than 5 minutes of pause (or a restart) playback continues a little earlier</source>
-        <translation>Nach mehr als 5 Minuten Pause (oder einem Neustart) geht es ein Stück früher weiter</translation>
-    </message>
-    <message numerus="yes">
-        <source>%n s</source>
-        <translation>
-            <numerusform>%n s</numerusform>
-            <numerusform>%n s</numerusform>
-        </translation>
-    </message>
-    <message>
-        <source>Off</source>
-        <translation>Aus</translation>
+        <source>Finer points</source>
+        <translation>Feinheiten</translation>
     </message>
     <message>
         <source>Count as played when less remains</source>
         <translation>Als gehört werten, wenn weniger übrig ist</translation>
     </message>
     <message>
-        <source>When you pause, switch or close the app with less than this left, the episode counts as played. The next one does not start.</source>
-        <translation>Wenn du pausierst, wechselst oder die App schließt und weniger als das übrig ist, gilt die Folge als gehört. Die nächste startet nicht.</translation>
+        <source>With less than this left when you pause, switch or close the app, the episode counts as played.</source>
+        <translation>Bleibt beim Pausieren, Wechseln oder Schließen weniger übrig, gilt die Folge als gehört.</translation>
     </message>
     <message numerus="yes">
         <source>%n min</source>
@@ -4104,20 +5268,12 @@ Neuer Ordner: nach unten ziehen</translation>
         </translation>
     </message>
     <message>
-        <source>Skip back</source>
-        <translation>Zurückspringen</translation>
-    </message>
-    <message>
-        <source>Skip forward</source>
-        <translation>Vorspringen</translation>
-    </message>
-    <message>
         <source>Press and hold to skip</source>
         <translation>Gedrückt halten springt</translation>
     </message>
     <message>
-        <source>Repeated every half second while held – player bar, player column and episode page</source>
-        <translation>Wiederholt sich jede halbe Sekunde, solange man hält – Player-Leiste, Player-Spalte und Folgenseite</translation>
+        <source>Repeated every half second while held, in the player and on the episode page.</source>
+        <translation>Wiederholt sich jede halbe Sekunde, solange gedrückt – im Player und auf der Folgenseite.</translation>
     </message>
     <message>
         <source>Lock screen and cover</source>
@@ -4128,8 +5284,8 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Sperrbildschirm: linker Knopf</translation>
     </message>
     <message>
-        <source>Also applies to the headset buttons</source>
-        <translation>Gilt auch für die Headset-Tasten</translation>
+        <source>Also the headset buttons. &quot;Previous chapter&quot;: a second press goes to the one before; without chapters it skips back.</source>
+        <translation>Auch die Headset-Tasten. „Voriges Kapitel“: ein zweiter Druck geht zum Kapitel davor; ohne Kapitel springt es zurück.</translation>
     </message>
     <message>
         <source>Previous chapter</source>
@@ -4140,6 +5296,10 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Sperrbildschirm: rechter Knopf</translation>
     </message>
     <message>
+        <source>Without chapters &quot;Chapter, then episode&quot; skips forward instead of going to the next episode.</source>
+        <translation>Ohne Kapitel springt „Kapitel, dann Folge“ vor statt zur nächsten Folge.</translation>
+    </message>
+    <message>
         <source>Chapter, then episode</source>
         <translation>Kapitel, dann Folge</translation>
     </message>
@@ -4148,16 +5308,12 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Nächste Folge</translation>
     </message>
     <message>
-        <source>"Previous chapter": the start of the chapter, a second press goes to the one before; without chapters it skips back.</source>
-        <translation>„Voriges Kapitel“: zum Kapitelanfang, ein zweiter Druck zum Kapitel davor; ohne Kapitel wird zurückgesprungen.</translation>
-    </message>
-    <message>
         <source>Second button on the cover</source>
         <translation>Zweiter Knopf am Cover</translation>
     </message>
     <message>
-        <source>The first one is always play/pause</source>
-        <translation>Der erste ist immer Wiedergabe/Pause</translation>
+        <source>The first one is always play/pause.</source>
+        <translation>Der erste ist immer Wiedergabe/Pause.</translation>
     </message>
     <message>
         <source>Next: chapter, then episode</source>
@@ -4179,7 +5335,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>nie</translation>
     </message>
     <message>
-        <source>Server type changed - the previous account was removed</source>
+        <source>Server type changed – the previous account was removed</source>
         <translation>Servertyp gewechselt – das bisherige Konto wurde entfernt</translation>
     </message>
     <message>
@@ -4191,8 +5347,32 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Synchronisierung</translation>
     </message>
     <message>
-        <source>Subscriptions and listening state are synchronized with other podcast apps (e.g. AntennaPod) through a Nextcloud with the app "GPodder Sync" or a gpodder.net compatible server. Folders, the playlist and per-podcast settings are not synchronized - they stay on this phone.</source>
+        <source>Subscriptions and listening state are synchronized with other podcast apps (e.g. AntennaPod) through a Nextcloud with the app &quot;GPodder Sync&quot; or a gpodder.net compatible server. Folders, the playlist and per-podcast settings are not synchronized – they stay on this phone.</source>
         <translation>Abos und Hörstand werden über eine Nextcloud mit der App „GPodder Sync“ oder einen gpodder.net-kompatiblen Server mit anderen Podcast-Apps (z. B. AntennaPod) abgeglichen. Ordner, Playlist und Podcast-Einstellungen werden nicht abgeglichen – sie bleiben auf diesem Telefon.</translation>
+    </message>
+    <message>
+        <source>Update and sync at start</source>
+        <translation>Beim Start aktualisieren und synchronisieren</translation>
+    </message>
+    <message>
+        <source>Otherwise only by hand: pull down → Update.</source>
+        <translation>Sonst nur von Hand: nach unten ziehen → Aktualisieren.</translation>
+    </message>
+    <message>
+        <source>Sync and update together</source>
+        <translation>Sync und Update zusammen</translation>
+    </message>
+    <message>
+        <source>&quot;Update&quot; in the pull-down menu first synchronizes, then updates the feeds.</source>
+        <translation>„Aktualisieren“ im Pulley synchronisiert zuerst und aktualisiert dann die Feeds.</translation>
+    </message>
+    <message>
+        <source>Two entries in the pull-down menu: &quot;Synchronize&quot; and &quot;Update&quot; (feeds only).</source>
+        <translation>Zwei Einträge im Pulley: „Synchronisieren“ und „Aktualisieren“ (nur Feeds).</translation>
+    </message>
+    <message>
+        <source>Account</source>
+        <translation>Konto</translation>
     </message>
     <message>
         <source>Server type</source>
@@ -4255,8 +5435,16 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Zuerst Server, Benutzername und Passwort eingeben</translation>
     </message>
     <message>
-        <source>Nextcloud: Settings → Security → Create new app password. The password is stored encrypted with Sailfish Secrets. Another server or user starts over with a first sync (nothing is lost on the server).</source>
-        <translation>Nextcloud: Einstellungen → Sicherheit → Neues App-Passwort erstellen. Das Passwort wird verschlüsselt mit Sailfish Secrets gespeichert. Ein anderer Server oder Benutzer beginnt neu mit einer Erst-Synchronisierung (auf dem Server geht nichts verloren).</translation>
+        <source>Create it in Nextcloud under Settings → Security; it is stored encrypted.</source>
+        <translation>In Nextcloud unter Einstellungen → Sicherheit anlegen; es wird verschlüsselt gespeichert.</translation>
+    </message>
+    <message>
+        <source>Synchronizing …</source>
+        <translation>Wird synchronisiert …</translation>
+    </message>
+    <message>
+        <source>Last sync: %1</source>
+        <translation>Letzte Synchronisierung: %1</translation>
     </message>
     <message>
         <source>Save and synchronize</source>
@@ -4275,24 +5463,8 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Sync-Konto wird entfernt</translation>
     </message>
     <message>
-        <source>Sync and update together</source>
-        <translation>Sync und Update zusammen</translation>
-    </message>
-    <message>
-        <source>"Update" in the pull-down menu first synchronizes, then updates the feeds.</source>
-        <translation>„Aktualisieren“ im Pulley synchronisiert zuerst und aktualisiert dann die Feeds.</translation>
-    </message>
-    <message>
-        <source>Two entries in the pull-down menu: "Synchronize" and "Update" (feeds only).</source>
-        <translation>Zwei Einträge im Pulley: „Synchronisieren“ und „Aktualisieren“ (nur Feeds).</translation>
-    </message>
-    <message>
-        <source>Synchronizing …</source>
-        <translation>Wird synchronisiert …</translation>
-    </message>
-    <message>
-        <source>Last sync: %1</source>
-        <translation>Letzte Synchronisierung: %1</translation>
+        <source>&quot;Remove account&quot; deletes the password and unsent changes on this phone only; the server and your subscriptions stay.</source>
+        <translation>„Konto entfernen“ löscht nur das Passwort und nicht gesendete Änderungen auf diesem Telefon; Server und Abos bleiben.</translation>
     </message>
 </context>
 <context>
@@ -4369,11 +5541,11 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Ähnlich wie %1</translation>
     </message>
     <message>
-        <source>fyyd knows no podcasts similar to %1 - here are active podcasts of the same category.</source>
+        <source>fyyd knows no podcasts similar to %1 – here are active podcasts of the same category.</source>
         <translation>fyyd kennt keine ähnlichen Podcasts zu %1 – hier aktive Podcasts aus derselben Kategorie.</translation>
     </message>
     <message>
-        <source>fyyd does not know %1 yet - here are active podcasts of the same category.</source>
+        <source>fyyd does not know %1 yet – here are active podcasts of the same category.</source>
         <translation>fyyd kennt %1 noch nicht – hier aktive Podcasts aus derselben Kategorie.</translation>
     </message>
     <message>
@@ -4393,7 +5565,7 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>Keine ähnlichen Podcasts bekannt</translation>
     </message>
     <message>
-        <source>Similar podcasts come from fyyd users' collections.</source>
+        <source>Similar podcasts come from fyyd users&apos; collections.</source>
         <translation>Ähnliche Podcasts stammen aus den Sammlungen von fyyd-Nutzern.</translation>
     </message>
 </context>
@@ -4418,6 +5590,377 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>
             <numerusform>%n Min.</numerusform>
             <numerusform>%n Min.</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>SortDownloadsPage</name>
+    <message>
+        <source>Last downloaded first</source>
+        <translation>Zuletzt geladen zuerst</translation>
+    </message>
+    <message>
+        <source>The most recent download first</source>
+        <translation>Der zuletzt geladene zuerst</translation>
+    </message>
+    <message>
+        <source>Newest episode first</source>
+        <translation>Neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the newest episode first</source>
+        <translation>Nach Veröffentlichung, die neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Oldest episode first</source>
+        <translation>Älteste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the oldest episode first</source>
+        <translation>Nach Veröffentlichung, die älteste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation>Nach Podcast</translation>
+    </message>
+    <message>
+        <source>Podcast by podcast in alphabetical order</source>
+        <translation>Podcast für Podcast in alphabetischer Reihenfolge</translation>
+    </message>
+    <message>
+        <source>Largest first</source>
+        <translation>Größte zuerst</translation>
+    </message>
+    <message>
+        <source>The biggest files first, to free up space</source>
+        <translation>Die größten Dateien zuerst, um Platz zu schaffen</translation>
+    </message>
+    <message>
+        <source>Sort downloads</source>
+        <translation>Downloads sortieren</translation>
+    </message>
+</context>
+<context>
+    <name>SortPlaylistDialog</name>
+    <message>
+        <source>Oldest first</source>
+        <translation type="unfinished">Älteste zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the oldest episode first</source>
+        <translation type="unfinished">Nach Veröffentlichung, die älteste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Newest first</source>
+        <translation type="unfinished">Neueste zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the newest episode first</source>
+        <translation type="unfinished">Nach Veröffentlichung, die neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Shortest first</source>
+        <translation type="unfinished">Kürzeste zuerst</translation>
+    </message>
+    <message>
+        <source>Short episodes first, unknown length last</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Last downloaded first</source>
+        <translation type="unfinished">Zuletzt geladen zuerst</translation>
+    </message>
+    <message>
+        <source>The most recent download first, not downloaded ones last</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation type="unfinished">Nach Podcast</translation>
+    </message>
+    <message>
+        <source>Podcast by podcast in alphabetical order, each in its own episode order</source>
+        <translation type="unfinished">Podcast für Podcast alphabetisch, jeweils in seiner eigenen Folgenreihenfolge</translation>
+    </message>
+    <message>
+        <source>Smart Shuffle</source>
+        <translation type="unfinished">Smart Shuffle</translation>
+    </message>
+    <message>
+        <source>Podcasts mixed alternately, order within a podcast stays</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sort</source>
+        <translation type="unfinished">Sortieren</translation>
+    </message>
+    <message>
+        <source>Sort playlist</source>
+        <translation type="unfinished">Playlist sortieren</translation>
+    </message>
+    <message>
+        <source>Keep sorted</source>
+        <translation type="unfinished">Sortiert halten</translation>
+    </message>
+    <message>
+        <source>Episodes added to the end later are put in the matching place. Nothing already in the list is moved.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The episode playing and episodes you moved by hand (handle in colour) stay where they are.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Release pins (%1)</source>
+        <translation type="unfinished">Fixierungen lösen (%1)</translation>
+    </message>
+</context>
+<context>
+    <name>SortPlaylistPage</name>
+    <message>
+        <source>Oldest first</source>
+        <translation>Älteste zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the oldest episode first</source>
+        <translation>Nach Veröffentlichung, die älteste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Newest first</source>
+        <translation>Neueste zuerst</translation>
+    </message>
+    <message>
+        <source>By release date, the newest episode first</source>
+        <translation>Nach Veröffentlichung, die neueste Folge zuerst</translation>
+    </message>
+    <message>
+        <source>Shortest first</source>
+        <translation>Kürzeste zuerst</translation>
+    </message>
+    <message>
+        <source>Short episodes first (same length: the newer first), unknown length last</source>
+        <translation>Kurze Folgen zuerst (gleich lang: die neuere zuerst), unbekannte Länge zuletzt</translation>
+    </message>
+    <message>
+        <source>Last downloaded first</source>
+        <translation>Zuletzt geladen zuerst</translation>
+    </message>
+    <message>
+        <source>The most recent download first, not downloaded ones last (by release date)</source>
+        <translation>Zuletzt geladene zuerst, nicht geladene zuletzt (nach Veröffentlichung)</translation>
+    </message>
+    <message>
+        <source>By podcast</source>
+        <translation>Nach Podcast</translation>
+    </message>
+    <message>
+        <source>Podcast by podcast in alphabetical order, each in its own episode order</source>
+        <translation>Podcast für Podcast alphabetisch, jeweils in seiner eigenen Folgenreihenfolge</translation>
+    </message>
+    <message>
+        <source>Smart Shuffle</source>
+        <translation>Smart Shuffle</translation>
+    </message>
+    <message>
+        <source>Podcasts mixed, order within a podcast stays</source>
+        <translation>Podcasts gemischt, die Reihenfolge innerhalb eines Podcasts bleibt</translation>
+    </message>
+    <message>
+        <source>Sort playlist</source>
+        <translation>Playlist sortieren</translation>
+    </message>
+    <message>
+        <source>Automatic</source>
+        <translation>Automatisch</translation>
+    </message>
+    <message>
+        <source>Keep sorted</source>
+        <translation>Sortiert halten</translation>
+    </message>
+    <message>
+        <source>Works with the sorting you choose below: the list is sorted when you choose it.</source>
+        <translation>Arbeitet mit der Sortierung, die du unten wählst: Die Liste wird sortiert, sobald du sie wählst.</translation>
+    </message>
+    <message>
+        <source>Episodes added later are put in the matching place. Switching this on moves nothing; choosing a sorting below sorts the list. &quot;Play next&quot; (right after the episode playing, else at the front) and &quot;Add to end of playlist&quot; in the menu pin the episode where you put it.</source>
+        <translation>Später hinzugefügte Folgen kommen an die passende Stelle. Das Einschalten verschiebt nichts; erst die Wahl einer Sortierung unten sortiert die Liste. „Als Nächstes abspielen“ (direkt nach der laufenden Folge, sonst ganz vorn) und „Ans Ende der Playlist“ im Menü fixieren die Folge dort, wo du sie hinlegst.</translation>
+    </message>
+    <message>
+        <source>Sort by</source>
+        <translation>Sortieren nach</translation>
+    </message>
+    <message>
+        <source>Pins</source>
+        <translation>Fixierungen</translation>
+    </message>
+    <message>
+        <source>The episode playing and episodes you moved by hand (pin at the handle) stay where they are.</source>
+        <translation>Die laufende Folge und von dir von Hand verschobene Folgen (Stecknadel am Griff) bleiben, wo sie sind.</translation>
+    </message>
+    <message>
+        <source>Release pins (%1)</source>
+        <translation>Fixierungen lösen (%1)</translation>
+    </message>
+    <message>
+        <source>Sort the episodes you moved by hand like the others again</source>
+        <translation>Von dir verschobene Folgen wieder wie die anderen sortieren</translation>
+    </message>
+</context>
+<context>
+    <name>StatisticsPage</name>
+    <message>
+        <source>%1 min</source>
+        <translation>%1 Min.</translation>
+    </message>
+    <message>
+        <source>%1 h</source>
+        <translation>%1 h</translation>
+    </message>
+    <message>
+        <source>%1 h %2 min</source>
+        <translation>%1 Std. %2 Min.</translation>
+    </message>
+    <message>
+        <source>Reset statistics</source>
+        <translation>Statistik zurücksetzen</translation>
+    </message>
+    <message>
+        <source>Listening statistics</source>
+        <translation>Hörstatistik</translation>
+    </message>
+    <message>
+        <source>7 days</source>
+        <translation>7 Tage</translation>
+    </message>
+    <message>
+        <source>30 days</source>
+        <translation>30 Tage</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Alle</translation>
+    </message>
+    <message>
+        <source>Nothing recorded yet. Your listening time appears here after you have played an episode.</source>
+        <translation>Noch nichts aufgezeichnet. Deine Hörzeit erscheint hier, sobald du eine Folge gespielt hast.</translation>
+    </message>
+    <message>
+        <source>listened</source>
+        <translation>gehört</translation>
+    </message>
+    <message>
+        <source>time saved</source>
+        <translation>Zeit gespart</translation>
+    </message>
+    <message>
+        <source>episodes listened to</source>
+        <translation>Folgen gehört</translation>
+    </message>
+    <message>
+        <source>Listened: your actual listening time. Time saved: how much less time you needed by playing faster. Episodes: listened to for at least one minute.</source>
+        <translation>Gehört: deine tatsächliche Hörzeit. Zeit gespart: so viel weniger Zeit hast du durch schnelleres Abspielen gebraucht. Folgen: mindestens eine Minute gehört.</translation>
+    </message>
+    <message>
+        <source>Over time</source>
+        <translation>Verlauf</translation>
+    </message>
+    <message>
+        <source>Activity in the last year</source>
+        <translation>Aktivität im letzten Jahr</translation>
+    </message>
+    <message>
+        <source>Streak (all time)</source>
+        <translation>Serie (gesamt)</translation>
+    </message>
+    <message>
+        <source>days in a row (current)</source>
+        <translation>Tage in Folge (aktuell)</translation>
+    </message>
+    <message>
+        <source>days in a row (record, all time)</source>
+        <translation>Tage in Folge (Rekord gesamt)</translation>
+    </message>
+    <message>
+        <source>Rhythm</source>
+        <translation>Rhythmus</translation>
+    </message>
+    <message>
+        <source>days with listening</source>
+        <translation>Tage mit Hören</translation>
+    </message>
+    <message>
+        <source>per listening day</source>
+        <translation>pro Hörtag</translation>
+    </message>
+    <message>
+        <source>Days in a row: days one after the other on which you listened. The current count goes up to yesterday if nothing was played today. Both counts ignore the chosen period.</source>
+        <translation>Tage in Folge: Tage hintereinander, an denen du gehört hast. Aktuell zählt bis gestern, wenn heute noch nichts lief. Beide Zahlen gelten unabhängig vom gewählten Zeitraum.</translation>
+    </message>
+    <message>
+        <source>Weekdays</source>
+        <translation>Wochentage</translation>
+    </message>
+    <message>
+        <source>Records</source>
+        <translation>Rekorde</translation>
+    </message>
+    <message>
+        <source>Longest listening day</source>
+        <translation>Längster Hörtag</translation>
+    </message>
+    <message>
+        <source>Most listened podcast</source>
+        <translation>Meistgehörter Podcast</translation>
+    </message>
+    <message>
+        <source>Favourite weekday</source>
+        <translation>Lieblingswochentag</translation>
+    </message>
+    <message>
+        <source>Folders</source>
+        <translation>Ordner</translation>
+    </message>
+    <message>
+        <source>Categories</source>
+        <translation>Kategorien</translation>
+    </message>
+    <message>
+        <source>Main category</source>
+        <translation>Hauptkategorie</translation>
+    </message>
+    <message>
+        <source>All categories</source>
+        <translation>Alle Kategorien</translation>
+    </message>
+    <message>
+        <source>The time of a podcast is shared equally between its categories.</source>
+        <translation>Die Zeit eines Podcasts wird gleichmäßig auf seine Kategorien verteilt.</translation>
+    </message>
+    <message>
+        <source>Each podcast counts only for its first category.</source>
+        <translation>Jeder Podcast zählt nur für seine erste Kategorie.</translation>
+    </message>
+    <message>
+        <source>Podcasts</source>
+        <translation>Podcasts</translation>
+    </message>
+    <message>
+        <source>Delete listening history of this podcast</source>
+        <translation>Hörverlauf dieses Podcasts löschen</translation>
+    </message>
+    <message>
+        <source>Recorded since %1</source>
+        <translation>Aufgezeichnet seit %1</translation>
+    </message>
+    <message>
+        <source>d MMM yyyy</source>
+        <translation>d. MMM yyyy</translation>
+    </message>
+    <message numerus="yes">
+        <source>plus %n episodes marked as played without a time</source>
+        <translation>
+            <numerusform>zusätzlich %n Folge ohne Zeitangabe als gehört markiert</numerusform>
+            <numerusform>zusätzlich %n Folgen ohne Zeitangabe als gehört markiert</numerusform>
         </translation>
     </message>
 </context>
@@ -4471,8 +6014,24 @@ Neuer Ordner: nach unten ziehen</translation>
         <translation>%1 wird als gespielt markiert</translation>
     </message>
     <message>
+        <source>Download %1 episodes over the mobile connection? (about %2 MB)</source>
+        <translation>%1 Folgen über die Mobilverbindung laden? (ca. %2 MB)</translation>
+    </message>
+    <message>
+        <source>Download %1 episodes over the mobile connection?</source>
+        <translation>%1 Folgen über die Mobilverbindung laden?</translation>
+    </message>
+    <message>
         <source>Marking older episodes as played</source>
         <translation>Markiere ältere Folgen als gehört</translation>
+    </message>
+    <message>
+        <source>Resetting statistics</source>
+        <translation>Statistik wird zurückgesetzt</translation>
+    </message>
+    <message>
+        <source>Deleting listening history</source>
+        <translation>Hörverlauf wird gelöscht</translation>
     </message>
     <message>
         <source>Deleting bookmark</source>
@@ -4517,6 +6076,14 @@ Neuer Ordner: nach unten ziehen</translation>
     <message>
         <source>Play the video over the mobile connection?</source>
         <translation>Das Video über die mobile Verbindung abspielen?</translation>
+    </message>
+    <message>
+        <source>Sound only (about %1 MB)</source>
+        <translation>Nur Ton (ca. %1 MB)</translation>
+    </message>
+    <message>
+        <source>Sound only</source>
+        <translation>Nur Ton</translation>
     </message>
     <message>
         <source>Could not store the password: %1</source>

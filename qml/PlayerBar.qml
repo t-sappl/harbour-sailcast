@@ -55,7 +55,6 @@ Rectangle {
         if (Math.abs(dy) < Theme.paddingLarge * 2 || Math.abs(dy) < 1.2 * Math.abs(dx)) {
             return
         }
-        console.warn("PlayerBar swipe (" + stage + "): dx=" + Math.round(dx) + " dy=" + Math.round(dy) + " expanded=" + expanded)
         if (dy < 0 && !expanded) {
             expanded = true
             _swiped = true
@@ -73,7 +72,6 @@ Rectangle {
         property real _y0: 0
         onPressed: {
             _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false
-            console.warn("PlayerBar touch on the bar: x=" + Math.round(mouse.x) + " y=" + Math.round(mouse.y))
         }
         // acts while the finger moves (a release outside may never arrive)
         onPositionChanged: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
@@ -480,7 +478,6 @@ Rectangle {
                 property real _y0: 0
                 onPressed: {
                     _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false
-                    console.warn("PlayerBar touch on the title: x=" + Math.round(mouse.x) + " y=" + Math.round(mouse.y))
                 }
                 onPositionChanged: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
                 onReleased: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "release")

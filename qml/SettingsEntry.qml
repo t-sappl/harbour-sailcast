@@ -23,7 +23,8 @@ BackgroundItem {
             left: parent.left
             leftMargin: Theme.horizontalPageMargin
             right: parent.right
-            rightMargin: Theme.horizontalPageMargin
+            // (327, Gemini) Room for the arrow: text ran up to it
+            rightMargin: Theme.horizontalPageMargin + Theme.paddingLarge * 2
             verticalCenter: parent.verticalCenter
         }
         Label {
@@ -37,8 +38,9 @@ BackgroundItem {
             width: parent.width
             visible: text !== ""
             // Up to two lines (92: a long user name cut off "last sync …")
+            // (312) three: Import and export has a second line of its own
             wrapMode: Text.Wrap
-            maximumLineCount: 2
+            maximumLineCount: 3
             elide: Text.ElideRight
             font.pixelSize: Theme.fontSizeExtraSmall
             color: root.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor

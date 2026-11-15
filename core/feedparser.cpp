@@ -277,6 +277,14 @@ ParsedFeed parseOnce(const QByteArray &data, QString *error)
                         && feed.funding.size() < 5) {
                     feed.funding.append(funding);
                 }
+            } else if (channelChild && ns == NsPodcast && name == QLatin1String("guid")) {
+                // (274) The podcast's own id (UUID from the first feed address);
+                // stored only
+                feed.podcastGuid = readText(xml).trimmed().left(64);
+            } else if (channelChild && ns == NsPodcast && name == QLatin1String("medium")) {
+                // (274) podcast, music, video, film, audiobook, newsletter, blog,
+                // ...L lists, mixed; stored only
+                feed.medium = readText(xml).trimmed().toLower().left(24);
             } else if (channelChild && isPlain(ns) && name == QLatin1String("language")) {
                 // "de-AT", "en_US", "DE" -> "de" (123)
                 QString code = readText(xml).trimmed().toLower();

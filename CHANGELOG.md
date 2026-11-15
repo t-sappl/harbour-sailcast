@@ -1,5 +1,91 @@
 # Changelog
 
+## 1.4 (not released yet – draft 15 Nov 2026)
+
+The journey that started with 1.3 goes on: everyday things should take fewer taps and less thinking. This time the two pages you use every day were rebuilt – New episodes and Downloads – together with the playlist, the player and a few things just for fun.
+
+### New episodes: look at what is new, and tidy up
+
+- Two views on the page: **New (12)** – what came with the updates and you have not looked at yet – and **All unplayed**
+- Take an episode out of "New" without marking it played: **Set aside** (first entry of the menu); the row stays dimmed with **Undo** until you leave the view
+- **Clear New** in the pull-down menu, with a countdown
+- ➕ (playlist button) also downloads the episode (setting "Download playlist episodes", on by default; Wi-Fi rules apply, videos only on Wi-Fi; without Wi-Fi the episode is remembered and loaded after the next update)
+- **By date / By podcast** switch on the page; grouped by podcast with the cover in the group header, three episodes per podcast, "n more unplayed" opens the rest, groups fold and unfold (remembered), "Fold all / Unfold all"
+- Per podcast: **Show in New episodes** (podcast settings, off for daily news feeds) and **Delete n downloads (size)** for all downloads of the podcast at once
+- **Mark older ones as played** in the menu of an episode (podcast page and New episodes)
+- The number of new episodes in the chip is the real one (no stop at 100)
+- A size on the right of an episode row means "on the phone"; no size means it is streamed
+- Episode status at a glance: played rows clearly dimmed, started ones show the time left in the accent colour and a ring around ▶
+
+### Downloads
+
+- **Downloads as a swipe page** (Settings → Pages and navigation, off by default): New episodes → Downloads → Podcasts → Playlist
+- **Delete several …**: select episodes and delete them in one go – tap rows, press and hold a second row to mark everything in between, "Select all", "Select all not in the playlist", "Invert selection"; the bar shows number and size; "Delete all of this podcast …" from the menu of an episode
+- Tap the tile **Delete played** (with the small red bin) to delete the played downloads, with a countdown that names number and size
+- Sort by: last downloaded (default), newest, oldest, by podcast, **largest first**; the real file size in every row; filter field
+- "Download unplayed …" for several podcasts at once
+- Archived downloads (ended podcasts, "Save in Music") in a section of their own, untouched by "Delete played downloads"; the first tile counts everything, "total incl. archive"
+- Downloads go on after a restart; no download starts when less than 500 MB are free
+
+### Playlist
+
+- **Sort …**: oldest, newest, shortest first, last downloaded, by podcast, and **Smart Shuffle** (after the idea of AntennaPod: episodes of one podcast are spread out, so a busy podcast does not take over)
+- **Keep sorted**: new episodes find their place by themselves
+- **Pins**: an episode you moved by hand stays where you put it (pin at the handle; "Release pin")
+- **Auto-add per podcast**: new episodes go to the end or to the front of the playlist, at most 1, 3, 5 or all per update; marked at the handle
+- Settings → Playback and playlist: ➕ adds to the end or as next
+- After a single episode: optionally the next episode of the same podcast
+- **Recently finished** (was "Recently heard"): episodes heard to the end or skipped
+
+### Player
+
+- Resumes at the right position after a long pause (also when the system had dropped the stream)
+- Many fixes from a review of the player logic: quick skips, speed without drift, position saved every 15 s and when the app goes to the background, sleep timer, headset "next" without chapters
+- Works better together with other players on the phone (MPRIS, now over D-Bus)
+- The episode page of the playing episode counts the time left live
+- From a second code review: an episode whose end is skipped ("skip the end") now counts as played, "Mark as played" of the loaded episode, the position after a sync with another device, the sleep timer "end of episode", calls and unplugged headphones, a stream that drops out (resumes at the same place, not at 0)
+
+### Listening statistics (new)
+
+- A line on the Podcasts page ("7 days: 3 h 20 min listened · 5 days in a row ›"), or tap the "listened" tile of a podcast; without the line (Settings → Pages and navigation) in the pull-down menu
+- 7 days / 30 days / All: time listened, time saved by playing faster, episodes listened to; course per day, week or month; activity of the last year; days in a row; weekdays; records (longest day, most listened podcast); folders, categories, ranking of the podcasts
+- Counts only real listening (the position has to move); episodes marked played by hand are counted apart
+
+### Share my podcasts (a web page) – a playground
+
+A personal playground to try out what a podcast app could do with a web page. Maybe nobody needs it – but it was fun to build :)
+
+- One self-contained page: your podcasts by folder with covers, descriptions, latest episodes with chapters and bookmarks, optional listening statistics, an OPML file to import into any podcast app, search links (fyyd, Podcast Index, Spotify, Apple)
+- Settings → Import and export → "Share my podcasts"; choose the folders, save to Downloads or share; the last page is shared again when nothing changed
+- Private feeds (with a password or a personal link) are left out
+
+### Easier to use
+
+- **Settings regrouped** into seven pages by purpose – Pages and navigation, Synchronization, Playback and playlist, Downloads and storage, Import and export, Backup and restore, About: every setting in one place, actions as buttons, one short sentence per setting; Import and export in three parts (Import, Export, Clean up and replace)
+- Shorter pull-down menus with the same order on every page (settings at the top, search and update at the bottom); on the Podcasts page "New folder" is in the menu of a folder header once there is a folder, bookmarks are in the menus of the playlist and New episodes
+- Grid or list on the Podcasts page with one tap (symbol next to "Hide folders"); ▲▼ with short names for the sorting on Podcasts, New episodes and Downloads
+- Episode menus: playlist, then played/unplayed, then the file
+- Settings → Pages and navigation: start page, the extra swipe pages and the listening line
+- Better layout with the largest font size (podcast page, Downloads)
+- Number of unplayed episodes in the dot of the podcast list
+
+### Fixes
+
+- Podcasts only listened to without subscribing keep a downloaded episode you have not finished (it was removed with the podcast after 30 days)
+- Data safety: archive folders that were changed later are still known; the episode in the player is never deleted or moved; remote unsubscribe cleans up like a local one
+- gpodder.net/Nextcloud sync no longer marks episodes as new
+- Same file name for two episodes with the same title and date no longer overwrites one of them; importing a file that is no Sailcast database is refused (and a backup is made before every import); a podcast whose episode is in the player is not unsubscribed under it (a message says why); a remote unsubscribe leaves podcasts marked "ended" alone
+- The "downloaded" tile of the playlist opens Downloads again when Downloads is a ring page; the web page of your podcasts rounds times like the app
+- Creating a new folder while choosing a folder (subscribe, podcast settings, import) no longer shows the old folder list again
+
+### Good to know
+
+- The database gets a new version (playlist entries now remember when they were added – for a feature after 1.4). A backup made with 1.4 cannot be opened by 1.3; going back to 1.3 needs a backup made before the update.
+
+### Known issues in 1.4
+
+- Still as in 1.3: while a video plays, changing to or from its episode page pauses picture and sound briefly (the video is loaded again at the same position). A rebuild with one picture that moves between the pages is planned.
+
 ## 1.3 (2026-11-06)
 
 Two themes: video podcasts, and an app that is easier to use – a usability check with blind tests and the feedback from the forum.

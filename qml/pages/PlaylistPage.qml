@@ -119,6 +119,38 @@ Page {
         return ((queueStats.seconds || 0) + rest) / rate
     }
 
+    // (275) The line above the playlist: "Sort" or what it is kept sorted by
+    property string sortLine: sortLineText()
+    function sortLineText() {
+        var m = core.setting("playlist.sortMode", "")
+        var names = {
+            oldest: qsTr("Oldest first"), newest: qsTr("Newest first"), shortest: qsTr("Shortest first"),
+            lastDownloaded: qsTr("Last downloaded first"), byPodcast: qsTr("By podcast"),
+            smartShuffle: qsTr("Smart Shuffle")
+        }
+        // (281) With pinned episodes their number: the list may look
+        // unsorted otherwise (pins stay where they are)
+        var pins = core.pinnedCount()
+        var pinText = pins > 0 ? " · " + qsTr("%1 pinned").arg(pins) : ""
+        if (!names[m]) {
+            return qsTr("Sort") + pinText
+        }
+        // (288) Not kept sorted and hand-placed episodes: the list no longer
+        // follows the sorting chosen last, so the line does not name it
+        if (pins > 0 && core.setting("playlist.sortKeep", "0") !== "1") {
+            return qsTr("Sort") + pinText
+        }
+        // (276) Always the sorting chosen last; kept sorted: says so
+        return (core.setting("playlist.sortKeep", "0") === "1"
+                ? qsTr("Kept sorted: %1").arg(names[m])
+                : qsTr("Sort · %1").arg(names[m])) + pinText
+    }
+    Connections {
+        target: core
+        onSettingsChanged: page.sortLine = page.sortLineText()
+        onQueueChanged: page.sortLine = page.sortLineText()
+    }
+
     EpisodeListModel {
         id: queue
         filter: EpisodeListModel.Queue
@@ -140,7 +172,12 @@ Page {
         target: queue
         onCountChanged: page._playlistHint()
     }
-    onStatusChanged: _playlistHint()
+    onStatusChanged: {
+        _playlistHint()
+        if (status === PageStatus.Active) {
+            sortLine = sortLineText()
+        }
+    }
 
     RemorsePopup {
         id: remorse
@@ -192,9 +229,17 @@ Page {
             return
         }
         var removeId = overRemoveZone ? queue.episodeIdAt(dragIndex) : -1
+        // (275) The dragged episode is pinned at its new place (not when removed)
+        var movedId = overRemoveZone ? -1 : queue.episodeIdAt(dragIndex)
         dragIndex = -1
         overRemoveZone = false
-        queue.commitQueueOrder()
+        if (removeId > 0) {
+            // (288) Not written: the rows moved while the finger passed over
+            // them went back (a cancelled removal used to keep the new order)
+            queue.reload()
+        } else {
+            queue.commitQueueOrder(movedId)
+        }
         if (removeId > 0) {
             remorse.execute(qsTr("Removing from playlist"), function() { core.queueRemove(removeId) })
         }
@@ -294,7 +339,7 @@ Page {
                     // (253, usability audit #10) Tap: the Downloads page
                     { value: "" + page.tileDownloaded, label: qsTr("downloaded"), tappable: true }
                 ]
-                onTileClicked: if (index === 2) pageStack.push(Qt.resolvedUrl("DownloadsPage.qml"))
+                onTileClicked: if (index === 2) appWindow.openDownloads()
             }
             Item { width: 1; height: Theme.paddingMedium; visible: page.tileCount > 0 }
 
@@ -321,13 +366,35 @@ Page {
                 text: qsTr("Playlist")
             }
 
+            // (275) Sort once / keep sorted, from two episodes on
+            BackgroundItem {
+                visible: queue.count >= 2
+                width: parent.width
+                height: Theme.itemSizeExtraSmall
+                onClicked: pageStack.push(Qt.resolvedUrl("SortPlaylistPage.qml"))
+                Label {
+                    anchors {
+                        left: parent.left
+                        leftMargin: Theme.horizontalPageMargin
+                        right: parent.right
+                        rightMargin: Theme.horizontalPageMargin
+                        verticalCenter: parent.verticalCenter
+                    }
+                    horizontalAlignment: Text.AlignRight
+                    truncationMode: TruncationMode.Fade
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: parent.highlighted ? Theme.primaryColor : Theme.highlightColor
+                    text: page.sortLine + " ›"
+                }
+            }
+
             Label {
                 visible: queue.count === 0 && (nowPlaying.count > 0 || continuing.count > 0)
                 x: Theme.horizontalPageMargin
                 width: parent.width - 2 * Theme.horizontalPageMargin
                 height: implicitHeight + Theme.paddingLarge
                 wrapMode: Text.Wrap
-                text: qsTr("Nothing in the playlist - add episodes with \"Play next\" or \"Add to end of playlist\" in their menu")
+                text: qsTr("Nothing in the playlist – add episodes with \"Play next\" or \"Add to end of playlist\" in their menu")
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.secondaryHighlightColor
             }
@@ -339,13 +406,17 @@ Page {
             visible: queue.count > 0 || core.podcastCount > 0 || core.bookmarkCount > 0
             // (259) Same order as the other pulleys: Bookmarks, Downloads
             // (shared item; the count is read when the menu opens, 218),
-            // Search; "Clear playlist" far at the top, "Play playlist" last
+            // Search; "Clear playlist" far at the top. (314) "Play playlist"
+            // removed (▶ in the rows, "Now playing" and the player bar)
             id: playlistMenu
             onActiveChanged: if (active) playlistDownloads.refresh()
             MenuItem {
                 visible: queue.count > 0
                 text: qsTr("Clear playlist")
-                onClicked: remorse.execute(qsTr("Clearing playlist"), function() { core.queueClear() })
+                onClicked: remorse.execute(appWindow.player.playing && core.isQueued(appWindow.player.episodeId)
+                                           ? qsTr("Clearing playlist, the playing episode goes on")
+                                           : qsTr("Clearing playlist"),
+                                           function() { core.queueClear() })
             }
             MenuItem {
                 visible: core.bookmarkCount > 0
@@ -360,11 +431,6 @@ Page {
                 visible: core.podcastCount > 0
                 text: qsTr("Search my podcasts")
                 onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
-            }
-            MenuItem {
-                visible: queue.count > 0
-                text: qsTr("Play playlist")
-                onClicked: appWindow.player.playOrToggle(queue.episodeIdAt(0), true)
             }
         }
 
@@ -519,7 +585,7 @@ Page {
                         rightMargin: Theme.paddingMedium
                         verticalCenter: parent.verticalCenter
                     }
-                    text: qsTr("Recently heard (%1)").arg(recent.count)
+                    text: qsTr("Recently finished (%1)").arg(recent.count)
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.highlightColor
                 }

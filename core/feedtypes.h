@@ -73,6 +73,8 @@ struct ParsedFeed
     // itunes:category, "Category" and "Category/Subcategory" (English names
     // of the Apple list, as in the feed), at most 10 (123)
     QStringList categories;
+    QString podcastGuid;    // channel podcast:guid, as in the feed (274)
+    QString medium;         // channel podcast:medium in lower case ("podcast", "video", ...) (274)
     QList<ParsedEpisode> episodes;
     bool repaired = false;  // broken XML was repaired completely (see FeedParser)
 

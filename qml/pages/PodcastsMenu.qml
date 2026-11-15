@@ -5,8 +5,9 @@ import "../"
 
 // Pull-down menu of the podcast page (shared by the grid and the list view)
 PullDownMenu {
-    property bool gridMode: true
-    signal toggleView()
+    id: menu
+    // (329) Set by the page: true while there is no folder yet
+    property bool showNewFolder: true
 
     busy: core.updating || core.syncing
     // (253) The download count is read when the menu opens
@@ -24,16 +25,36 @@ PullDownMenu {
         text: qsTr("Import and export")
         onClicked: pageStack.push(Qt.resolvedUrl("ImportExportPage.qml"))
     }
-    // (255) Bookmarks list here too (usability check 254: it was only in
-    // the playlist pulley)
+    // (314) Order (all pulleys): settings, own data, tools of the page,
+    // finding, update last (nearest to the thumb). Grid/list is in the sort
+    // menu of the page now.
+    // (297) Listening statistics, behind the bookmarks; the length of the
+    // pulley gets another look in the UI review before 1.4
+    // (329) Only without the line on the Podcasts page (Settings → Pages and
+    // navigation); the statistics stay reachable either way
     MenuItem {
-        visible: core.bookmarkCount > 0
-        text: qsTr("Bookmarks (%1)").arg(core.bookmarkCount)
-        onClicked: pageStack.push(Qt.resolvedUrl("BookmarksPage.qml"))
+        visible: !appWindow.statsLineOn
+        text: qsTr("Listening statistics")
+        onClicked: pageStack.push(Qt.resolvedUrl("StatisticsPage.qml"))
     }
+    // (329, Thomas: pulley too long) Bookmarks no longer here - they stay in
+    // the pulleys of the playlist and New episodes (here since 255)
     // (253) Downloads here too (usability audit #10)
     DownloadsMenuItem {
         id: podcastsDownloads
+    }
+    // (329) Only for the first folder; with folders it is the first entry of
+    // a folder header's menu (and "New folder …" in every folder choice)
+    MenuItem {
+        visible: menu.showNewFolder
+        text: qsTr("New folder")
+        onClicked: appWindow.newFolder()
+    }
+    // Search and feed address in one page (51); only for adding
+    MenuItem {
+        visible: !appWindow.discoverRingOn
+        text: qsTr("Discover")
+        onClicked: pageStack.push(Qt.resolvedUrl("SearchPage.qml"))
     }
     // (237) Search on the device here too - Discover is a swipe page by
     // default (229), so the pulley entry is only needed without the ring
@@ -43,20 +64,6 @@ PullDownMenu {
         visible: core.podcastCount > 0
         text: qsTr("Search my podcasts")
         onClicked: pageStack.push(Qt.resolvedUrl("LocalSearchPage.qml"))
-    }
-    // Search and feed address in one page (51); only for adding
-    MenuItem {
-        visible: !appWindow.discoverRingOn
-        text: qsTr("Discover")
-        onClicked: pageStack.push(Qt.resolvedUrl("SearchPage.qml"))
-    }
-    MenuItem {
-        text: qsTr("New folder")
-        onClicked: appWindow.newFolder()
-    }
-    MenuItem {
-        text: gridMode ? qsTr("Show as list") : qsTr("Show as grid")
-        onClicked: toggleView()
     }
     // Separate sync entry (86) when "Sync und Update" is off
     MenuItem {

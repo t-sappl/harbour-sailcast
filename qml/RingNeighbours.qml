@@ -17,20 +17,26 @@ Item {
     property bool ringMember: true
 
     readonly property bool discoverOn: appWindow.discoverRingOn
+    // (301) Downloads as the last ring page: between Playlist and New episodes
+    readonly property bool downloadsOn: appWindow.downloadsRingOn
+    // (309) Downloads right after New episodes
     readonly property string prevKind: kind === "home" ? "playlist"
-                                     : kind === "podcasts" ? (discoverOn ? "discover" : "home")
-                                     : kind === "playlist" ? "podcasts"
-                                     : kind === "discover" ? "home" : ""
-    readonly property string nextKind: kind === "home" ? (discoverOn ? "discover" : "podcasts")
+                                     : kind === "downloads" ? "home"
+                                     : kind === "discover" ? (downloadsOn ? "downloads" : "home")
+                                     : kind === "podcasts" ? (discoverOn ? "discover" : (downloadsOn ? "downloads" : "home"))
+                                     : kind === "playlist" ? "podcasts" : ""
+    readonly property string nextKind: kind === "home" ? (downloadsOn ? "downloads" : (discoverOn ? "discover" : "podcasts"))
+                                     : kind === "downloads" ? (discoverOn ? "discover" : "podcasts")
+                                     : kind === "discover" ? "podcasts"
                                      : kind === "podcasts" ? "playlist"
-                                     : kind === "playlist" ? "home"
-                                     : kind === "discover" ? "podcasts" : ""
+                                     : kind === "playlist" ? "home" : ""
 
     function pageName(key) {
         if (key === "home") return qsTr("New episodes")
         if (key === "podcasts") return qsTr("Podcasts")
         if (key === "playlist") return qsTr("Playlist")
         if (key === "discover") return qsTr("Discover")
+        if (key === "downloads") return qsTr("Downloads")
         return ""
     }
 

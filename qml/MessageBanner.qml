@@ -7,16 +7,30 @@ import Sailfish.Silica 1.0
 Rectangle {
     id: banner
 
+    // (289) A message that comes while another one is still shown is put
+    // under it (up to three lines) instead of replacing it: a failure was
+    // overwritten within seconds by "n new episodes" and not seen
+    property var _lines: []
+
     function show(text) {
-        label.text = text
+        var lines = opacity > 0 ? _lines.slice() : []
+        if (lines.indexOf(text) < 0) {
+            lines.push(text)
+        }
+        while (lines.length > 3) {
+            lines.shift()
+        }
+        _lines = lines
+        label.text = lines.join("\n")
         opacity = 1
+        hideTimer.interval = 4000 + (lines.length - 1) * 1500
         hideTimer.restart()
     }
 
     width: parent.width - 2 * Theme.horizontalPageMargin
     x: Theme.horizontalPageMargin
     height: label.height + 2 * Theme.paddingMedium
-    radius: Theme.paddingSmall
+    radius: Theme.paddingMedium
     color: Theme.rgba(Theme.highlightDimmerColor, 0.95)
     border.color: Theme.rgba(Theme.highlightColor, 0.4)
     border.width: 1

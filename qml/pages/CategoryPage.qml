@@ -179,7 +179,7 @@ Page {
         ViewPlaceholder {
             enabled: page.state_ === "done" && listModel.count === 0
             text: qsTr("No active podcasts found")
-            hintText: qsTr("Podcast Index and fyyd know none in your languages right now - or they cannot be reached.")
+            hintText: qsTr("Podcast Index and fyyd know none in your languages right now – or they cannot be reached.")
         }
 
         VerticalScrollDecorator {}

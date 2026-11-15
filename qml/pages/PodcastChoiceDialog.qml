@@ -104,6 +104,8 @@ Dialog {
         onOriginYChanged: if (_keepTop) positionViewAtBeginning()
         Component.onCompleted: positionViewAtBeginning()
         anchors.fill: parent
+        anchors.bottomMargin: appWindow.playerBarHeight
+        anchors.rightMargin: appWindow.playerPanelWidth
         model: podcasts
 
         header: Column {

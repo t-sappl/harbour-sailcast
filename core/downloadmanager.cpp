@@ -11,6 +11,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSet>
+#include <QStorageInfo>
 #include <QTimer>
 
 #include "database.h"
@@ -70,8 +71,19 @@ QString DownloadManager::defaultTarget(qint64 episodeId) const
     if (!episode.id) {
         return QString();
     }
-    return m_directory + QLatin1Char('/') + FileNames::safe(episode.podcastTitle)
+    QString target = m_directory + QLatin1Char('/') + FileNames::safe(episode.podcastTitle)
             + QLatin1Char('/') + FileNames::forEpisode(episode);
+    // (320, code review) The name is date + title: two episodes with the same
+    // title on one day got one file - the second download replaced the first,
+    // and deleting either destroyed the other. A file of another episode (or
+    // an unknown one) is there: the episode number goes into the name.
+    if (QFile::exists(target) && episode.downloadPath != target) {
+        const QFileInfo info(target);
+        const QString suffix = info.suffix().isEmpty() ? QString() : QLatin1Char('.') + info.suffix();
+        target = info.absolutePath() + QLatin1Char('/') + info.completeBaseName()
+                + QStringLiteral(" (%1)").arg(episode.id) + suffix;
+    }
+    return target;
 }
 
 void DownloadManager::download(qint64 episodeId, const QString &targetPath)
@@ -141,6 +153,18 @@ void DownloadManager::pump()
     }
 }
 
+qint64 DownloadManager::freeBytes() const
+{
+    const QStorageInfo storage(m_directory);
+    return storage.isValid() ? storage.bytesAvailable() : -1;
+}
+
+bool DownloadManager::fitsInStorage(qint64 bytes) const
+{
+    const qint64 free = freeBytes();
+    return free < 0 || free - qMax<qint64>(0, bytes) >= reserveBytes();
+}
+
 void DownloadManager::start(const Queued &queued)
 {
     JobPtr job(new Job);
@@ -154,6 +178,12 @@ void DownloadManager::start(const Queued &queued)
     }
     if (episode.url.isEmpty()) {
         fail(job, QStringLiteral("The episode has no media URL"));
+        return;
+    }
+    // (289) Backstop for queued downloads and the archive: the storage may have
+    // filled while they waited
+    if (!fitsInStorage(qMax<qint64>(0, episode.fileSize))) {
+        fail(job, noSpaceError());
         return;
     }
     job->podcastId = episode.podcastId;
@@ -230,6 +260,9 @@ void DownloadManager::onReadyRead(const JobPtr &job)
     const QByteArray data = reply->readAll();
     if ((job->status == 200 || job->status == 206) && job->file) {
         if (job->file->write(data) != data.size()) {
+            // (289) Almost nothing free: the storage is full, not the network
+            const qint64 free = freeBytes();
+            job->noSpace = free >= 0 && free < 5 * 1024 * 1024;
             reply->abort();
         }
     }
@@ -249,6 +282,12 @@ void DownloadManager::onFinished(const JobPtr &job)
     reply->deleteLater();
     if (job->cancelled) {
         fail(job, cancelledError());
+        return;
+    }
+    if (job->noSpace) {
+        // (289) The part would only fill the storage further: gone at once
+        job->cancelled = true;
+        fail(job, noSpaceError());
         return;
     }
     const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -430,8 +469,10 @@ int DownloadManager::removeStaleParts(const QString &archiveRoot, int days)
 }
 
 CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId,
-                                       const QHash<qint64, int> &podcastDays, bool all)
+                                       const QHash<qint64, int> &podcastDays, bool all, bool dryRun)
 {
+    // dryRun (274): only counts what would be deleted - the tile "played, can
+    // be deleted" on the Downloads page uses the very same rules
     CleanupResult result;
     QSet<qint64> archivedPodcasts;
     const QList<PodcastRow> podcasts = m_database->podcasts();
@@ -440,21 +481,33 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
             archivedPodcasts.insert(podcasts.at(i).id);
         }
     }
-    const QString root = archiveRoot.isEmpty() ? QString()
-                                               : QDir(archiveRoot).absolutePath() + QLatin1Char('/');
-    const QString videoRoot = m_videoRoot.isEmpty() ? QString()
-                                                    : QDir(m_videoRoot).absolutePath() + QLatin1Char('/');
+    Q_UNUSED(archiveRoot)    // (289) kept = named in the archive, no path test any more
     const qint64 now = Database::now();
 
     const QList<EpisodeRow> downloads = m_database->episodes(-1, -1, Database::Downloaded);
+    // (320, code review) Many files missing at once = the storage is not there
+    // (card not mounted, folder moved), not "deleted outside the app": the
+    // downloads stay noted then - the files are back with the card
+    int missing = 0;
+    for (int i = 0; i < downloads.size(); ++i) {
+        if (!QFileInfo::exists(downloads.at(i).downloadPath)) {
+            ++missing;
+        }
+    }
+    const bool storageGone = missing >= 5 && missing * 2 > downloads.size();
+    // (320, code review) An episode in the playlist is going to be played: it
+    // stays, also when it counts as played (and at start the player's one is not known yet)
+    const QSet<qint64> queued = QSet<qint64>::fromList(m_database->queueIds());
     for (int i = 0; i < downloads.size(); ++i) {
         const EpisodeRow &e = downloads.at(i);
-        if (m_active.contains(e.id) || e.id == keepEpisodeId) {
+        if (m_active.contains(e.id) || e.id == keepEpisodeId || queued.contains(e.id)) {
             continue;
         }
         QFileInfo info(e.downloadPath);
         if (!info.exists()) {
-            m_database->clearDownload(e.id);    // deleted outside the app
+            if (!dryRun && !storageGone) {
+                m_database->clearDownload(e.id);    // deleted outside the app
+            }
             continue;
         }
         // The podcast's own choice (117), else the global one
@@ -464,18 +517,42 @@ CleanupResult DownloadManager::cleanup(int days, const QString &archiveRoot, qin
             keepDays = own && podcastDays.value(e.podcastId) < 0 ? -1 : days;
         }
         if (keepDays < 0) {
+            if (all && e.played) {
+                ++result.keptNever;
+            }
             continue;
         }
         const qint64 limit = now - static_cast<qint64>(keepDays) * 86400;
-        if (!e.played || e.lastPlayed <= 0 || e.lastPlayed > limit
-                || archivedPodcasts.contains(e.podcastId)
-                // (209) In Music: only files kept or archived (named in the
-                // archive) stay; "Downloads in Music" are cleaned up
-                || (!root.isEmpty() && info.absoluteFilePath().startsWith(root) && !e.archiveFile.isEmpty())
-                || (!videoRoot.isEmpty() && info.absoluteFilePath().startsWith(videoRoot) && !e.archiveFile.isEmpty())) {
+        // (274) Asked for by the user: an episode marked as played without
+        // ever being played (no time) counts as played too
+        const bool tooRecent = all ? false : (e.lastPlayed <= 0 || e.lastPlayed > limit);
+        if (!e.played || tooRecent) {
+            continue;
+        }
+        if (archivedPodcasts.contains(e.podcastId)) {
+            if (all) {
+                ++result.keptArchived;
+            }
+            continue;
+        }
+        // (209) In Music: only files kept or archived (named in the
+        // archive) stay; "Downloads in Music" are cleaned up.
+        // (289) The same rule as the section "Archived" on the Downloads
+        // page: a file named in the archive stays wherever it lies (also after
+        // the archive folder was changed, or a half-copied podcast whose file
+        // came later by a normal download)
+        if (!e.archiveFile.isEmpty()) {
+            if (all) {
+                ++result.keptInMusic;
+            }
             continue;
         }
         const qint64 size = info.size();
+        if (dryRun) {
+            ++result.files;
+            result.bytes += size;
+            continue;
+        }
         if (QFile::remove(e.downloadPath)) {
             m_database->clearDownload(e.id);
             ++result.files;

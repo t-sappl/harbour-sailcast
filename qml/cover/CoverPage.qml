@@ -101,6 +101,8 @@ CoverBackground {
                     if (appWindow.sleepTimer.active) {
                         appWindow.sleepTimer.cancel()
                     } else {
+                        // (320) Timer and "End of the episode" exclude each other
+                        player.stopAtEnd = false
                         appWindow.sleepTimer.start(15)
                     }
                 } else {

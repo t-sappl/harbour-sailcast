@@ -85,10 +85,20 @@ Item {
         active = false
         remainingMinutes = 0
         expired()
-        if (mediaPlayer) {
-            mediaPlayer.volume = _savedVolume
-        }
+        // (290) The volume comes back only after the pause has taken effect
+        // (before: a short loud burst at full volume right at the end)
+        restoreTimer.restart()
         _fading = false
+    }
+
+    Timer {
+        id: restoreTimer
+        interval: 600
+        onTriggered: {
+            if (sleepTimer.mediaPlayer && !sleepTimer._fading) {
+                sleepTimer.mediaPlayer.volume = sleepTimer._savedVolume
+            }
+        }
     }
 
     Timer {

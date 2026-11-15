@@ -20,6 +20,12 @@ struct CleanupResult
 {
     int files = 0;
     qint64 bytes = 0;
+    // (274) Played downloads that stayed, and why (only when asked for by the
+    // user, "all"): the podcast is set to "never", the podcast is archived,
+    // the file is kept in Music/Videos or the archive
+    int keptNever = 0;
+    int keptArchived = 0;
+    int keptInMusic = 0;
 };
 
 // Downloads episode files.
@@ -57,6 +63,15 @@ public:
     // failure). Returns false if the episode is not being downloaded.
     bool cancel(qint64 episodeId);
     static QString cancelledError() { return QStringLiteral("Cancelled"); }
+    // (289) Storage protection: a download only starts when this much stays
+    // free afterwards (room for the database and the system); a full storage
+    // ends a running one with noSpaceError() and its .part is deleted
+    static qint64 reserveBytes() { return 500LL * 1024 * 1024; }
+    static QString noSpaceError() { return QStringLiteral("No space left"); }
+    // Free space in the download folder (-1 = unknown)
+    qint64 freeBytes() const;
+    // True when `bytes` (0 = unknown size) fit and the reserve stays
+    bool fitsInStorage(qint64 bytes) const;
     // Running downloads first, then the waiting ones (in their order)
     QList<qint64> pendingIds() const;
     bool isActive(qint64 episodeId) const { return m_active.contains(episodeId); }
@@ -77,7 +92,7 @@ public:
     void setVideoRoot(const QString &root) { m_videoRoot = root; }
     CleanupResult cleanup(int days, const QString &archiveRoot, qint64 keepEpisodeId = 0,
                           const QHash<qint64, int> &podcastDays = QHash<qint64, int>(),
-                          bool all = false);
+                          bool all = false, bool dryRun = false);
 
 signals:
     void progress(qint64 episodeId, qint64 received, qint64 total);
@@ -105,6 +120,7 @@ private:
         bool restarted = false;     // already restarted without Range (416)
         bool waitingForFeed = false;
         bool cancelled = false;
+        bool noSpace = false;       // (289) writing failed because the storage is full
         qint64 resumeFrom = 0;
         qint64 total = 0;
         int status = 0;

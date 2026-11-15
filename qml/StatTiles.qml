@@ -47,6 +47,11 @@ Flow {
             width: grid.widthAt(index)
             height: grid.tileHeight
             radius: Theme.paddingSmall
+            // (314) "destructive: true" with "tappable": the tap deletes.
+            // (318, variant 4, Thomas + Gemini) The tile stays blue like the
+            // others (a red area broke the row); a small red bin before the
+            // caption marks it
+            readonly property bool red: modelData.destructive === true && modelData.tappable === true
             color: Theme.rgba(Theme.highlightBackgroundColor, tileMouse.pressed ? 0.3 : 0.12)
             MouseArea {
                 id: tileMouse
@@ -64,14 +69,59 @@ Flow {
                     text: modelData.value
                     wrapMode: Text.Wrap
                     font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.highlightColor
+                    // (289) A tile with "warning: true" (little space left) in the warning colour
+                    color: modelData.warning === true ? Theme.errorColor : Theme.highlightColor
                 }
-                Label {
+                Item {
                     width: parent.width
-                    text: modelData.label + (modelData.tappable === true ? " ›" : "")
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSizeTiny
-                    color: Theme.secondaryHighlightColor
+                    height: captionLabel.height
+                    // (318) Waste bin, drawn (lid, handle, body with two lines)
+                    Item {
+                        id: bin
+                        visible: modelData.destructive === true && modelData.tappable === true
+                        y: Math.round((captionLabel.firstLineHeight - height) / 2)
+                        width: visible ? Math.round(Theme.fontSizeTiny * 0.75) : 0
+                        height: Math.round(width * 1.15)
+                        readonly property color tint: "#ff8a80"
+                        readonly property real stroke: Math.max(1, Math.round(width / 9))
+                        Rectangle { // handle
+                            width: Math.round(bin.width * 0.4); height: Math.round(bin.height * 0.12)
+                            x: (bin.width - width) / 2; y: 0
+                            color: "transparent"; border.width: bin.stroke; border.color: bin.tint
+                        }
+                        Rectangle { // lid
+                            width: bin.width; height: bin.stroke
+                            y: Math.round(bin.height * 0.12); color: bin.tint
+                        }
+                        Rectangle { // body
+                            width: Math.round(bin.width * 0.78); height: bin.height - Math.round(bin.height * 0.22)
+                            x: (bin.width - width) / 2; y: Math.round(bin.height * 0.22)
+                            radius: Math.max(1, bin.stroke); color: "transparent"
+                            border.width: bin.stroke; border.color: bin.tint
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: Math.max(1, Math.round(parent.width / 5))
+                                Repeater {
+                                    model: 2
+                                    Rectangle { width: bin.stroke; height: Math.round(bin.height * 0.42); color: bin.tint }
+                                }
+                            }
+                        }
+                    }
+                    Label {
+                        id: captionLabel
+                        readonly property real firstLineHeight: fontMetrics.height
+                        anchors.left: bin.right
+                        anchors.leftMargin: bin.visible ? Theme.paddingSmall : 0
+                        anchors.right: parent.right
+                        // (316) A tile that deletes names the action itself ("Delete
+                        // played") - no "›", that reads as "opens a page"
+                        text: modelData.label + (modelData.tappable === true && modelData.destructive !== true ? " ›" : "")
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSizeTiny
+                        color: Theme.secondaryHighlightColor
+                        FontMetrics { id: fontMetrics; font: captionLabel.font }
+                    }
                 }
             }
         }

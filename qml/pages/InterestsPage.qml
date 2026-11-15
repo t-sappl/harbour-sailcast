@@ -118,7 +118,7 @@ Page {
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
                 text: page.info.hasListening ? qsTr("Darker = heard more. Tap: more, less, never, normal.")
-                                             : qsTr("Nothing heard yet - tap what interests you: more, less, never, normal.")
+                                             : qsTr("Nothing heard yet – tap what interests you: more, less, never, normal.")
             }
             Item { width: 1; height: Theme.paddingSmall }
             Grid {

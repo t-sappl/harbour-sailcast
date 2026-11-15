@@ -156,8 +156,8 @@ Page {
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
                 text: page.fyydKnows
-                      ? qsTr("fyyd knows no podcasts similar to %1 - here are active podcasts of the same category.").arg(page.podcastTitle)
-                      : qsTr("fyyd does not know %1 yet - here are active podcasts of the same category.").arg(page.podcastTitle)
+                      ? qsTr("fyyd knows no podcasts similar to %1 – here are active podcasts of the same category.").arg(page.podcastTitle)
+                      : qsTr("fyyd does not know %1 yet – here are active podcasts of the same category.").arg(page.podcastTitle)
             }
             Item { width: 1; height: Theme.paddingMedium; visible: page.fallbackCategory.length > 0 }
         }

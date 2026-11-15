@@ -53,8 +53,11 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/Chip.qml \
     qml/EpisodeArt.qml \
     qml/EpisodeDelegate.qml \
+    qml/ProgressRing.qml \
+    qml/SortArrows.qml \
     qml/MessageBanner.qml \
     qml/MprisIntegration.qml \
+    qml/MprisOthers.qml \
     qml/PlayerBar.qml \
     qml/PlayerPanel.qml \
     qml/NewDot.qml \
@@ -65,6 +68,7 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/VideoIcon.qml \
     qml/pages/MarkAllPlayedDialog.qml \
     qml/ActionPill.qml \
+    qml/FoldHeader.qml \
     qml/PageArrow.qml \
     qml/DownloadsMenuItem.qml \
     qml/HoldNameBubble.qml \
@@ -79,9 +83,11 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/TimeFormat.js \
     qml/images/cover-sleep.png \
     qml/images/cover-bookmark.png \
+    qml/images/icon-pin.svg \
     qml/cover/CoverPage.qml \
     qml/pages/AddPodcastDialog.qml \
     qml/pages/ArchiveDialog.qml \
+    qml/pages/ArchiveFoldersPage.qml \
     qml/pages/ContinueListeningPage.qml \
     qml/pages/DownloadsPage.qml \
     qml/pages/EpisodePage.qml \
@@ -90,6 +96,7 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/HomePage.qml \
     qml/pages/ImportExportItem.qml \
     qml/pages/ImportExportPage.qml \
+    qml/pages/HtmlExportPage.qml \
     qml/pages/MobileDataDialog.qml \
     qml/pages/PasswordDialog.qml \
     qml/pages/PlaylistPage.qml \
@@ -99,6 +106,9 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/InterestsPage.qml \
     qml/pages/SimilarPage.qml \
     qml/pages/DownloadAllDialog.qml \
+    qml/pages/DownloadUnplayedDialog.qml \
+    qml/pages/SortPlaylistPage.qml \
+    qml/pages/SortDownloadsPage.qml \
     qml/pages/MarkPlayedDialog.qml \
     qml/pages/CategoriesPage.qml \
     qml/pages/CategoryPage.qml \
@@ -125,6 +135,7 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/FolderDeleteDialog.qml \
     qml/pages/GpodderDeviceDialog.qml \
     qml/pages/BookmarksPage.qml \
+    qml/pages/StatisticsPage.qml \
     qml/pages/BookmarkNoteDialog.qml \
     qml/FolderSection.qml \
     qml/GetStarted.qml \

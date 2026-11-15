@@ -41,7 +41,7 @@ Dialog {
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.secondaryHighlightColor
-            text: qsTr("The current state is kept on this phone as \"Before the last restore\" - restoring that one undoes this step. The next sync brings listening states that are newer on the server.")
+            text: qsTr("The current state is kept on this phone as \"Before the last restore\" – restoring that one undoes this step. The next sync brings listening states that are newer on the server.")
         }
     }
 }

@@ -89,22 +89,49 @@ QString Archiver::folderFor(qint64 podcastId) const
 // --- Archive ----------------------------------------------------------------
 
 // The folder name is chosen once and kept, even if the title changes
+QString Archiver::chooseFolderName(const PodcastRow &podcast) const
+{
+    QString folderName = FileNames::safe(podcast.title, 80);
+    if (m_database->isArchiveFolderUsed(folderName, podcast.id)) {
+        folderName += QStringLiteral(" (%1)").arg(podcast.id);
+    }
+    // (210) Music is shared: a folder of that name from another app (no
+    // episodes.json of Sailcast's archive in it) is not used
+    const QString existing = QDir(m_root).absoluteFilePath(folderName);
+    if (!m_root.isEmpty() && QDir(existing).exists()
+            && !QFile::exists(existing + QLatin1Char('/') + QLatin1String(MetadataFile))) {
+        folderName += QStringLiteral(" (Sailcast)");
+    }
+    return folderName;
+}
+
 QString Archiver::ensureFolderName(const PodcastRow &podcast)
 {
     QString folderName = podcast.archiveFolder;
     if (folderName.isEmpty()) {
-        folderName = FileNames::safe(podcast.title, 80);
-        if (m_database->isArchiveFolderUsed(folderName, podcast.id)) {
-            folderName += QStringLiteral(" (%1)").arg(podcast.id);
-        }
-        // (210) Music is shared: a folder of that name from another app (no
-        // episodes.json of Sailcast's archive in it) is not used
-        const QString existing = QDir(m_root).absoluteFilePath(folderName);
-        if (!m_root.isEmpty() && QDir(existing).exists()
-                && !QFile::exists(existing + QLatin1Char('/') + QLatin1String(MetadataFile))) {
-            folderName += QStringLiteral(" (Sailcast)");
+        // (289) The name a "Download in Music" already uses stays
+        folderName = m_database->setting(QStringLiteral("podcast.%1.musicFolder").arg(podcast.id));
+        if (folderName.isEmpty()) {
+            folderName = chooseFolderName(podcast);
         }
         m_database->setArchiveFolder(podcast.id, folderName);
+    }
+    return folderName;
+}
+
+// (289) The folder of "Downloads in Music": the name is kept in a setting of
+// its own - the podcast is not an archive then (no episodes.json, no "Archive
+// folder" line, not offered for import)
+QString Archiver::musicFolderName(const PodcastRow &podcast)
+{
+    if (!podcast.archiveFolder.isEmpty()) {
+        return podcast.archiveFolder;
+    }
+    const QString key = QStringLiteral("podcast.%1.musicFolder").arg(podcast.id);
+    QString folderName = m_database->setting(key);
+    if (folderName.isEmpty()) {
+        folderName = chooseFolderName(podcast);
+        m_database->setSetting(key, folderName);
     }
     return folderName;
 }
@@ -124,7 +151,7 @@ QString Archiver::musicTarget(qint64 episodeId)
     if (!e.id || !podcast.id) {
         return QString();
     }
-    const QString folder = QDir(rootFor(e)).absoluteFilePath(ensureFolderName(podcast));
+    const QString folder = QDir(rootFor(e)).absoluteFilePath(musicFolderName(podcast));
     const QString target = folder + QLatin1Char('/') + FileNames::forEpisode(e);
     return QFile::exists(target) ? QString() : target;
 }
@@ -189,11 +216,24 @@ QString Archiver::keepEpisode(qint64 episodeId, QString *error)
     }
     const QString target = folder + QLatin1Char('/') + name;
     if (QFileInfo(target).absoluteFilePath() != QFileInfo(e.downloadPath).absoluteFilePath()) {
-        if (QFile::exists(target)) {
-            QFile::remove(target);      // an older or broken copy of the same episode
+        // An older or broken copy of the same episode is replaced - but only
+        // when the new one arrived (320, code review: before it was deleted
+        // first; a failing move left neither)
+        const QString old = target + QStringLiteral(".old");
+        const bool hadOld = QFile::exists(target);
+        if (hadOld) {
+            QFile::remove(old);
+            QFile::rename(target, old);
         }
         if (!moveFile(e.downloadPath, target)) {
+            if (hadOld) {
+                QFile::remove(target);
+                QFile::rename(old, target);
+            }
             return failWith(QStringLiteral("Cannot move the file to %1").arg(target));
+        }
+        if (hadOld) {
+            QFile::remove(old);
         }
     }
     m_database->setDownloaded(e.id, target);
@@ -333,8 +373,15 @@ void Archiver::archiveEpisodes()
             used.insert(name.toLower());
             m_database->setArchiveFile(e.id, name);
         }
-        const QString target = m_result.folder + QLatin1Char('/') + name;
+        // (289) A video lies in the Videos folder, not in Music; the episode
+        // playing stays where it is (its file is in use)
+        const QString target = QDir(rootFor(e)).absoluteFilePath(QFileInfo(m_result.folder).fileName())
+                + QLatin1Char('/') + name;
         const QFileInfo info(target);
+        if (e.id == m_currentEpisode && e.downloaded && e.downloadPath != target) {
+            ++m_result.present;
+            continue;
+        }
 
         if (info.exists() && info.size() > 0 && !QFile::exists(target + QStringLiteral(".part"))) {
             if (!e.downloaded || e.downloadPath != target) {

@@ -12,6 +12,17 @@ Dialog {
     objectName: "mobileDataDialog"
     property string acceptLabel: qsTr("Download")
     property string message: qsTr("Downloads are set to Wi-Fi only. Download this episode over the mobile connection anyway?")
+    // (274) A second choice besides accepting, e.g. "Sound only (about 40 MB)"
+    // for a video with an audio version; empty = no such button. It closes
+    // the dialog without accepting and says so with alternateChosen.
+    property string alternateLabel: ""
+    signal alternateChosen()
+    property bool _alternate: false
+    onRejected: {
+        if (_alternate) {
+            alternateChosen()
+        }
+    }
 
     Column {
         width: parent.width
@@ -36,6 +47,19 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.secondaryHighlightColor
             text: dialog.message
+        }
+
+        // (294) The last stock Button of the app: ActionPill at the page
+        // margin like everywhere else
+        ActionPill {
+            visible: dialog.alternateLabel !== ""
+            kind: "secondary"
+            x: Theme.horizontalPageMargin
+            text: dialog.alternateLabel
+            onClicked: {
+                dialog._alternate = true
+                dialog.reject()
+            }
         }
     }
 }

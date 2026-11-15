@@ -223,7 +223,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.highlightColor
-                text: qsTr("A new device starts without subscriptions - choose the device of your other app above, or share the subscriptions below.")
+                text: qsTr("A new device starts without subscriptions – choose the device of your other app above, or share the subscriptions below.")
             }
 
             TextSwitch {
@@ -257,7 +257,7 @@ Dialog {
                 wrapMode: Text.Wrap
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.highlightColor
-                text: qsTr("No other device checked - nothing is shared.")
+                text: qsTr("No other device checked – nothing is shared.")
             }
         }
 

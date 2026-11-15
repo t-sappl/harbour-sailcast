@@ -62,7 +62,7 @@ Dialog {
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeExtraSmall
             color: Theme.secondaryColor
-            text: qsTr("Downloads all episodes, the feed, the cover and the listening state into this folder. Episodes already downloaded are moved there, files already in the folder are kept. Can be cancelled and continued later.")
+            text: qsTr("Downloads all episodes, the feed, the cover and the listening state into this folder. Episodes already downloaded are moved there (not the one playing), files already in the folder are kept. Videos go to the Videos folder. Episodes that come later are not added by themselves – copy again. Can be cancelled and continued later.")
         }
 
         Label {
@@ -72,7 +72,7 @@ Dialog {
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.highlightColor
-            text: qsTr("No Wi-Fi connection - the episodes would be loaded over the mobile connection.")
+            text: qsTr("No Wi-Fi connection – the episodes would be loaded over the mobile connection.")
         }
     }
 }
