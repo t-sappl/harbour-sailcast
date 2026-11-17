@@ -129,6 +129,13 @@ void EpisodeListModel::setAllGroupsCollapsed(bool collapsed)
         // Folded podcasts not in the view now stay folded
         ids.unite(collapsedPodcasts());
         m_kept.clear();
+    } else {
+        // (333, code review) "Unfold all" opens only the podcasts in the view;
+        // folded ones without unplayed episodes now stay folded
+        ids = collapsedPodcasts();
+        for (auto it = m_groupTotal.constBegin(); it != m_groupTotal.constEnd(); ++it) {
+            ids.remove(it.key());
+        }
     }
     m_groupLimit.clear();
     storeCollapsed(ids);
@@ -144,6 +151,20 @@ bool EpisodeListModel::anyGroupOpen() const
         }
     }
     return false;
+}
+
+// (335) The download filter of New episodes (setting home.downloadFilter,
+// read by the database); a change reloads without keeping rows
+void EpisodeListModel::setDownloadFilter(const QString &filter)
+{
+    if (filter != m_downloadFilter) {
+        m_downloadFilter = filter;
+        m_kept.clear();
+        m_groupLimit.clear();
+        m_skipKeepOnce = true;
+        emit downloadFilterChanged();
+        scheduleReload();
+    }
 }
 
 void EpisodeListModel::clearKept()
@@ -465,9 +486,17 @@ void EpisodeListModel::keepVanishedRows(Database *db, QList<EpisodeRow> &rows)
         present.insert(e.id);
     }
     const QList<qint64> hidden = db->hiddenFromNew();
-    auto dealtWith = [this, &hidden](const EpisodeRow &fresh) {
+    // (335) Download filter: a row whose download state changed (➕ loads it,
+    // "Delete download", Auto-Download) left the filtered list without the
+    // user leaving it - it stays like a row dealt with
+    const QString loadFilter = db->homeDownloadFilter();
+    auto dealtWith = [this, &hidden, &loadFilter](const EpisodeRow &fresh) {
         if (!fresh.id || fresh.provisional || hidden.contains(fresh.podcastId)) {
             return false;
+        }
+        if ((loadFilter == QLatin1String("downloaded") && !fresh.downloaded)
+                || (loadFilter == QLatin1String("notDownloaded") && fresh.downloaded)) {
+            return true;
         }
         return m_filter == HomeNew ? !(fresh.isNew && !fresh.played) : fresh.played;
     };

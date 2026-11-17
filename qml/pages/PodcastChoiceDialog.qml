@@ -13,6 +13,8 @@ import "../"
 // (213) Optional groups: groupIds first under firstTitle, the rest under
 // restTitle (never delete: those in the Music folder on top).
 Dialog {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "podcastChoiceDialog"
 

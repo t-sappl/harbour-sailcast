@@ -103,7 +103,7 @@ static QString listOf(const QString &title, const QStringList &items)
         return QString();
     }
     QString html = QStringLiteral("<details class=\"sub\"><summary>%1 (%2)</summary><ul>")
-            .arg(escape(title)).arg(items.size());
+            .arg(escape(title), QString::number(items.size()));
     for (int i = 0; i < items.size(); ++i) {
         html += QStringLiteral("<li>%1</li>").arg(escape(items.at(i)));
     }
@@ -159,7 +159,7 @@ static QString podcastHtml(const Podcast &p, const Options &options, const QStri
         facts << QStringLiteral("<b>%1:</b> %2").arg(escape(orDefault(l.language, "Language")), escape(p.language));
     }
     if (p.episodeCount > 0) {
-        facts << QStringLiteral("<b>%1:</b> %2").arg(escape(orDefault(l.episodes, "Episodes"))).arg(p.episodeCount);
+        facts << QStringLiteral("<b>%1:</b> %2").arg(escape(orDefault(l.episodes, "Episodes")), QString::number(p.episodeCount));
     }
     if (!p.rhythm.isEmpty()) {
         facts << QStringLiteral("<b>%1:</b> %2").arg(escape(orDefault(l.rhythm, "Rhythm")), escape(p.rhythm));
@@ -300,6 +300,8 @@ static QString statisticsHtml(const Statistics &st)
     if (st.level <= 0) {
         return QString();
     }
+    // (333/334, code review) Numbers in the same multi-arg() as the texts: a
+    // chained .arg() replaced a "%1" inside a podcast title or category
     QString html = QStringLiteral("<details class=\"stats\"><summary>%1</summary>").arg(escape(st.title));
     html += QStringLiteral("<div class=\"big\"><b>%1</b><span>%2</span></div>").arg(escape(st.total), escape(st.totalLabel));
     html += QStringLiteral("<div class=\"g\">") + box(st.saved, st.savedLabel) + box(st.episodes, st.episodesLabel);
@@ -321,8 +323,8 @@ static QString statisticsHtml(const Statistics &st)
         html += QStringLiteral("<div class=\"sh\">%1</div><div class=\"wk\">").arg(escape(st.monthsTitle));
         for (int i = 0; i < st.months.size(); ++i) {
             html += QStringLiteral("<i title=\"%1 %2\" style=\"height:%3%\"></i>")
-                        .arg(escape(st.months.at(i).label), escape(st.months.at(i).value))
-                        .arg(qRound(qBound(0.03, st.months.at(i).share, 1.0) * 100));
+                        .arg(escape(st.months.at(i).label), escape(st.months.at(i).value),
+                             QString::number(qRound(qBound(0.03, st.months.at(i).share, 1.0) * 100)));
         }
         html += QStringLiteral("</div><div class=\"ml\"><span>%1</span><span>%2</span></div>")
                     .arg(escape(st.months.first().label), escape(st.months.last().label));
@@ -347,17 +349,20 @@ static QString statisticsHtml(const Statistics &st)
     }
     if (st.level >= 2 && !st.top.isEmpty()) {
         html += QStringLiteral("<div class=\"sh\">%1</div>").arg(escape(st.topTitle));
+        if (!st.topNote.isEmpty()) {
+            html += QStringLiteral("<div class=\"lg\" style=\"margin-top:2px\">%1</div>").arg(escape(st.topNote));
+        }
         for (int i = 0; i < st.top.size(); ++i) {
             const Bar &b = st.top.at(i);
             html += QStringLiteral("<div class=\"row\"><span>%1</span><span>%2</span></div><div class=\"bar\" style=\"width:%3%\"></div>")
-                        .arg(escape(b.label), escape(b.value)).arg(qRound(qBound(0.02, b.share, 1.0) * 100));
+                        .arg(escape(b.label), escape(b.value), QString::number(qRound(qBound(0.02, b.share, 1.0) * 100)));
         }
     }
     if (st.level >= 2 && st.weekdays.size() == 7) {
         html += QStringLiteral("<div class=\"sh\">%1</div><div class=\"wk\">").arg(escape(st.weekdaysTitle));
         for (int i = 0; i < 7; ++i) {
             html += QStringLiteral("<i title=\"%1\" style=\"height:%2%\"></i>")
-                        .arg(escape(st.weekdays.at(i).value)).arg(qRound(qBound(0.03, st.weekdays.at(i).share, 1.0) * 100));
+                        .arg(escape(st.weekdays.at(i).value), QString::number(qRound(qBound(0.03, st.weekdays.at(i).share, 1.0) * 100)));
         }
         html += QStringLiteral("</div><div class=\"wl\">");
         for (int i = 0; i < 7; ++i) {
@@ -373,7 +378,7 @@ static QString statisticsHtml(const Statistics &st)
         for (int i = 0; i < st.categories.size(); ++i) {
             const Bar &b = st.categories.at(i);
             html += QStringLiteral("<div class=\"row\"><span>%1</span><span>%2</span></div><div class=\"bar\" style=\"width:%3%\"></div>")
-                        .arg(escape(b.label), escape(b.value)).arg(qRound(qBound(0.02, b.share, 1.0) * 100));
+                        .arg(escape(b.label), escape(b.value), QString::number(qRound(qBound(0.02, b.share, 1.0) * 100)));
         }
     }
     if (st.level >= 2 && !st.records.isEmpty()) {

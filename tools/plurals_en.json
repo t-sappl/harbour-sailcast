@@ -62,5 +62,13 @@
  "Delete %n downloads (%1)": "Delete %n download (%1)",
  "Move %n downloads (%1) …": "Move %n download (%1) …",
  "%n podcasts added – loading the episodes": "%n podcast added – loading the episodes",
- "%n days in a row": "%n day in a row"
+ "%n days in a row": "%n day in a row",
+ "%n podcasts hidden": "%n podcast hidden",
+ "Clear %n shown": "Clear %n shown",
+ "Clearing %n shown episodes": "Clearing %n shown episode",
+ "%n new episodes, all in podcasts not shown in New": "%n new episode, in a podcast not shown in New",
+ "%n of them in podcasts not shown in New": "%n of them in a podcast not shown in New",
+ "%n new episodes in them": "%n new episode in them",
+ "%n unplayed episodes in them": "%n unplayed episode in them",
+ "%n new": "%n new"
 }

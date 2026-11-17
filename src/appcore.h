@@ -251,6 +251,8 @@ public:
     Q_INVOKABLE int newEpisodesSnapshot() const;
     // (304) Real number for the chip "New (n)" (the list stops at 100)
     Q_INVOKABLE int homeNewCount() const;
+    Q_INVOKABLE int homeCount(bool onlyNew, bool filtered) const;   // (335)
+    Q_INVOKABLE void removeShownFromNew(int upToEpisodeId, const QString &filter);   // (335, 336)
     // (302) Undo of "Set aside": the flag goes back
     Q_INVOKABLE void restoreNew(int episodeId);
     // (302) The user took the episode up (download started by hand): the
@@ -258,16 +260,28 @@ public:
     Q_INVOKABLE void noteDownloadByUser(int episodeId);
     // (309) Episode put into the playlist by hand: loaded too (setting
     // "playlist.download", default on; Wi-Fi rule, no video without Wi-Fi)
-    void downloadForPlaylist(int episodeId);
+    void replayIfPlayed(int episodeId);   // (334)
+    void downloadForPlaylist(int episodeId, bool always = false);   // (334) always: also with the setting off
     // (309) After an update with Wi-Fi: playlist episodes not loaded yet
     void downloadPlaylistCatchUp();
     // (310) Added by hand but not loaded then (no Wi-Fi): setting
     // "playlist.pendingDownload", only these are caught up
     QSet<int> pendingPlaylistDownloads() const;
     void storePendingPlaylistDownloads(const QSet<int> &ids);
+    QSet<int> pendingAlwaysDownloads() const;                 // (336)
+    void storePendingAlwaysDownloads(const QSet<int> &ids);   // (336)
     // (302) Podcasts not shown on the page "New episodes" (both views)
     Q_INVOKABLE bool hiddenFromNew(int podcastId) const;
     Q_INVOKABLE void setHiddenFromNew(int podcastId, bool hidden);
+    // (340) Line "n podcasts hidden" on New episodes and its choice page
+    Q_INVOKABLE int hiddenFromNewCount() const;
+    Q_INVOKABLE int homeHiddenCount(bool onlyNew) const;
+    Q_INVOKABLE QVariantList newChoicePodcasts(bool onlyNew) const;
+    Q_INVOKABLE void setAllHiddenFromNew(bool hidden);
+    // (334) Hidden from the statistics
+    Q_INVOKABLE bool hiddenFromStats(int podcastId) const;
+    Q_INVOKABLE void setHiddenFromStats(int podcastId, bool hidden);
+    Q_INVOKABLE QVariantList statsHiddenPodcasts() const;
     Q_INVOKABLE void markAllPlayed(int podcastId);
     // (246) Settings: every podcast (archived ones too, not provisional),
     // optionally all but the newest episode of each; one message
@@ -408,6 +422,7 @@ public:
     // sorting decides the place (the explicit "Play next" of the context
     // menu stays explicit).
     Q_INVOKABLE void queueAddDefault(int episodeId);
+    Q_INVOKABLE void queueAddDefaultOtherDownload(int episodeId);   // (334)
     Q_INVOKABLE bool isPinned(int episodeId) const;
     // (286) Put into the playlist by Auto-Add (symbol at the handle)
     Q_INVOKABLE bool isAutoAdded(int episodeId) const;
@@ -702,7 +717,7 @@ private:
     void writeHtmlExport();
     HtmlExportJob *m_htmlJob = nullptr;
     void finishHtmlExport(bool cancelled);
-    void fillHtmlStatistics(HtmlExport::Statistics *st, int level) const;
+    void fillHtmlStatistics(HtmlExport::Statistics *st, int level, const QHash<qint64, PodcastRow> &shared) const;
     // (294) HTML export in progress
     ChaptersLoader *m_htmlChapters = nullptr;
     QVariantList m_htmlFolders;
@@ -788,6 +803,7 @@ private:
     int m_updateDone = 0;
     int m_updateTotal = 0;
     int m_updateNew = 0;
+    int m_updateNewHidden = 0;      // (340) of those in podcasts hidden from New
     int m_updateFailed = 0;
     // (147) Podcasts loaded for "Anhören ohne Abo": id -> guid of the
     // episode to play ("" = the podcast page)

@@ -13,6 +13,8 @@ import "../TimeFormat.js" as TimeFormat
 // (170) Second mode "as unplayed": the played episodes; press and hold
 // selects an episode and all newer ones (heard again from there).
 Dialog {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: dialog
     objectName: "markPlayedDialog"
     property int podcastId: 0

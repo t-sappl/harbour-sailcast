@@ -8,7 +8,10 @@ and listen before subscribing. Subscriptions and the listening state are
 synchronized with other podcast apps (e.g. AntennaPod on Android) through a
 Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 <p>
-<img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders">
+<img src="screenshots/podcasts-folders.png" width="19%" alt="Podcasts with folders and the listening line">
+<img src="screenshots/new-episodes.png" width="19%" alt="New episodes: All unplayed, grouped by podcast">
+<img src="screenshots/downloads.png" width="19%" alt="Downloads sorted by size">
+<img src="screenshots/statistics.png" width="19%" alt="Listening statistics">
 <img src="screenshots/video.png" width="19%" alt="Video podcast on the episode page">
 <img src="screenshots/discover.png" width="19%" alt="Discover: For you">
 <img src="screenshots/add-podcast.png" width="19%" alt="Add podcast: folder suggestion, listen without subscribing, statistics">
@@ -16,7 +19,7 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 </p>
 <p>
 <img src="screenshots/episode-page.png" width="19%" alt="Episode page with bookmarks and chapters">
-<img src="screenshots/playlist.png" width="19%" alt="Playlist with now playing, statistics and recently heard">
+<img src="screenshots/playlist.png" width="19%" alt="Playlist kept sorted, with pins and auto-added episodes">
 <img src="screenshots/player-bar.png" width="19%" alt="Playlist with the expanded player bar">
 <img src="screenshots/lock-screen.png" width="19%" alt="Lock screen with chapter and cover">
 </p>

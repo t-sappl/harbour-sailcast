@@ -252,6 +252,19 @@ Page {
                 }
             }
 
+            // (334) Positive like "Show in New episodes"; what is stored is
+            // "hidden" (stats.hiddenPodcasts)
+            TextSwitch {
+                text: qsTr("Show in statistics")
+                description: qsTr("Off: its listening time is kept but not counted in the statistics, the listening line and the shared web page.")
+                checked: !core.hiddenFromStats(page.podcastId)
+                automaticCheck: false
+                onClicked: {
+                    checked = !checked
+                    core.setHiddenFromStats(page.podcastId, !checked)
+                }
+            }
+
             // (255) Was "Stop updates (archived)" in the Archive section:
             // "archived" now only means the folder with copies
             TextSwitch {

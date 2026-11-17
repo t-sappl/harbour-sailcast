@@ -75,6 +75,7 @@ struct Statistics
     QList<int> heat;                    // 53 x 7, Monday first: -1 future, 0..4 level
     QList<QPair<int, QString>> heatMonths;  // week, month name
     QString categoriesTitle, categoriesNote;
+    QString topNote;                    // (333) under "Top podcasts"
     QList<Bar> categories;              // value "3 h · 25 %"
     QString recordsTitle;
     QList<QPair<QString, QString>> records;    // label, value

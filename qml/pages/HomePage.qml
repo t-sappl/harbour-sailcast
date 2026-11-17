@@ -30,28 +30,56 @@ Page {
     }
     onGroupedChanged: settleEmpty()
     property bool viewNew: core.setting("home.view", "all") === "new"
+    // (335) Download filter: "" all, "downloaded", "notDownloaded"
+    property string downloadFilter: core.setting("home.downloadFilter", "")
+    readonly property bool filtered: downloadFilter === "downloaded" || downloadFilter === "notDownloaded"
     Connections {
         target: core
-        onSettingsChanged: page.viewNew = core.setting("home.view", "all") === "new"
+        onSettingsChanged: {
+            page.viewNew = core.setting("home.view", "all") === "new"
+            page.downloadFilter = core.setting("home.downloadFilter", "")
+        }
     }
+    onDownloadFilterChanged: { countNew(); settleEmpty() }
 
     EpisodeListModel {
         id: episodes
         filter: page.viewNew ? EpisodeListModel.HomeNew : EpisodeListModel.Home
         groupByPodcast: page.grouped
+        downloadFilter: page.downloadFilter
         keepVanished: true
         onCountChanged: page.settleEmpty()
     }
-    Component.onCompleted: settleEmpty()
+    // (336, review) The filter counts at once (a list that stays empty sends no change)
+    Component.onCompleted: { settleEmpty(); countNew() }
     // (304) Real number for the chip (the list model stops at 100)
     property int newTotal: core.homeNewCount()
+    // (335) For the filter line: shown of all in the current view
+    property int filterShown: 0
+    property int filterAll: 0
     // (307) For the pulley: is any group open (read when the menu opens)
     property bool anyOpen: true
-    function countNew() { newTotal = core.homeNewCount() }
+    // (340) For the line "n podcasts hidden · m new episodes in them"
+    property int hiddenPodcasts: 0
+    property int hiddenEpisodes: 0
+    // (340, review) Also with a single podcast that is hidden; a page
+    // property (the line sits in the list header, its id is not visible here)
+    readonly property bool hiddenLineShown: core.podcastCount > 1 || hiddenPodcasts > 0
+    function countNew() {
+        newTotal = core.homeNewCount()
+        hiddenPodcasts = core.hiddenFromNewCount()
+        hiddenEpisodes = hiddenPodcasts > 0 ? core.homeHiddenCount(viewNew) : 0
+        if (filtered) {
+            filterShown = core.homeCount(viewNew, true)
+            filterAll = core.homeCount(viewNew, false)
+        }
+    }
     Connections {
         target: core
         onDataChanged: page.countNew()
-        onEpisodeChanged: page.countNew()
+        // (337, review) Episode changes come with every saved position while
+        // playing: only the chip number then, the filter line on data changes
+        onEpisodeChanged: page.newTotal = core.homeNewCount()
     }
     Connections {
         target: episodes
@@ -67,7 +95,7 @@ Page {
             appWindow.showHint("homeNew", qsTr("\"New\" shows what you haven't looked at yet. ➕ (playlist and download) or Set aside take an episode out – it stays in \"All unplayed\"."), page)
         }
     }
-    onViewNewChanged: { hintNew(); settleEmpty() }
+    onViewNewChanged: { hintNew(); settleEmpty(); countNew() }
 
     onStatusChanged: {
         // (310) Before the page slides in: at the top if it was at the top
@@ -202,6 +230,72 @@ Page {
                     }
                 }
             }
+            // (335, Gemini 16 Nov) While the download filter is on, always
+            // visible in highlight colour, so episodes never seem missing.
+            // Tap on the text: downloaded <-> not downloaded; ✕: all again
+            Item {
+                id: filterLine
+                visible: page.filtered && core.podcastCount > 0
+                width: parent.width
+                height: visible ? Math.max(Theme.itemSizeExtraSmall, filterText.height + Theme.paddingSmall) : 0
+                BackgroundItem {
+                    id: filterSwap
+                    anchors { left: parent.left; right: filterClear.left; top: parent.top; bottom: parent.bottom }
+                    onClicked: core.setSetting("home.downloadFilter",
+                                               page.downloadFilter === "downloaded" ? "notDownloaded" : "downloaded")
+                    Label {
+                        id: filterText
+                        x: Theme.horizontalPageMargin
+                        width: parent.width - Theme.horizontalPageMargin
+                        anchors.verticalCenter: parent.verticalCenter
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.highlightColor
+                        text: (page.downloadFilter === "downloaded"
+                               ? qsTr("Only downloaded (%1 of %2)") : qsTr("Only not downloaded (%1 of %2)"))
+                              .arg(page.filterShown).arg(page.filterAll)
+                    }
+                }
+                IconButton {
+                    id: filterClear
+                    anchors { right: parent.right; rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium; verticalCenter: parent.verticalCenter }
+                    width: Theme.itemSizeExtraSmall
+                    height: Theme.itemSizeExtraSmall
+                    icon.source: "image://theme/icon-m-clear"
+                    onClicked: {
+                        if (clearBubble.takeHeld()) return
+                        core.setSetting("home.downloadFilter", "")
+                    }
+                    HoldNameBubble { id: clearBubble; attached: true; name: qsTr("Show all") }
+                }
+            }
+            // (340, Thomas 17 Nov) Podcasts hidden here, as "n podcasts hidden"
+            // on the statistics page: why "7 new episodes" can leave the page
+            // empty, and the way to the choice of all podcasts at once.
+            // Always there (Thomas: also shows that the choice exists)
+            BackgroundItem {
+                id: hiddenLine
+                visible: page.hiddenLineShown
+                width: parent.width
+                height: visible ? Math.max(Theme.itemSizeExtraSmall, hiddenText.height + Theme.paddingSmall) : 0
+                onClicked: pageStack.push(Qt.resolvedUrl("NewHiddenPage.qml"), { onlyNew: page.viewNew })
+                Label {
+                    id: hiddenText
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.Wrap
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: hiddenLine.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                    text: (page.hiddenPodcasts > 0 ? qsTr("%n podcasts hidden", "", page.hiddenPodcasts)
+                                                   : qsTr("All podcasts shown"))
+                          + (page.hiddenEpisodes > 0
+                             ? " · " + (page.viewNew ? qsTr("%n new episodes in them", "", page.hiddenEpisodes)
+                                                     : qsTr("%n unplayed episodes in them", "", page.hiddenEpisodes))
+                             : "")
+                          + " ›"
+                }
+            }
         }
 
         PullDownMenu {
@@ -228,6 +322,12 @@ Page {
             DownloadsMenuItem {
                 id: homeDownloads
             }
+            // (335, Gemini 16 Nov) A choice page, no blind cycling in the pulley
+            MenuItem {
+                visible: core.podcastCount > 0
+                text: qsTr("Filter by download …")
+                onClicked: pageStack.push(Qt.resolvedUrl("DownloadFilterPage.qml"))
+            }
             // (293) The list as an inbox: empty it in one go (the flag
             // only, the episodes stay unplayed)
             // (307) Fold or unfold all groups ("All unplayed" by podcast)
@@ -238,13 +338,21 @@ Page {
             }
             MenuItem {
                 visible: page.viewNew && page.newTotal > 0
-                text: qsTr("Clear New")
+                // (335) With the download filter only what is shown
+                text: page.filtered ? qsTr("Clear %n shown", "", page.newTotal) : qsTr("Clear New")
                 onClicked: {
                     // (322) Fixed at the tap: the number in the banner and what is cleared
                     var upTo = core.newEpisodesSnapshot()
                     var total = page.newTotal
-                    removeAllRemorse.execute(qsTr("Clearing %n new episodes", "", total),
-                                             function() { episodes.clearKept(); core.removeAllFromNew(upTo) })
+                    if (page.filtered) {
+                        // (336, review) The filter of the tap
+                        var filter = page.downloadFilter
+                        removeAllRemorse.execute(qsTr("Clearing %n shown episodes", "", total),
+                                                 function() { episodes.clearKept(); core.removeShownFromNew(upTo, filter) })
+                    } else {
+                        removeAllRemorse.execute(qsTr("Clearing %n new episodes", "", total),
+                                                 function() { episodes.clearKept(); core.removeAllFromNew(upTo) })
+                    }
                 }
             }
             // Search on the device (86); (314) always second from the bottom,
@@ -461,8 +569,14 @@ Page {
             // when it is switched off - with rows in the list it goes at once
             visible: (enabled || episodes.count === 0) && opacity > 0
             text: core.databaseError.length > 0 ? qsTr("Database error")
+                  // (336) The filter texts only when the filter hides something
+                  : page.filtered && page.filterAll > 0 ? (page.downloadFilter === "downloaded" ? qsTr("Nothing downloaded here") : qsTr("Everything here is downloaded"))
                   : (page.viewNew ? qsTr("Nothing new") : qsTr("All caught up"))
+            // (335) With the filter: how to see the rest
             hintText: core.databaseError.length > 0 ? core.databaseError
+                      : page.filtered && page.filterAll > 0 ? qsTr("Tap ✕ above to show all episodes")
+                      // (340) Everything waiting is in hidden podcasts
+                      : page.hiddenEpisodes > 0 && page.hiddenLineShown ? qsTr("Tap the line above to choose the podcasts shown here")
                       : (page.viewNew ? qsTr("Episodes you have set aside or started are in \"All unplayed\"")
                                       : qsTr("No unplayed episodes waiting"))
         }

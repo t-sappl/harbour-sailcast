@@ -493,7 +493,13 @@ AppCore::AppCore(QObject *parent)
         m_updateRegular = true;
         // (289) The first update of a subscription brings the whole back
         // catalog, but only the newest episode counts as new
-        m_updateNew += newEpisodes >= m_database->podcast(id).episodeCount ? qMin(newEpisodes, 1) : newEpisodes;
+        const int counted = newEpisodes >= m_database->podcast(id).episodeCount ? qMin(newEpisodes, 1) : newEpisodes;
+        m_updateNew += counted;
+        // (340, Thomas 17 Nov) "7 new episodes" with New episodes empty: the
+        // part in podcasts hidden there is named in the message
+        if (m_database->hiddenFromNew().contains(id)) {
+            m_updateNewHidden += counted;
+        }
         if (newEpisodes > 0) {
             // (289) Heard elsewhere: the states waiting for these episodes are
             // applied first, so such an episode is not loaded or added
@@ -613,6 +619,9 @@ AppCore::AppCore(QObject *parent)
     connect(m_downloads, &DownloadManager::downloaded, this, [this](qint64 id, const QString &) {
         forgetResumable(int(id));
         m_downloadProgress.remove(int(id));
+        // (334, code review Downloads 14) The "for the playlist" mark ends with
+        // the download: a later own download must not stop with queueRemove
+        m_downloadByPlaylist.remove(int(id));
         emit downloadFinished(int(id), true);
         emit episodeChanged(int(id));
         emit downloadsChanged();
@@ -622,6 +631,7 @@ AppCore::AppCore(QObject *parent)
     connect(m_downloads, &DownloadManager::failed, this, [this](qint64 id, const QString &error) {
         forgetResumable(int(id));
         m_downloadProgress.remove(int(id));
+        m_downloadByPlaylist.remove(int(id));   // (334) as above
         emit downloadFinished(int(id), false);
         emit episodeChanged(int(id));
         emit downloadsChanged();
@@ -759,7 +769,7 @@ QString AppCore::archiveRoot() const
 
 QString AppCore::version() const
 {
-    return QStringLiteral("1.4 (build 332)");
+    return QStringLiteral("1.4.1 (build 342)");
 }
 
 void AppCore::reloadQueue()
@@ -787,12 +797,19 @@ void AppCore::emitUpdateSummary()
     m_updateSummaryPending = false;
     if (m_updateRegular) {
         // (280) "No new episodes" instead of "0 new episodes"
-        const QString found = m_updateNew > 0 ? tr("%n new episodes", "", m_updateNew) : tr("No new episodes");
+        QString found = m_updateNew > 0 ? tr("%n new episodes", "", m_updateNew) : tr("No new episodes");
+        // (340) The part New episodes does not show
+        if (m_updateNew > 0 && m_updateNewHidden >= m_updateNew) {
+            found = tr("%n new episodes, all in podcasts not shown in New", "", m_updateNew);
+        } else if (m_updateNewHidden > 0) {
+            found += QStringLiteral(" – ") + tr("%n of them in podcasts not shown in New", "", m_updateNewHidden);
+        }
         emitMessage(m_updateFailed > 0
                      ? found + QStringLiteral(", ") + tr("%n feeds failed", "", m_updateFailed)
                      : found);
     }
     m_updateNew = 0;
+    m_updateNewHidden = 0;
     m_updateFailed = 0;
     m_updateRegular = false;
 }
@@ -2674,6 +2691,22 @@ int AppCore::homeNewCount() const
     return m_database->homeNewCount();
 }
 
+// (335) Counts of the page New episodes for the download filter
+int AppCore::homeCount(bool onlyNew, bool filtered) const
+{
+    return m_database->homeCount(onlyNew, filtered);
+}
+
+// (335) "Clear %n shown": with a download filter only what the page shows
+void AppCore::removeShownFromNew(int upToEpisodeId, const QString &filter)
+{
+    // (336, review 16 Nov) The filter of the tap, not the one after the countdown
+    m_database->clearShownNew(upToEpisodeId, filter);
+    // (337) The undo marks of ➕ stay: those episodes are no longer "new",
+    // so "Clear shown" did not touch them
+    emit dataChanged();
+}
+
 int AppCore::newEpisodesSnapshot() const
 {
     return int(m_database->maxNewEpisodeId());
@@ -2681,7 +2714,8 @@ int AppCore::newEpisodesSnapshot() const
 
 void AppCore::removeAllFromNew(int upToEpisodeId)
 {
-    // (302) All of them, hidden podcasts included (no filter); nothing left to undo
+    // (302) All of them; nothing left to undo. (340) Not those of hidden
+    // podcasts: they keep their flags until shown again (as "Clear %n shown")
     // (322) Of those that were there at the tap (not what the update brought during the countdown)
     m_database->clearAllNew(upToEpisodeId);
     m_triageByPlaylist.clear();
@@ -2710,6 +2744,54 @@ void AppCore::noteDownloadByUser(int episodeId)
     triageByUser(episodeId, false);
 }
 
+// (334) Hide a podcast from the statistics (instead of deleting its listening
+// history): its time stays in the log and counts again when shown
+bool AppCore::hiddenFromStats(int podcastId) const
+{
+    return m_database->statsHidden().contains(podcastId);
+}
+
+void AppCore::setHiddenFromStats(int podcastId, bool hidden)
+{
+    QList<qint64> ids = m_database->statsHidden();
+    if (hidden == ids.contains(podcastId)) {
+        return;
+    }
+    if (hidden) {
+        ids.append(podcastId);
+    } else {
+        ids.removeAll(podcastId);
+    }
+    m_database->setStatsHidden(ids);
+    emit dataChanged();
+}
+
+// The hidden podcasts for the list "n podcasts hidden": title (also of a
+// podcast no longer subscribed, from the log) and its whole listening time
+QVariantList AppCore::statsHiddenPodcasts() const
+{
+    QVariantList list;
+    const QList<qint64> ids = m_database->statsHidden();
+    for (qint64 id : ids) {
+        const PodcastRow p = m_database->podcast(id);
+        QString title = p.id ? p.title : QString();
+        if (title.isEmpty()) {
+            title = m_database->listeningTitle(id);
+        }
+        QVariantMap item;
+        item.insert(QStringLiteral("podcastId"), double(id));
+        item.insert(QStringLiteral("title"), title.isEmpty() ? tr("Podcast no longer there") : title);
+        item.insert(QStringLiteral("seconds"), double(m_database->listenedSeconds(id)));
+        item.insert(QStringLiteral("subscribed"), p.id > 0 && !p.provisional);
+        list.append(item);
+    }
+    std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
+        return a.toMap().value(QStringLiteral("title")).toString().localeAwareCompare(
+                   b.toMap().value(QStringLiteral("title")).toString()) < 0;
+    });
+    return list;
+}
+
 bool AppCore::hiddenFromNew(int podcastId) const
 {
     return m_database->hiddenFromNew().contains(podcastId);
@@ -2725,9 +2807,68 @@ void AppCore::setHiddenFromNew(int podcastId, bool hidden)
     if (hidden) {
         ids.append(podcastId);
     } else {
+        // (340, review) Shown again with its flags: the line and the choice
+        // page show beforehand how many new episodes come back (302 cleared
+        // them here, which emptied exactly what the line had promised)
         ids.removeAll(podcastId);
-        // Shown again: its old flags would flood "New"
-        m_database->clearNewOfPodcast(podcastId);
+    }
+    m_database->setHiddenFromNew(ids);
+    emit dataChanged();
+}
+
+// (340) Hidden podcasts that are still subscribed (the list can hold ids
+// of podcasts removed meanwhile)
+int AppCore::hiddenFromNewCount() const
+{
+    return m_database->hiddenFromNewCount();
+}
+
+int AppCore::homeHiddenCount(bool onlyNew) const
+{
+    return m_database->homeHiddenCount(onlyNew);
+}
+
+// (340) All subscribed podcasts for the choice page "Show in New episodes":
+// title, hidden or not, and its unplayed (onlyNew: new) episodes
+QVariantList AppCore::newChoicePodcasts(bool onlyNew) const
+{
+    QVariantList list;
+    const QList<qint64> hidden = m_database->hiddenFromNew();
+    const QHash<qint64, int> counts = m_database->homeCountsByPodcast(onlyNew);
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    for (const PodcastRow &p : podcasts) {
+        if (p.provisional) {
+            continue;
+        }
+        QVariantMap item;
+        item.insert(QStringLiteral("podcastId"), double(p.id));
+        item.insert(QStringLiteral("title"), p.title.isEmpty() ? p.url : p.title);
+        item.insert(QStringLiteral("hidden"), hidden.contains(p.id));
+        item.insert(QStringLiteral("count"), counts.value(p.id));
+        list.append(item);
+    }
+    std::sort(list.begin(), list.end(), [](const QVariant &a, const QVariant &b) {
+        return Database::comparePodcastTitles(a.toMap().value(QStringLiteral("title")).toString(),
+                                              b.toMap().value(QStringLiteral("title")).toString()) < 0;
+    });
+    return list;
+}
+
+// (340) "All" / "None" on the choice page: one change, one reload
+void AppCore::setAllHiddenFromNew(bool hidden)
+{
+    const QList<qint64> before = m_database->hiddenFromNew();
+    QList<qint64> ids;
+    if (hidden) {
+        const QList<PodcastRow> podcasts = m_database->podcasts();
+        for (const PodcastRow &p : podcasts) {
+            if (!p.provisional) {
+                ids.append(p.id);
+            }
+        }
+    }
+    if (ids == before) {
+        return;
     }
     m_database->setHiddenFromNew(ids);
     emit dataChanged();
@@ -2767,6 +2908,24 @@ void AppCore::mergeDuplicate(qint64 from, qint64 into)
         }
     }
     if (m_database->mergePodcasts(from, into)) {
+        // (337, review 16 Nov) "Hidden" (statistics, New episodes) goes with
+        // the episodes and the listening log to the remaining podcast
+        {
+            QList<qint64> stats = m_database->statsHidden();
+            if (stats.removeAll(from) > 0) {
+                if (!stats.contains(into)) {
+                    stats.append(into);
+                }
+                m_database->setStatsHidden(stats);
+            }
+            QList<qint64> fresh = m_database->hiddenFromNew();
+            if (fresh.removeAll(from) > 0) {
+                if (!fresh.contains(into)) {
+                    fresh.append(into);
+                }
+                m_database->setHiddenFromNew(fresh);
+            }
+        }
         QSet<QString> used;
         const QList<EpisodeRow> now = m_database->episodes(into, -1, Database::Downloaded);
         for (int i = 0; i < now.size(); ++i) {
@@ -3859,11 +4018,19 @@ void AppCore::afterPlayed()
     // Played episodes leave the playlist
     const QList<qint64> queue = m_database->queueIds();
     bool queueChangedHere = false;
+    QSet<int> pending = pendingPlaylistDownloads();
+    const int pendingBefore = pending.size();
     for (int i = 0; i < queue.size(); ++i) {
         if (m_database->episode(queue.at(i)).played) {
             m_database->queueRemove(queue.at(i));
+            // (337, review 16 Nov) Out of the playlist = off the waiting list
+            // (else the catch-up loaded it after a later "without downloading")
+            pending.remove(int(queue.at(i)));
             queueChangedHere = true;
         }
+    }
+    if (pending.size() != pendingBefore) {
+        storePendingPlaylistDownloads(pending);
     }
     if (queueChangedHere) {
         reloadQueue();
@@ -4091,13 +4258,46 @@ QList<EpisodeRow> AppCore::updateEpisodes(qint64 podcastId, int newEpisodes) con
 
 // --- Playlist ----------------------------------------------------------------
 
+// (334, review Downloads 11, Thomas 15 Nov) A heard episode put into the
+// playlist by hand is to be heard again: unplayed as with "Mark as unplayed"
+// (goes to the sync), else the next update/sync took it out again
+// (afterPlayed). Only played == true: a started, unheard episode keeps its
+// position. Auto-Add does not come here (it takes no heard episodes).
+void AppCore::replayIfPlayed(int episodeId)
+{
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (e.id && e.played) {
+        markUnplayed(episodeId);
+    }
+}
+
 void AppCore::queueAddDefault(int episodeId)
 {
+    replayIfPlayed(episodeId);
     const bool keep = keepSorted();
     const bool next = !keep && m_database->setting(QStringLiteral("playlist.addTo"), QStringLiteral("end")) == QLatin1String("next");
     queueAdd(episodeId, next);
     triageByUser(episodeId, true);
     downloadForPlaylist(episodeId);
+}
+
+// (334, forum 16 Nov) Context menu: like ➕, with the other download choice
+// than the setting "Download playlist episodes" (without downloading when it
+// is on, with downloading when it is off)
+void AppCore::queueAddDefaultOtherDownload(int episodeId)
+{
+    replayIfPlayed(episodeId);
+    const bool loads = m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) == QLatin1String("1");
+    const bool keep = keepSorted();
+    const bool next = !keep && m_database->setting(QStringLiteral("playlist.addTo"), QStringLiteral("end")) == QLatin1String("next");
+    queueAdd(episodeId, next);
+    triageByUser(episodeId, true);
+    if (!loads) {
+        downloadForPlaylist(episodeId, true);
+    } else {
+        // (337) "Without downloading": no older waiting mark loads it later
+        forgetPendingPlaylistDownload(episodeId);
+    }
 }
 
 bool AppCore::keepSorted() const
@@ -4117,6 +4317,7 @@ void AppCore::queueAdd(int episodeId, bool next)
 // later sorting may place it like any other)
 void AppCore::queueAddPlaced(int episodeId, bool next)
 {
+    replayIfPlayed(episodeId);
     const bool keep = keepSorted();
     // (288) An episode in the playlist moved by "Play next" (Up next tab)
     // keeps a pin it had
@@ -4185,7 +4386,20 @@ void AppCore::queueUnpin(int episodeId)
     m_database->queueSetPinned(episodeId, false);
     m_pinned.remove(episodeId);
     if (keepSorted()) {
-        queueSort(m_database->setting(QStringLiteral("playlist.sortMode")), true);
+        const QString mode = m_database->setting(QStringLiteral("playlist.sortMode"));
+        if (mode == QLatin1String("smartShuffle")) {
+            // (334, code review Downloads 17) Smart Shuffle is random: a new
+            // sorting mixed the whole list. Only this episode goes to its
+            // place (insertion rule of placeSorted), the rest stays.
+            // (336, review 16 Nov) The episode playing stays where it is: the
+            // playlist goes on after its place
+            if (episodeId != m_currentEpisode) {
+                placeSorted(episodeId);
+            }
+            emit queueChanged();
+        } else {
+            queueSort(mode, true);
+        }
     } else {
         emit queueChanged();
     }
@@ -4239,11 +4453,46 @@ void AppCore::storePendingPlaylistDownloads(const QSet<int> &ids)
         parts << QString::number(id);
     }
     m_database->setSetting(QStringLiteral("playlist.pendingDownload"), parts.join(QLatin1Char(',')));
+    // (336) The "always" marks are a part of the waiting list: what leaves
+    // it (loaded, removed, deleted on purpose) loses its mark, too
+    const QSet<int> always = pendingAlwaysDownloads();
+    QSet<int> keep = always;
+    keep.intersect(ids);
+    if (keep != always) {
+        storePendingAlwaysDownloads(keep);
+    }
 }
 
-void AppCore::downloadForPlaylist(int episodeId)
+// (336, review 16 Nov) "Add to playlist and download" with the setting
+// "Download playlist episodes" off: waiting for Wi-Fi it must be loaded by
+// the catch-up all the same (that one dropped every waiting episode when
+// the setting was off). Setting "playlist.pendingDownloadAlways".
+QSet<int> AppCore::pendingAlwaysDownloads() const
 {
-    if (m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) != QLatin1String("1")) {
+    QSet<int> ids;
+    const QStringList parts = m_database->setting(QStringLiteral("playlist.pendingDownloadAlways"))
+            .split(QLatin1Char(','), QString::SkipEmptyParts);
+    for (const QString &part : parts) {
+        const int id = part.toInt();
+        if (id > 0) {
+            ids.insert(id);
+        }
+    }
+    return ids;
+}
+
+void AppCore::storePendingAlwaysDownloads(const QSet<int> &ids)
+{
+    QStringList parts;
+    for (int id : ids) {
+        parts << QString::number(id);
+    }
+    m_database->setSetting(QStringLiteral("playlist.pendingDownloadAlways"), parts.join(QLatin1Char(',')));
+}
+
+void AppCore::downloadForPlaylist(int episodeId, bool always)
+{
+    if (!always && m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) != QLatin1String("1")) {
         return;
     }
     const EpisodeRow e = m_database->episode(episodeId);
@@ -4257,6 +4506,11 @@ void AppCore::downloadForPlaylist(int episodeId)
         QSet<int> pending = pendingPlaylistDownloads();
         pending.insert(episodeId);
         storePendingPlaylistDownloads(pending);
+        if (always) {
+            QSet<int> marks = pendingAlwaysDownloads();
+            marks.insert(episodeId);
+            storePendingAlwaysDownloads(marks);
+        }
         return;
     }
     m_downloadByPlaylist.insert(episodeId);
@@ -4270,10 +4524,15 @@ void AppCore::downloadPlaylistCatchUp()
         return;
     }
     if (m_database->setting(QStringLiteral("playlist.download"), QStringLiteral("1")) != QLatin1String("1")) {
-        storePendingPlaylistDownloads(QSet<int>());
-        return;
+        // (336) Setting off: only what was added with "… and download" waits on
+        pending.intersect(pendingAlwaysDownloads());
+        if (pending.isEmpty()) {
+            storePendingPlaylistDownloads(pending);
+            return;
+        }
     }
     if (!downloadAllowed()) {
+        storePendingPlaylistDownloads(pending);
         return;
     }
     // (310) Only what was added by hand and could not be loaded then - not
@@ -4524,7 +4783,12 @@ void AppCore::placeSorted(int episodeId)
     }
     const SortItem added = itemOf(episodeId);
     const int current = m_currentEpisode > 0 ? ids.indexOf(m_currentEpisode) : -1;
-    const int minIndex = current >= 0 ? current + 1 : 0;
+    int minIndex = current >= 0 ? current + 1 : 0;
+    // (337, review 16 Nov) Never before the pins right behind the episode
+    // playing ("Play next" with Keep sorted pins): they come next
+    while (minIndex < ids.size() && m_pinned.contains(int(ids.at(minIndex)))) {
+        ++minIndex;
+    }
     int target = ids.size();
     if (mode == QLatin1String("smartShuffle")) {
         // (288) By the podcast's own order and the dates: before the first
@@ -4551,7 +4815,10 @@ void AppCore::placeSorted(int episodeId)
             }
         }
     }
-    if (target < ids.size()) {
+    // (336) Also to the end (an unpinned episode whose podcast has no other
+    // episode in the list goes there, as a new one would); an episode added
+    // at the end is there already
+    if (target != m_database->queueIds().indexOf(episodeId)) {
         m_database->queueMove(episodeId, target);
     }
 }
@@ -5333,7 +5600,8 @@ HtmlExport::Podcast AppCore::buildHtmlPodcast(const PodcastRow &p, const QVarian
         played += e.played ? 1 : 0;
     }
     h.rhythm = rhythmOf(dates).value(QStringLiteral("rhythm")).toString();
-    if (statistics) {
+    // (334) A podcast hidden from the statistics shows no listening time
+    if (statistics && !m_database->statsHidden().contains(p.id)) {
         h.listenedSeconds = p.listenedSeconds;
         h.listenedEpisodes = played;
     }
@@ -5437,7 +5705,7 @@ void AppCore::startHtmlExport(const QVariantList &folderIds, const QVariantMap &
     finishHtmlExport(false);
 }
 
-void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
+void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level, const QHash<qint64, PodcastRow> &shared) const
 {
     const ListeningSummary sum = m_database->listeningSummary();
     const auto time = [](qint64 seconds) {
@@ -5467,12 +5735,25 @@ void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
     st->totalsNote = tr("Listening time: the time actually listened. Time saved: how much less time was needed by playing faster. Episodes: listened to for at least one minute.");
     st->streakNote = tr("Days in a row: consecutive days on which something was listened to.");
     st->topTitle = tr("Top podcasts");
-    const qint64 most = sum.top.isEmpty() ? 1 : qMax<qint64>(1, sum.top.first().second);
-    for (int i = 0; i < sum.top.size(); ++i) {
+    // (333, code review "Downloads 4") Podcast names and categories only from
+    // the podcasts on this page: the log also holds podcasts listened to
+    // without a subscription, unsubscribed ones, feeds with a login and
+    // podcasts of folders that were not chosen. The totals stay for all.
+    QList<ListeningRank> sharedRanking;
+    {
+        const QList<ListeningRank> everyone = m_database->listeningRanking(0, 100000);
+        for (int i = 0; i < everyone.size(); ++i) {
+            if (shared.contains(everyone.at(i).podcastId) && everyone.at(i).seconds > 0) {
+                sharedRanking.append(everyone.at(i));
+            }
+        }
+    }
+    const qint64 most = sharedRanking.isEmpty() ? 1 : qMax<qint64>(1, sharedRanking.first().seconds);
+    for (int i = 0; i < sharedRanking.size() && i < 5; ++i) {
         HtmlExport::Bar bar;
-        bar.label = sum.top.at(i).first;
-        bar.value = time(sum.top.at(i).second);
-        bar.share = double(sum.top.at(i).second) / double(most);
+        bar.label = shared.value(sharedRanking.at(i).podcastId).title;
+        bar.value = time(sharedRanking.at(i).seconds);
+        bar.share = double(sharedRanking.at(i).seconds) / double(most);
         st->top.append(bar);
     }
     st->weekdaysTitle = tr("Weekdays");
@@ -5488,6 +5769,7 @@ void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
         st->weekdays.append(bar);
     }
     st->note = tr("Counts only what was played in Sailcast on this device");
+    st->topNote = tr("Only the podcasts on this page.");
     if (level < 2) {
         return;
     }
@@ -5530,9 +5812,37 @@ void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
         st->heatMonths.append(qMakePair(m.value(QStringLiteral("week")).toInt(), m.value(QStringLiteral("label")).toString()));
     }
     st->categoriesTitle = tr("Categories");
-    st->categoriesNote = tr("Each podcast counts only for its first category.");
-    const QVariantList categories = page.value(QStringLiteral("categoriesMain")).toList();
-    const double total = qMax(1.0, page.value(QStringLiteral("seconds")).toDouble());
+    st->categoriesNote = tr("Each podcast counts only for its first category. Only the podcasts on this page.");
+    // (333) Main category per shared podcast, as listeningStatistics does it
+    const QList<FyydCategory> categoryTree = m_discoverFyyd->cachedCategories();
+    QHash<QString, double> byMain;
+    double total = 0;
+    for (int i = 0; i < sharedRanking.size(); ++i) {
+        const PodcastRow &p = shared[sharedRanking.at(i).podcastId];
+        QString top;
+        for (int c = 0; c < p.categories.size() && top.isEmpty(); ++c) {
+            top = p.categories.at(c).trimmed().section(QLatin1Char('/'), 0, 0);
+        }
+        const QString label = top.isEmpty() ? tr("No category")
+                                            : categoryLabelsIn(QStringList(top), categoryTree).value(0, top);
+        byMain[label] += double(sharedRanking.at(i).seconds);
+        total += double(sharedRanking.at(i).seconds);
+    }
+    total = qMax(1.0, total);
+    QList<QPair<double, QString>> sortedMain;
+    for (QHash<QString, double>::const_iterator it = byMain.constBegin(); it != byMain.constEnd(); ++it) {
+        sortedMain.append(qMakePair(it.value(), it.key()));
+    }
+    std::sort(sortedMain.begin(), sortedMain.end(), [](const QPair<double, QString> &a, const QPair<double, QString> &b) {
+        return a.first != b.first ? a.first > b.first : a.second < b.second;
+    });
+    QVariantList categories;
+    for (int i = 0; i < sortedMain.size(); ++i) {
+        QVariantMap item;
+        item.insert(QStringLiteral("label"), sortedMain.at(i).second);
+        item.insert(QStringLiteral("seconds"), sortedMain.at(i).first);
+        categories.append(item);
+    }
     const double topCategory = categories.isEmpty() ? 1.0
             : qMax(1.0, categories.first().toMap().value(QStringLiteral("seconds")).toDouble());
     for (int i = 0; i < categories.size() && i < 10; ++i) {
@@ -5550,13 +5860,12 @@ void AppCore::fillHtmlStatistics(HtmlExport::Statistics *st, int level) const
                                      time(qint64(page.value(QStringLiteral("bestDaySeconds")).toDouble()))
                                      + QStringLiteral(" · ") + page.value(QStringLiteral("bestDay")).toString()));
     }
-    // (314) The most listened podcast instead of the "most listened episode"
-    const QVariantList ranking = page.value(QStringLiteral("ranking")).toList();
-    if (!ranking.isEmpty() && ranking.first().toMap().value(QStringLiteral("seconds")).toDouble() > 0) {
-        const QVariantMap top = ranking.first().toMap();
+    // (314) The most listened podcast instead of the "most listened episode";
+    // (333) of the podcasts on this page
+    if (!sharedRanking.isEmpty()) {
         st->records.append(qMakePair(tr("Most listened podcast"),
-                                     top.value(QStringLiteral("title")).toString() + QStringLiteral(" · ")
-                                     + time(qint64(top.value(QStringLiteral("seconds")).toDouble()))));
+                                     shared.value(sharedRanking.first().podcastId).title + QStringLiteral(" · ")
+                                     + time(sharedRanking.first().seconds)));
     }
     if (!page.value(QStringLiteral("favouriteWeekday")).toString().isEmpty()) {
         st->records.append(qMakePair(tr("Favourite weekday"), page.value(QStringLiteral("favouriteWeekday")).toString()));
@@ -5609,6 +5918,11 @@ void AppCore::stepHtmlExport()
 void AppCore::writeHtmlExport()
 {
     QList<HtmlExport::Folder> folders = m_htmlJob->folders;
+    // (333) Names in the statistics only from the podcasts on this page
+    QHash<qint64, PodcastRow> shared;
+    for (int i = 0; i < m_htmlJob->plan.size(); ++i) {
+        shared.insert(m_htmlJob->plan.at(i).second.id, m_htmlJob->plan.at(i).second);
+    }
     const int skipped = m_htmlJob->skipped;
     const bool cancelled = m_htmlJob->cancelled;
     delete m_htmlJob;
@@ -5623,7 +5937,7 @@ void AppCore::writeHtmlExport()
     const int statsLevel = m_htmlOptions.value(QStringLiteral("statistics")).toInt();
     options.statistics = statsLevel >= 2;
     if (statsLevel > 0) {
-        fillHtmlStatistics(&options.stats, statsLevel);
+        fillHtmlStatistics(&options.stats, statsLevel, shared);
     }
     HtmlExport::Labels &l = options.labels;
     l.lang = QLocale().name().left(2);

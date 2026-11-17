@@ -266,8 +266,8 @@ Page {
             visible: archivedDownloads.count > 0
             title: qsTr("Archived")
             subtitle: qsTr("%1 · %2")
-                    .arg(archivedDownloads.count === 1 ? qsTr("1 episode") : qsTr("%1 episodes").arg(archivedDownloads.count))
-                    .arg(TimeFormat.size(page.stats.archivedBytes || 0, qsTr("%1 MB"), qsTr("%1 GB")))
+                    .arg(qsTr("%n episodes", "", archivedDownloads.count))
+                    .arg(TimeFormat.size(page.searching && page.searchText.length > 0 ? archivedDownloads.bytesOf(archivedDownloads.allEpisodeIds()) : (page.stats.archivedBytes || 0), qsTr("%1 MB"), qsTr("%1 GB")))
             foldable: false
         }
         Label {
@@ -303,6 +303,7 @@ Page {
                 width: list.width
                 menuEnabled: false
                 showFileSize: true
+                showDownloadIcon: false
             }
         }
             Item { width: 1; height: Theme.paddingLarge }
@@ -491,7 +492,7 @@ Page {
             // (190) Tiles instead of the header line: files, space used,
             // played (what "Delete played downloads" frees), free space
             StatTiles {
-                visible: (page.stats.count || 0) > 0 || (page.stats.free || -1) >= 0
+                visible: (page.stats.count || 0) > 0 || (page.stats.free !== undefined && page.stats.free >= 0)
                 // Three tiles, one row: number and size together
                 tiles: {
                     var list = [
@@ -506,7 +507,7 @@ Page {
                           tappable: (page.stats.played || 0) > 0 && !page.selectMode,
                           destructive: true }
                     ]
-                    if ((page.stats.free || -1) >= 0) {
+                    if ((page.stats.free !== undefined && page.stats.free >= 0)) {
                         list.push({ value: TimeFormat.size(page.stats.free, qsTr("%1 MB"), qsTr("%1 GB")), label: qsTr("free on the phone"),
                                     // (289) Below the reserve no download starts
                                     warning: (page.stats.reserve || 0) > 0 && page.stats.free < page.stats.reserve })
@@ -665,8 +666,8 @@ Page {
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: archivedLine.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
                     text: qsTr("Archived: %1 · %2")
-                          .arg(archivedDownloads.count === 1 ? qsTr("1 episode") : qsTr("%1 episodes").arg(archivedDownloads.count))
-                          .arg(TimeFormat.size(page.stats.archivedBytes || 0, qsTr("%1 MB"), qsTr("%1 GB"))) + " ›"
+                          .arg(qsTr("%n episodes", "", archivedDownloads.count))
+                          .arg(TimeFormat.size(page.searching && page.searchText.length > 0 ? archivedDownloads.bytesOf(archivedDownloads.allEpisodeIds()) : (page.stats.archivedBytes || 0), qsTr("%1 MB"), qsTr("%1 GB"))) + " ›"
                 }
             }
 
@@ -696,8 +697,13 @@ Page {
                     truncationMode: TruncationMode.Fade
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.highlightColor
+                    // (333, code review) With a filter the size of the shown rows,
+                    // not of all downloads
                     text: qsTr("Downloaded") + " · " + downloaded.count + " · "
-                          + TimeFormat.size(Math.max(0, (page.stats.bytes || 0) - (page.stats.archivedBytes || 0)), qsTr("%1 MB"), qsTr("%1 GB"))
+                          + TimeFormat.size(page.searching && page.searchText.length > 0
+                                            ? downloaded.bytesOf(downloaded.allEpisodeIds())
+                                            : Math.max(0, (page.stats.bytes || 0) - (page.stats.archivedBytes || 0)),
+                                            qsTr("%1 MB"), qsTr("%1 GB"))
                 }
                 Row {
                     id: sortRow
@@ -732,6 +738,7 @@ Page {
         // (259) An opening menu ends "keep the top" (see HomePage)
         delegate: EpisodeDelegate {
             showFileSize: true
+            showDownloadIcon: false
             onMenuOpenChanged: if (menuOpen) list._keepTop = false
             // (313) Selection mode
             selectable: true

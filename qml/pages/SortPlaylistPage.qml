@@ -12,6 +12,8 @@ import Sailfish.Silica 1.0
 // their place; "Release pins" lets go of them at once.
 // Stored: playlist.sortMode / playlist.sortKeep.
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "sortPlaylistPage"
 

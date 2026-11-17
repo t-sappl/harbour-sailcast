@@ -7,6 +7,8 @@ import "../"
 // own: podcast folders in the archive folder (episodes.json) that can be
 // taken over without network. One row per podcast pushed "Export" far down.
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "archiveFoldersPage"
 

@@ -8,6 +8,8 @@ import Sailfish.Silica 1.0
 // weniger, nie). Discover computes "Für dich" again when it is shown
 // (140); a sub-category of a category set to "nie" is greyed out.
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
 
     property var categories: core.interests().categories || []

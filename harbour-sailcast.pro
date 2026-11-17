@@ -127,7 +127,11 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/SettingsEntry.qml \
     qml/pages/FolderNameDialog.qml \
     qml/pages/FolderPickerDialog.qml \
+    qml/pages/FolderChoicePage.qml \
     qml/pages/FolderSelectPage.qml \
+    qml/pages/StatsHiddenPage.qml \
+    qml/pages/DownloadFilterPage.qml \
+    qml/pages/NewHiddenPage.qml \
     qml/pages/FolderPodcastsPage.qml \
     qml/pages/PodcastChoiceDialog.qml \
     qml/pages/ShareChoicePage.qml \

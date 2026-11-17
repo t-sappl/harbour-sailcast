@@ -300,667 +300,687 @@
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="790"/>
+        <location filename="../src/appcore.cpp" line="800"/>
         <source>%n new episodes</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="790"/>
+        <location filename="../src/appcore.cpp" line="800"/>
         <source>No new episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="792"/>
+        <location filename="../src/appcore.cpp" line="808"/>
         <source>%n feeds failed</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="590"/>
+        <location filename="../src/appcore.cpp" line="596"/>
         <source>Synchronized: %1 listening states, %2 subscription changes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="582"/>
+        <location filename="../src/appcore.cpp" line="588"/>
         <source>Removed by the sync: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="601"/>
+        <location filename="../src/appcore.cpp" line="607"/>
         <source>Sync failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="634"/>
+        <location filename="../src/appcore.cpp" line="644"/>
         <source>Download failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="656"/>
+        <location filename="../src/appcore.cpp" line="666"/>
         <source>Archiving failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="862"/>
+        <location filename="../src/appcore.cpp" line="879"/>
         <source>Cannot subscribe: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1099"/>
+        <location filename="../src/appcore.cpp" line="1116"/>
         <source>d MMM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1129"/>
+        <location filename="../src/appcore.cpp" line="1146"/>
+        <location filename="../src/appcore.cpp" line="5826"/>
         <source>No category</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1147"/>
+        <location filename="../src/appcore.cpp" line="1164"/>
         <source>Gone podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1288"/>
+        <location filename="../src/appcore.cpp" line="1305"/>
         <source>irregular</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1290"/>
+        <location filename="../src/appcore.cpp" line="1307"/>
         <source>daily</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1292"/>
+        <location filename="../src/appcore.cpp" line="1309"/>
         <source>weekly</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1292"/>
+        <location filename="../src/appcore.cpp" line="1309"/>
         <source>weekly, %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1294"/>
+        <location filename="../src/appcore.cpp" line="1311"/>
         <source>every 2 weeks</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1294"/>
+        <location filename="../src/appcore.cpp" line="1311"/>
         <source>every 2 weeks, %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1296"/>
+        <location filename="../src/appcore.cpp" line="1313"/>
         <source>monthly</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="1298"/>
+        <location filename="../src/appcore.cpp" line="1315"/>
         <source>every %n weeks</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="1300"/>
+        <location filename="../src/appcore.cpp" line="1317"/>
         <source>every %n days</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1424"/>
+        <location filename="../src/appcore.cpp" line="1441"/>
         <source>Not while an episode of this podcast is loaded in the player</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1447"/>
+        <location filename="../src/appcore.cpp" line="1464"/>
         <source>Cannot unsubscribe: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1458"/>
+        <location filename="../src/appcore.cpp" line="1475"/>
         <source>Unsubscribed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1530"/>
+        <location filename="../src/appcore.cpp" line="1547"/>
         <source>Similar to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1533"/>
-        <location filename="../src/appcore.cpp" line="1715"/>
+        <location filename="../src/appcore.cpp" line="1550"/>
+        <location filename="../src/appcore.cpp" line="1732"/>
         <source>Keyword &quot;%1&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="1536"/>
+        <location filename="../src/appcore.cpp" line="1553"/>
         <source>In %n collections with %1</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1541"/>
-        <location filename="../src/appcore.cpp" line="1723"/>
+        <location filename="../src/appcore.cpp" line="1558"/>
+        <location filename="../src/appcore.cpp" line="1740"/>
         <source>Because you listen to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1545"/>
+        <location filename="../src/appcore.cpp" line="1562"/>
         <source>Trending</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2332"/>
+        <location filename="../src/appcore.cpp" line="2349"/>
         <source>None of the feeds this page names loads.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2333"/>
+        <location filename="../src/appcore.cpp" line="2350"/>
         <source>This address is not a podcast feed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2336"/>
+        <location filename="../src/appcore.cpp" line="2353"/>
         <source>Nothing found at this address (HTTP %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2337"/>
+        <location filename="../src/appcore.cpp" line="2354"/>
         <source>The server answered with an error (HTTP %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2340"/>
+        <location filename="../src/appcore.cpp" line="2357"/>
         <source>Not reachable: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2343"/>
+        <location filename="../src/appcore.cpp" line="2360"/>
         <source>No answer from the server</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2346"/>
+        <location filename="../src/appcore.cpp" line="2363"/>
         <source>Not a web address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2458"/>
+        <location filename="../src/appcore.cpp" line="2475"/>
         <source>Please wait until the sync is finished</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2782"/>
+        <location filename="../src/appcore.cpp" line="2941"/>
         <source>Duplicate subscription merged: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="2873"/>
-        <location filename="../src/appcore.cpp" line="2885"/>
-        <location filename="../src/appcore.cpp" line="3300"/>
-        <location filename="../src/appcore.cpp" line="6102"/>
-        <location filename="../src/appcore.cpp" line="6363"/>
+        <location filename="../src/appcore.cpp" line="3032"/>
+        <location filename="../src/appcore.cpp" line="3044"/>
+        <location filename="../src/appcore.cpp" line="3459"/>
+        <location filename="../src/appcore.cpp" line="6416"/>
+        <location filename="../src/appcore.cpp" line="6677"/>
         <source>%n episodes marked as played</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2931"/>
+        <location filename="../src/appcore.cpp" line="3090"/>
         <source>Not enough space: about %1 MB needed, %2 MB free (%3 MB stay free)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2933"/>
+        <location filename="../src/appcore.cpp" line="3092"/>
         <source>Not enough space: %1 MB free (%2 MB stay free)</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3016"/>
+        <location filename="../src/appcore.cpp" line="3175"/>
         <source>%n interrupted downloads continue</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3045"/>
+        <location filename="../src/appcore.cpp" line="3204"/>
         <source>The file is part of the archive and stays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3050"/>
+        <location filename="../src/appcore.cpp" line="3209"/>
         <source>Not while this episode is loaded in the player</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3056"/>
+        <location filename="../src/appcore.cpp" line="3215"/>
         <source>The file could not be deleted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3150"/>
+        <location filename="../src/appcore.cpp" line="3309"/>
         <source>Already saved in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3170"/>
-        <location filename="../src/appcore.cpp" line="3601"/>
+        <location filename="../src/appcore.cpp" line="3329"/>
+        <location filename="../src/appcore.cpp" line="3760"/>
         <source>Cannot save the episode: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3159"/>
-        <location filename="../src/appcore.cpp" line="3175"/>
+        <location filename="../src/appcore.cpp" line="3318"/>
+        <location filename="../src/appcore.cpp" line="3334"/>
         <source>Saved in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3230"/>
-        <location filename="../src/appcore.cpp" line="3458"/>
+        <location filename="../src/appcore.cpp" line="3389"/>
+        <location filename="../src/appcore.cpp" line="3617"/>
         <source>%n downloads started</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3327"/>
+        <location filename="../src/appcore.cpp" line="3486"/>
         <source>%n episodes marked as unplayed</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3414"/>
+        <location filename="../src/appcore.cpp" line="3573"/>
         <source>All unplayed episodes are in the playlist already</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3599"/>
+        <location filename="../src/appcore.cpp" line="3758"/>
         <source>%n episodes saved in %1</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3603"/>
+        <location filename="../src/appcore.cpp" line="3762"/>
         <source>All downloads are already in Music</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3374"/>
-        <location filename="../src/appcore.cpp" line="3413"/>
-        <location filename="../src/appcore.cpp" line="3623"/>
+        <location filename="../src/appcore.cpp" line="3533"/>
+        <location filename="../src/appcore.cpp" line="3572"/>
+        <location filename="../src/appcore.cpp" line="3782"/>
         <source>%n episodes added to the playlist</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3104"/>
+        <location filename="../src/appcore.cpp" line="803"/>
+        <source>%n new episodes, all in podcasts not shown in New</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/appcore.cpp" line="805"/>
+        <source>%n of them in podcasts not shown in New</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../src/appcore.cpp" line="2783"/>
+        <source>Podcast no longer there</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/appcore.cpp" line="3263"/>
         <source>%n episodes stay: archive or playing now</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3562"/>
-        <location filename="../src/appcore.cpp" line="3565"/>
+        <location filename="../src/appcore.cpp" line="3721"/>
+        <location filename="../src/appcore.cpp" line="3724"/>
         <source>%n downloads moved</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3563"/>
+        <location filename="../src/appcore.cpp" line="3722"/>
         <source>%n could not be moved</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3624"/>
+        <location filename="../src/appcore.cpp" line="3783"/>
         <source>No unplayed downloads outside the playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3831"/>
+        <location filename="../src/appcore.cpp" line="3990"/>
         <source>podcast set to &quot;Never&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3834"/>
+        <location filename="../src/appcore.cpp" line="3993"/>
         <source>archived podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3837"/>
+        <location filename="../src/appcore.cpp" line="3996"/>
         <source>saved in Music or Videos</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3840"/>
-        <location filename="../src/appcore.cpp" line="3843"/>
+        <location filename="../src/appcore.cpp" line="3999"/>
+        <location filename="../src/appcore.cpp" line="4002"/>
         <source>%n downloads deleted</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3843"/>
+        <location filename="../src/appcore.cpp" line="4002"/>
         <source>%n kept</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="3958"/>
+        <location filename="../src/appcore.cpp" line="4125"/>
         <source>%n played downloads deleted</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4754"/>
+        <location filename="../src/appcore.cpp" line="5021"/>
         <source>An archive is already running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4758"/>
+        <location filename="../src/appcore.cpp" line="5025"/>
         <source>Cannot create the archive folder %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="4807"/>
+        <location filename="../src/appcore.cpp" line="5074"/>
         <source>Archiving cancelled: %n episodes in the archive</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="4809"/>
+        <location filename="../src/appcore.cpp" line="5076"/>
         <source>Archived: %n episodes, %1 failed</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="4811"/>
+        <location filename="../src/appcore.cpp" line="5078"/>
         <source>Archived: %n episodes</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4870"/>
+        <location filename="../src/appcore.cpp" line="5137"/>
         <source>Cannot write to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="4926"/>
+        <location filename="../src/appcore.cpp" line="5193"/>
         <source>Archive imported: %n episodes, %1 files</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4993"/>
+        <location filename="../src/appcore.cpp" line="5260"/>
         <source>No feeds in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5024"/>
+        <location filename="../src/appcore.cpp" line="5291"/>
         <source>All podcasts of the file are already subscribed</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5053"/>
+        <location filename="../src/appcore.cpp" line="5320"/>
         <source>%n older episodes marked as played</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5060"/>
+        <location filename="../src/appcore.cpp" line="5327"/>
         <source>Please wait until updates and the sync are finished</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5070"/>
+        <location filename="../src/appcore.cpp" line="5337"/>
         <source>gPodder: %n podcasts added, %1 episodes, %2 played, %3 in progress</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5078"/>
-        <location filename="../src/appcore.cpp" line="5879"/>
+        <location filename="../src/appcore.cpp" line="5345"/>
+        <location filename="../src/appcore.cpp" line="6193"/>
         <source>Please wait until updates and downloads are finished</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5091"/>
+        <location filename="../src/appcore.cpp" line="5358"/>
         <source>not a database file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5128"/>
+        <location filename="../src/appcore.cpp" line="5395"/>
         <source>The previous data is back.</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5145"/>
+        <location filename="../src/appcore.cpp" line="5412"/>
         <source>Database taken over: %n podcasts</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5188"/>
-        <location filename="../src/appcore.cpp" line="5694"/>
-        <location filename="../src/appcore.cpp" line="5709"/>
+        <location filename="../src/appcore.cpp" line="5455"/>
+        <location filename="../src/appcore.cpp" line="6008"/>
+        <location filename="../src/appcore.cpp" line="6023"/>
         <source>Export failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5349"/>
-        <location filename="../src/appcore.cpp" line="5447"/>
+        <location filename="../src/appcore.cpp" line="5617"/>
+        <location filename="../src/appcore.cpp" line="5715"/>
         <source>%1 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5448"/>
+        <location filename="../src/appcore.cpp" line="5716"/>
         <source>%1 h</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5449"/>
+        <location filename="../src/appcore.cpp" line="5717"/>
         <source>%1 h %2 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5453"/>
+        <location filename="../src/appcore.cpp" line="5721"/>
         <source>Listening statistics (since %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5454"/>
+        <location filename="../src/appcore.cpp" line="5722"/>
         <source>Listening statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5456"/>
+        <location filename="../src/appcore.cpp" line="5724"/>
         <source>Total listening time</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5459"/>
+        <location filename="../src/appcore.cpp" line="5727"/>
         <source>Time saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5461"/>
+        <location filename="../src/appcore.cpp" line="5729"/>
         <source>Episodes listened to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5463"/>
+        <location filename="../src/appcore.cpp" line="5731"/>
         <source>Per listening day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5467"/>
+        <location filename="../src/appcore.cpp" line="5735"/>
         <source>Listening time: the time actually listened. Time saved: how much less time was needed by playing faster. Episodes: listened to for at least one minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5468"/>
+        <location filename="../src/appcore.cpp" line="5736"/>
         <source>Days in a row: consecutive days on which something was listened to.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5469"/>
+        <location filename="../src/appcore.cpp" line="5737"/>
         <source>Top podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5478"/>
+        <location filename="../src/appcore.cpp" line="5759"/>
         <source>Weekdays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5490"/>
+        <location filename="../src/appcore.cpp" line="5771"/>
         <source>Counts only what was played in Sailcast on this device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5499"/>
+        <location filename="../src/appcore.cpp" line="5772"/>
+        <source>Only the podcasts on this page.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/appcore.cpp" line="5781"/>
         <source>Days with listening</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5517"/>
+        <location filename="../src/appcore.cpp" line="5799"/>
         <source>Activity in the last year</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5532"/>
+        <location filename="../src/appcore.cpp" line="5814"/>
         <source>Categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5533"/>
-        <source>Each podcast counts only for its first category.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../src/appcore.cpp" line="5547"/>
+        <location filename="../src/appcore.cpp" line="5857"/>
         <source>Records</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5549"/>
+        <location filename="../src/appcore.cpp" line="5859"/>
         <source>Longest listening day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5562"/>
+        <location filename="../src/appcore.cpp" line="5871"/>
         <source>Favourite weekday</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5618"/>
-        <location filename="../src/appcore.cpp" line="5635"/>
-        <location filename="../src/appcore.cpp" line="5636"/>
+        <location filename="../src/appcore.cpp" line="5932"/>
+        <location filename="../src/appcore.cpp" line="5949"/>
+        <location filename="../src/appcore.cpp" line="5950"/>
         <source>%n podcasts</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5630"/>
+        <location filename="../src/appcore.cpp" line="5944"/>
         <source>My podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5635"/>
+        <location filename="../src/appcore.cpp" line="5949"/>
         <source>%n folders</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5637"/>
+        <location filename="../src/appcore.cpp" line="5951"/>
         <source>exported %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5639"/>
+        <location filename="../src/appcore.cpp" line="5953"/>
         <source>%n private feeds (with a password or a personal link) are not part of this page.</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5641"/>
+        <location filename="../src/appcore.cpp" line="5955"/>
         <source>Tap a folder or a podcast to see details and the latest episodes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5642"/>
+        <location filename="../src/appcore.cpp" line="5956"/>
         <source>Subscribe: opens the podcast in your podcast app, if it supports such links</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5643"/>
+        <location filename="../src/appcore.cpp" line="5957"/>
         <source>Feed address: link to the RSS feed, to paste into any podcast app</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5645"/>
+        <location filename="../src/appcore.cpp" line="5959"/>
         <source>Search: looks for the podcast by name on fyyd, Podcast Index, Spotify or Apple Podcasts, where it is listed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5646"/>
+        <location filename="../src/appcore.cpp" line="5960"/>
         <source>Save all as a list (OPML)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5647"/>
+        <location filename="../src/appcore.cpp" line="5961"/>
         <source>Save list</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5655"/>
+        <location filename="../src/appcore.cpp" line="5969"/>
         <source>Feed address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5672"/>
+        <location filename="../src/appcore.cpp" line="5986"/>
         <source>Deselect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5673"/>
+        <location filename="../src/appcore.cpp" line="5987"/>
         <source>Save selection as a list</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5699"/>
+        <location filename="../src/appcore.cpp" line="6013"/>
         <source>%n private feeds (with a password or a personal link) were left out</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5649"/>
+        <location filename="../src/appcore.cpp" line="5963"/>
         <source>Category</source>
         <translation type="unfinished"></translation>
     </message>
@@ -975,245 +995,250 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="631"/>
+        <location filename="../src/appcore.cpp" line="641"/>
         <source>No space left – download stopped (%1 MB free)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2329"/>
+        <location filename="../src/appcore.cpp" line="2346"/>
         <source>The feed needs a login (HTTP %1) – after subscribing, set it on the podcast page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="2965"/>
+        <location filename="../src/appcore.cpp" line="3124"/>
         <source>A file of this episode is already in the Music folder – loading to the phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="3164"/>
+        <location filename="../src/appcore.cpp" line="3323"/>
         <source>Not while this episode is loaded in the player – save it afterwards</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4047"/>
+        <location filename="../src/appcore.cpp" line="4214"/>
         <source>Storage almost full – automatic downloads stopped</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../src/appcore.cpp" line="5023"/>
+        <location filename="../src/appcore.cpp" line="5290"/>
         <source>%n podcasts added – loading the episodes</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5465"/>
+        <location filename="../src/appcore.cpp" line="5733"/>
         <source>Days in a row (record, all time)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5502"/>
+        <location filename="../src/appcore.cpp" line="5784"/>
         <source>Over time, per day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5503"/>
+        <location filename="../src/appcore.cpp" line="5785"/>
         <source>Over time, per week</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5503"/>
+        <location filename="../src/appcore.cpp" line="5785"/>
         <source>Over time, per month</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5557"/>
+        <location filename="../src/appcore.cpp" line="5815"/>
+        <source>Each podcast counts only for its first category. Only the podcasts on this page.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../src/appcore.cpp" line="5866"/>
         <source>Most listened podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5644"/>
+        <location filename="../src/appcore.cpp" line="5958"/>
         <source>Save list: a file (OPML) that almost every podcast app can import – all podcasts, one folder or the ones you tick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5650"/>
+        <location filename="../src/appcore.cpp" line="5964"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5651"/>
+        <location filename="../src/appcore.cpp" line="5965"/>
         <source>Episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5652"/>
+        <location filename="../src/appcore.cpp" line="5966"/>
         <source>Rhythm</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5653"/>
+        <location filename="../src/appcore.cpp" line="5967"/>
         <source>Listened</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5654"/>
+        <location filename="../src/appcore.cpp" line="5968"/>
         <source>Subscribe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5656"/>
+        <location filename="../src/appcore.cpp" line="5970"/>
         <source>Website</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5657"/>
+        <location filename="../src/appcore.cpp" line="5971"/>
         <source>Last episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5658"/>
+        <location filename="../src/appcore.cpp" line="5972"/>
         <source>More episodes (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5659"/>
+        <location filename="../src/appcore.cpp" line="5973"/>
         <source>fyyd</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5660"/>
+        <location filename="../src/appcore.cpp" line="5974"/>
         <source>Podcast Index</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5661"/>
+        <location filename="../src/appcore.cpp" line="5975"/>
         <source>Spotify</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5662"/>
+        <location filename="../src/appcore.cpp" line="5976"/>
         <source>Apple Podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5663"/>
+        <location filename="../src/appcore.cpp" line="5977"/>
         <source>Sailcast on GitHub</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5664"/>
+        <location filename="../src/appcore.cpp" line="5978"/>
         <source>More about Sailfish OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5665"/>
+        <location filename="../src/appcore.cpp" line="5979"/>
         <source>Sailcast is a free, open-source podcast app for Sailfish OS, a Linux-based mobile operating system. It sorts podcasts into folders and offers chapters, bookmarks, a playlist and synchronisation with gpodder.net and Nextcloud.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5666"/>
+        <location filename="../src/appcore.cpp" line="5980"/>
         <source>The podcast search uses fyyd and Podcast Index.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5667"/>
+        <location filename="../src/appcore.cpp" line="5981"/>
         <source>Chapters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5668"/>
+        <location filename="../src/appcore.cpp" line="5982"/>
         <source>Bookmarks</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5669"/>
+        <location filename="../src/appcore.cpp" line="5983"/>
         <source>Description</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5670"/>
+        <location filename="../src/appcore.cpp" line="5984"/>
         <source>%1 selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5671"/>
+        <location filename="../src/appcore.cpp" line="5985"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5674"/>
+        <location filename="../src/appcore.cpp" line="5988"/>
         <source>Made with Sailcast for Sailfish OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5675"/>
+        <location filename="../src/appcore.cpp" line="5989"/>
         <source>h</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5676"/>
+        <location filename="../src/appcore.cpp" line="5990"/>
         <source>min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5813"/>
+        <location filename="../src/appcore.cpp" line="6127"/>
         <source>Backup saved – copying it to the Nextcloud …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5098"/>
-        <location filename="../src/appcore.cpp" line="5757"/>
-        <location filename="../src/appcore.cpp" line="5762"/>
-        <location filename="../src/appcore.cpp" line="5892"/>
+        <location filename="../src/appcore.cpp" line="5365"/>
+        <location filename="../src/appcore.cpp" line="6071"/>
+        <location filename="../src/appcore.cpp" line="6076"/>
+        <location filename="../src/appcore.cpp" line="6206"/>
         <source>Backup failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5784"/>
+        <location filename="../src/appcore.cpp" line="6098"/>
         <source>A Nextcloud backup is already running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5797"/>
+        <location filename="../src/appcore.cpp" line="6111"/>
         <source>Nextcloud backup: the password is missing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5814"/>
+        <location filename="../src/appcore.cpp" line="6128"/>
         <source>Backup saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5849"/>
-        <location filename="../src/appcore.cpp" line="5860"/>
+        <location filename="../src/appcore.cpp" line="6163"/>
+        <location filename="../src/appcore.cpp" line="6174"/>
         <source>the password is missing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5875"/>
+        <location filename="../src/appcore.cpp" line="6189"/>
         <source>Backup not found: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="5970"/>
+        <location filename="../src/appcore.cpp" line="6284"/>
         <source>%1 (from %2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="1153"/>
-        <location filename="../src/appcore.cpp" line="5648"/>
-        <location filename="../src/appcore.cpp" line="6107"/>
+        <location filename="../src/appcore.cpp" line="1170"/>
+        <location filename="../src/appcore.cpp" line="5962"/>
+        <location filename="../src/appcore.cpp" line="6421"/>
         <source>Other podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/appcore.cpp" line="4922"/>
-        <location filename="../src/appcore.cpp" line="4994"/>
-        <location filename="../src/appcore.cpp" line="5065"/>
-        <location filename="../src/appcore.cpp" line="5091"/>
-        <location filename="../src/appcore.cpp" line="5128"/>
-        <location filename="../src/appcore.cpp" line="5146"/>
+        <location filename="../src/appcore.cpp" line="5189"/>
+        <location filename="../src/appcore.cpp" line="5261"/>
+        <location filename="../src/appcore.cpp" line="5332"/>
+        <location filename="../src/appcore.cpp" line="5358"/>
+        <location filename="../src/appcore.cpp" line="5395"/>
+        <location filename="../src/appcore.cpp" line="5413"/>
         <source>Import failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1261,29 +1286,29 @@
 <context>
     <name>ArchiveFoldersPage</name>
     <message>
-        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="22"/>
+        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="24"/>
         <source>Archive folders</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="30"/>
+        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="32"/>
         <source>Takes over the episodes, files and listening state of an archived podcast – without network.</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="37"/>
+        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="39"/>
         <source>%n episodes</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="38"/>
+        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="40"/>
         <source>subscribed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="47"/>
+        <location filename="../qml/pages/ArchiveFoldersPage.qml" line="49"/>
         <source>No archived podcasts in %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1500,183 +1525,211 @@
 <context>
     <name>DownloadAllDialog</name>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="202"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="204"/>
         <source>about %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="202"/>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="271"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="204"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="273"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="202"/>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="271"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="204"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="273"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="144"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="146"/>
         <source>Download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="200"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="202"/>
         <source>%1 of %2 selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="215"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="217"/>
         <source>Tap a group to select or clear all its episodes. Episodes already downloaded are not listed. The downloads are queued, a few load at a time; they can be cancelled on the downloads page.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="225"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="227"/>
         <source>No Wi-Fi connection – the episodes would be loaded over the mobile connection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="253"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="255"/>
         <source>all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="253"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="255"/>
         <source>some</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="253"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="255"/>
         <source>none</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="268"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="270"/>
         <source>%1 h %2 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="268"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="270"/>
         <source>%1 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="274"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="276"/>
         <source>played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="283"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="285"/>
         <source>All episodes are downloaded already.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="162"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="164"/>
         <source>Only unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="143"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="145"/>
         <source>Download episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="167"/>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="181"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="169"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="183"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadAllDialog.qml" line="186"/>
+        <location filename="../qml/pages/DownloadAllDialog.qml" line="188"/>
         <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DownloadFilterPage</name>
+    <message>
+        <location filename="../qml/pages/DownloadFilterPage.qml" line="27"/>
+        <source>Filter by download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DownloadFilterPage.qml" line="34"/>
+        <source>Applies to &quot;New&quot; and &quot;All unplayed&quot;. A download still running counts as not downloaded.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DownloadFilterPage.qml" line="40"/>
+        <source>All episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DownloadFilterPage.qml" line="41"/>
+        <source>Only downloaded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DownloadFilterPage.qml" line="42"/>
+        <source>Only not downloaded</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>DownloadUnplayedDialog</name>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="56"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="58"/>
         <source>1 episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="56"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="58"/>
         <source>%1 episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="60"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="62"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="60"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="62"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="102"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="104"/>
         <source>Download unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="103"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="105"/>
         <source>Download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="112"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="114"/>
         <source>Downloads the unplayed episodes of the chosen podcasts that are not on the phone yet. Ended podcasts are left out. &quot;Newest&quot; counts the ones that are not on the phone yet. The downloads can be cancelled on the downloads page.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="123"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="125"/>
         <source>Newest 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="128"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="130"/>
         <source>Newest 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="133"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="135"/>
         <source>All unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="148"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="150"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="153"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="155"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="185"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="187"/>
         <source>about %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="188"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="190"/>
         <source>free %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="201"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="203"/>
         <source>No Wi-Fi connection – you are asked before the episodes load over the mobile connection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="209"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="211"/>
         <source>Nothing to download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="210"/>
+        <location filename="../qml/pages/DownloadUnplayedDialog.qml" line="212"/>
         <source>All unplayed episodes are on the phone already</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1697,50 +1750,50 @@
 <context>
     <name>DownloadsPage</name>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="473"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="474"/>
         <source>Cancel all downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="476"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="477"/>
         <source>Cancelling downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="486"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="487"/>
         <source>Downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../qml/pages/DownloadsPage.qml" line="169"/>
         <location filename="../qml/pages/DownloadsPage.qml" line="270"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="375"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="498"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="503"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="510"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="522"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="539"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="669"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="700"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="376"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="499"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="504"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="511"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="523"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="540"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="670"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="706"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../qml/pages/DownloadsPage.qml" line="169"/>
         <location filename="../qml/pages/DownloadsPage.qml" line="270"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="375"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="498"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="503"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="510"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="522"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="539"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="669"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="700"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="376"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="499"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="504"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="511"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="523"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="540"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="670"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="706"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="445"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="446"/>
         <source>Download settings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1793,6 +1846,14 @@
         <source>Last downloaded</source>
         <translation type="unfinished"></translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/DownloadsPage.qml" line="269"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="669"/>
+        <source>%n episodes</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
     <message>
         <location filename="../qml/pages/DownloadsPage.qml" line="281"/>
         <source>Ended podcasts, files saved with &quot;Save in Music&quot; and copied archives – also their files that are still on the phone. &quot;Delete played downloads&quot; leaves them alone.</source>
@@ -1804,101 +1865,101 @@
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/DownloadsPage.qml" line="374"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="375"/>
         <source>%n selected</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="391"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="392"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="395"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="396"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="428"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="429"/>
         <source>Invert selection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="433"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="434"/>
         <source>Select all not in the playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="438"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="439"/>
         <source>Select all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="452"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="453"/>
         <source>Hide filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="452"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="453"/>
         <source>Filter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="458"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="459"/>
         <source>Download unplayed …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="499"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="500"/>
         <source>total incl. archive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="510"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="511"/>
         <source>free on the phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/DownloadsPage.qml" line="521"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="522"/>
         <source>Deleting %n played downloads</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="538"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="539"/>
         <source>%1 of them (%2) are in Music and Videos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="546"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="547"/>
         <source>Running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="578"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="579"/>
         <source>Cancel download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="612"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="613"/>
         <source>waiting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="639"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="640"/>
         <source>Filter downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="667"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="668"/>
         <source>Archived: %1 · %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="699"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="702"/>
         <source>Downloaded</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1933,44 +1994,32 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="466"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="467"/>
         <source>Delete several …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="269"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="668"/>
-        <source>1 episode</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="269"/>
-        <location filename="../qml/pages/DownloadsPage.qml" line="668"/>
-        <source>%1 episodes</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="505"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="506"/>
         <source>Delete played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="505"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="506"/>
         <source>already played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="765"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="772"/>
         <source>No downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="765"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="772"/>
         <source>No matches</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/DownloadsPage.qml" line="767"/>
+        <location filename="../qml/pages/DownloadsPage.qml" line="774"/>
         <source>Download episodes from their menu or page</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1978,199 +2027,219 @@
 <context>
     <name>EpisodeDelegate</name>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="776"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="801"/>
         <source>Pause</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="776"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="801"/>
         <source>Play</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="116"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="118"/>
         <source>Play next</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="126"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="688"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="137"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="709"/>
         <source>Remove from playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="175"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="186"/>
         <source>Download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="180"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="651"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="191"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="665"/>
         <source>Cancel download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="185"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="196"/>
         <source>Delete download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="169"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="180"/>
         <source>Mark older ones as played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="132"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="143"/>
         <source>Release pin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="153"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="218"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="164"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="229"/>
         <source>Mark as unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="110"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="112"/>
         <source>Set aside</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="230"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="241"/>
         <source>Subscribe to the podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="236"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="247"/>
         <source>Show podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="436"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="447"/>
         <source>not subscribed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="73"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="75"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="73"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="75"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="489"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="500"/>
         <source>set aside</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="495"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="506"/>
         <source>S%1 E%2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="496"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="507"/>
         <source>#%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="583"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="597"/>
         <source>Tap &quot;› N chapters&quot; to unfold the chapters in the list</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/EpisodeDelegate.qml" line="604"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="618"/>
         <source>%n chapters</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="628"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="642"/>
         <source>Undo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="688"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="711"/>
         <source>Add to playlist as next</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="143"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="208"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="154"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="219"/>
         <source>Mark as played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="121"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="688"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="123"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="712"/>
         <source>Add to end of playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="197"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="131"/>
+        <source>Add to playlist without downloading</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/EpisodeDelegate.qml" line="132"/>
+        <source>Add to playlist and download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/EpisodeDelegate.qml" line="208"/>
         <source>Delete several …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="202"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="213"/>
         <source>Delete all of this podcast …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="241"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="252"/>
         <source>Share...</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="487"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="498"/>
         <source>today</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="487"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="498"/>
         <source>yesterday</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="499"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="510"/>
         <source>played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="501"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="512"/>
         <source>%1 left</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="501"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="503"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="512"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="514"/>
         <source>%1 h %2 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/EpisodeDelegate.qml" line="501"/>
-        <location filename="../qml/EpisodeDelegate.qml" line="503"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="512"/>
+        <location filename="../qml/EpisodeDelegate.qml" line="514"/>
         <source>%1 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/EpisodeDelegate.qml" line="711"/>
+        <source>Add to playlist as next and download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/EpisodeDelegate.qml" line="712"/>
+        <source>Add to end of playlist and download</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
     <name>EpisodeListModel</name>
     <message>
-        <location filename="../src/episodelistmodel.cpp" line="205"/>
+        <location filename="../src/episodelistmodel.cpp" line="226"/>
         <source>Season %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/episodelistmodel.cpp" line="205"/>
+        <location filename="../src/episodelistmodel.cpp" line="226"/>
         <source>Without season</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/episodelistmodel.cpp" line="208"/>
+        <location filename="../src/episodelistmodel.cpp" line="229"/>
         <source>Without date</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2241,17 +2310,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="678"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="658"/>
+        <source>Add to end of playlist and download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/EpisodePage.qml" line="688"/>
         <source>Ends here</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="679"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="689"/>
         <source>Sleep timer · stop after this episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="861"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="871"/>
         <source>Rename / note</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2272,18 +2346,18 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="709"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="719"/>
         <source>End of episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="707"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="717"/>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/EpisodePage.qml" line="675"/>
-        <location filename="../qml/pages/EpisodePage.qml" line="709"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="685"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="719"/>
         <source>%n min</source>
         <translation type="unfinished">
             <numerusform></numerusform>
@@ -2331,7 +2405,7 @@
     </message>
     <message>
         <location filename="../qml/pages/EpisodePage.qml" line="479"/>
-        <location filename="../qml/pages/EpisodePage.qml" line="1152"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="1162"/>
         <source>Sound only</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2387,57 +2461,62 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="649"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="655"/>
         <source>Remove from playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="649"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="657"/>
+        <source>Add to playlist as next and download</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/EpisodePage.qml" line="658"/>
         <source>Add to end of playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="649"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="657"/>
         <source>Add to playlist as next</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="661"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="671"/>
         <source>Mark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="663"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="673"/>
         <source>Bookmark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="678"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="688"/>
         <source>Timer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="708"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="718"/>
         <source>Other …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="746"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="756"/>
         <source>Previous chapter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="766"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="776"/>
         <source>Pause</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="766"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="776"/>
         <source>Play</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="795"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="805"/>
         <source>Next chapter or episode</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2447,12 +2526,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="865"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="875"/>
         <source>Delete bookmark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="892"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="902"/>
         <source>Bookmark %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2462,7 +2541,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/EpisodePage.qml" line="966"/>
+        <location filename="../qml/pages/EpisodePage.qml" line="976"/>
         <source>Full playlist</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2781,26 +2860,38 @@
     </message>
 </context>
 <context>
-    <name>FolderComboBox</name>
+    <name>FolderChoicePage</name>
     <message>
-        <location filename="../qml/FolderComboBox.qml" line="76"/>
+        <location filename="../qml/pages/FolderChoicePage.qml" line="17"/>
         <source>Folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/FolderComboBox.qml" line="79"/>
-        <source>&quot;Other podcasts&quot;: no folder</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/FolderComboBox.qml" line="87"/>
-        <location filename="../qml/FolderComboBox.qml" line="92"/>
+        <location filename="../qml/pages/FolderChoicePage.qml" line="36"/>
         <source>Other podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/FolderComboBox.qml" line="103"/>
+        <location filename="../qml/pages/FolderChoicePage.qml" line="40"/>
         <source>New folder …</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FolderComboBox</name>
+    <message>
+        <location filename="../qml/FolderComboBox.qml" line="30"/>
+        <source>Folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/FolderComboBox.qml" line="33"/>
+        <source>&quot;Other podcasts&quot;: no folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/FolderComboBox.qml" line="40"/>
+        <source>Other podcasts</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3135,165 +3226,245 @@
 <context>
     <name>HomePage</name>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="67"/>
+        <location filename="../qml/pages/HomePage.qml" line="95"/>
         <source>&quot;New&quot; shows what you haven&apos;t looked at yet. ➕ (playlist and download) or Set aside take an episode out – it stays in &quot;All unplayed&quot;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="125"/>
+        <location filename="../qml/pages/HomePage.qml" line="153"/>
         <source>New episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="126"/>
+        <location filename="../qml/pages/HomePage.qml" line="154"/>
         <source>Updating %1 %</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="127"/>
+        <location filename="../qml/pages/HomePage.qml" line="155"/>
         <source>Synchronizing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="147"/>
+        <location filename="../qml/pages/HomePage.qml" line="175"/>
         <source>New</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="147"/>
+        <location filename="../qml/pages/HomePage.qml" line="175"/>
         <source>New (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="152"/>
+        <location filename="../qml/pages/HomePage.qml" line="180"/>
         <source>All unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="198"/>
+        <location filename="../qml/pages/HomePage.qml" line="226"/>
         <source>By date</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="198"/>
+        <location filename="../qml/pages/HomePage.qml" line="226"/>
         <source>By podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="212"/>
+        <location filename="../qml/pages/HomePage.qml" line="255"/>
+        <source>Only downloaded (%1 of %2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="255"/>
+        <source>Only not downloaded (%1 of %2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="269"/>
+        <source>Show all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/HomePage.qml" line="290"/>
+        <source>%n podcasts hidden</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="291"/>
+        <source>All podcasts shown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/HomePage.qml" line="293"/>
+        <source>%n new episodes in them</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/HomePage.qml" line="294"/>
+        <source>%n unplayed episodes in them</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="306"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="217"/>
+        <location filename="../qml/pages/HomePage.qml" line="311"/>
         <source>Import and export</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="223"/>
+        <location filename="../qml/pages/HomePage.qml" line="317"/>
         <source>Bookmarks (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="236"/>
+        <location filename="../qml/pages/HomePage.qml" line="328"/>
+        <source>Filter by download …</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="336"/>
         <source>Fold all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="236"/>
+        <location filename="../qml/pages/HomePage.qml" line="336"/>
         <source>Unfold all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="241"/>
+        <location filename="../qml/pages/HomePage.qml" line="342"/>
         <source>Clear New</source>
         <translation type="unfinished"></translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/HomePage.qml" line="342"/>
+        <source>Clear %n shown</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/HomePage.qml" line="350"/>
+        <source>Clearing %n shown episodes</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="311"/>
+        <location filename="../qml/pages/HomePage.qml" line="419"/>
         <source>Open podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="318"/>
+        <location filename="../qml/pages/HomePage.qml" line="426"/>
         <source>Mark all as played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="322"/>
+        <location filename="../qml/pages/HomePage.qml" line="430"/>
         <source>Podcast settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HomePage.qml" line="439"/>
+        <location filename="../qml/pages/HomePage.qml" line="547"/>
         <source>+ %n more on the podcast page</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="440"/>
+        <location filename="../qml/pages/HomePage.qml" line="548"/>
         <source>Show fewer</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HomePage.qml" line="441"/>
+        <location filename="../qml/pages/HomePage.qml" line="549"/>
         <source>%n more new</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="464"/>
+        <location filename="../qml/pages/HomePage.qml" line="573"/>
+        <source>Nothing downloaded here</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="573"/>
+        <source>Everything here is downloaded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="574"/>
         <source>Nothing new</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="466"/>
+        <location filename="../qml/pages/HomePage.qml" line="577"/>
+        <source>Tap ✕ above to show all episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="579"/>
+        <source>Tap the line above to choose the podcasts shown here</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="580"/>
         <source>Episodes you have set aside or started are in &quot;All unplayed&quot;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="467"/>
+        <location filename="../qml/pages/HomePage.qml" line="581"/>
         <source>No unplayed episodes waiting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="254"/>
+        <location filename="../qml/pages/HomePage.qml" line="362"/>
         <source>Search my podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HomePage.qml" line="246"/>
+        <location filename="../qml/pages/HomePage.qml" line="353"/>
         <source>Clearing %n new episodes</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="261"/>
+        <location filename="../qml/pages/HomePage.qml" line="369"/>
         <source>Synchronize</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="269"/>
+        <location filename="../qml/pages/HomePage.qml" line="377"/>
         <source>Update</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HomePage.qml" line="441"/>
+        <location filename="../qml/pages/HomePage.qml" line="549"/>
         <source>%n more unplayed</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="463"/>
+        <location filename="../qml/pages/HomePage.qml" line="571"/>
         <source>Database error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="464"/>
+        <location filename="../qml/pages/HomePage.qml" line="574"/>
         <source>All caught up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3301,197 +3472,197 @@
 <context>
     <name>HtmlExportPage</name>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="74"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="76"/>
         <source>Load</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HtmlExportPage.qml" line="75"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="77"/>
         <source>Downloads are set to Wi-Fi only. Load the chapters of %n episodes over the mobile connection anyway?</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="146"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="148"/>
         <source>Saved as %1 (with the chapters loaded so far)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="55"/>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="147"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="57"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="149"/>
         <source>Saved as %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HtmlExportPage.qml" line="175"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="177"/>
         <source>One HTML file with your podcasts (%n podcasts) in Downloads: folders, covers, links, OPML per folder. Opens in any browser, also without internet.</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HtmlExportPage.qml" line="185"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="187"/>
         <source>%n private feeds (with a password or a personal link) are left out.</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="214"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="216"/>
         <source>Episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HtmlExportPage.qml" line="216"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="218"/>
         <source>All %n episodes: 5 shown, the others folded under &quot;More episodes&quot;. Makes the file bigger.</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="201"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="203"/>
         <source>Content</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="154"/>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="167"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="156"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="169"/>
         <source>Share my podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="206"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="208"/>
         <source>Descriptions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="217"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="219"/>
         <source>Title, date, length and whether you heard it</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="100"/>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="220"/>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="268"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="102"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="222"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="270"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="110"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="112"/>
         <source>Other podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="192"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="194"/>
         <source>Folders</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="221"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="223"/>
         <source>Last 5</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="222"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="224"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="230"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="232"/>
         <source>Descriptions of these episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="231"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="233"/>
         <source>Already on the phone with the episodes, nothing is loaded</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="239"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="241"/>
         <source>Chapters of these episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/HtmlExportPage.qml" line="241"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="243"/>
         <source>Loads the chapters of %n episodes from the internet first.</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="242"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="244"/>
         <source>All known chapters are already loaded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="243"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="245"/>
         <source>Chapters only inside the audio file are missing for episodes that are not downloaded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="251"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="253"/>
         <source>Bookmarks of these episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="252"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="254"/>
         <source>Your own bookmarks with their notes – private</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="262"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="264"/>
         <source>Contains detailed listening habits: top podcasts, weekdays, time per podcast – private</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="264"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="266"/>
         <source>Total time, time saved by speed, episodes – folded at the top of the page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="260"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="262"/>
         <source>Listening statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="265"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="267"/>
         <source>Not in the page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="269"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="271"/>
         <source>Totals only</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="97"/>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="270"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="99"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="272"/>
         <source>Everything</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="284"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="286"/>
         <source>Building the page %1 / %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="285"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="287"/>
         <source>Loading chapters %1 / %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="292"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="294"/>
         <source>Stop and save what is loaded</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="301"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="303"/>
         <source>Save to Downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HtmlExportPage.qml" line="312"/>
+        <location filename="../qml/pages/HtmlExportPage.qml" line="314"/>
         <source>Share</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3669,42 +3840,42 @@
 <context>
     <name>InterestsCategoriesPage</name>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="24"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="26"/>
         <source>normal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="24"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="26"/>
         <source>more</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="24"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="26"/>
         <source>less</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="24"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="26"/>
         <source>never</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="45"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="47"/>
         <source>All categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="46"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="48"/>
         <source>Tap: more, less, never</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="109"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="111"/>
         <source>Categories are loading</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="110"/>
+        <location filename="../qml/pages/InterestsCategoriesPage.qml" line="112"/>
         <source>They come from fyyd – try again in a moment</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3712,87 +3883,87 @@
 <context>
     <name>InterestsPage</name>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="18"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="20"/>
         <source>normal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="18"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="20"/>
         <source>more</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="18"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="20"/>
         <source>less</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="18"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="20"/>
         <source>never</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="88"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="90"/>
         <source>My interests</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="89"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="91"/>
         <source>Decides what &quot;For you&quot; suggests</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="93"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="95"/>
         <source>Languages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="107"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="109"/>
         <source>Change</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="113"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="115"/>
         <source>Categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="120"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="122"/>
         <source>Darker = heard more. Tap: more, less, never, normal.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="121"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="123"/>
         <source>Nothing heard yet – tap what interests you: more, less, never, normal.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="184"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="186"/>
         <source>All categories and sub-categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="197"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="199"/>
         <source>Never</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="197"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="199"/>
         <source>More of this</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="213"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="215"/>
         <source>Keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="223"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="225"/>
         <source>Recommendations from my subscriptions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/InterestsPage.qml" line="224"/>
+        <location filename="../qml/pages/InterestsPage.qml" line="226"/>
         <source>Sends the addresses of your 10 most listened podcasts to fyyd to find similar ones.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3800,62 +3971,62 @@
 <context>
     <name>KeywordDialog</name>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="37"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="39"/>
         <source>Never</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="37"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="39"/>
         <source>More of this</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="38"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="40"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="48"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="50"/>
         <source>Podcasts with this word in title, description or category are never suggested. The word stays on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="49"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="51"/>
         <source>Podcasts with this word in title or description are suggested; the word is also searched in Podcast Index and fyyd.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="57"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="59"/>
         <source>Keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="58"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="60"/>
         <source>e.g. Rap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="58"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="60"/>
         <source>e.g. Klassik</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="74"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="76"/>
         <source>Also as (English, other forms; separated by commas)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="75"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="77"/>
         <source>e.g. classical</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="98"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="100"/>
         <source>No translation known – if the English word differs, enter it above.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/KeywordDialog.qml" line="107"/>
+        <location filename="../qml/pages/KeywordDialog.qml" line="109"/>
         <source>Remove keyword</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3876,17 +4047,17 @@
 <context>
     <name>LanguagesPage</name>
     <message>
-        <location filename="../qml/pages/LanguagesPage.qml" line="44"/>
+        <location filename="../qml/pages/LanguagesPage.qml" line="46"/>
         <source>Languages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/LanguagesPage.qml" line="47"/>
+        <location filename="../qml/pages/LanguagesPage.qml" line="49"/>
         <source>From my subscriptions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/LanguagesPage.qml" line="48"/>
+        <location filename="../qml/pages/LanguagesPage.qml" line="50"/>
         <source>Every language of at least a fifth of your podcasts.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4050,102 +4221,102 @@
 <context>
     <name>MarkPlayedDialog</name>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="144"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="146"/>
         <source>Mark as played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="144"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="146"/>
         <source>Mark as unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="145"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="147"/>
         <source>Mark played</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="145"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="147"/>
         <source>Mark unplayed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="162"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="164"/>
         <source>Unplayed ones</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="167"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="169"/>
         <source>Played ones</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="179"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="181"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="185"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="187"/>
         <source>All but the newest</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="190"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="192"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="203"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="205"/>
         <source>%1 of %2 selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="214"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="216"/>
         <source>Tap an episode to select it, press and hold to select it and all newer ones. Tap a group to select or clear all its episodes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="215"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="217"/>
         <source>Tap an episode to select it, press and hold to select it and all older ones. Tap a group to select or clear all its episodes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="243"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="245"/>
         <source>all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="243"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="245"/>
         <source>some</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="243"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="245"/>
         <source>none</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="258"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="260"/>
         <source>%1 h %2 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="258"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="260"/>
         <source>%1 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="261"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="263"/>
         <source>started</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="271"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="273"/>
         <source>All episodes are played already.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/MarkPlayedDialog.qml" line="271"/>
+        <location filename="../qml/pages/MarkPlayedDialog.qml" line="273"/>
         <source>No episode is played yet.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4292,6 +4463,48 @@
     </message>
 </context>
 <context>
+    <name>NewHiddenPage</name>
+    <message>
+        <location filename="../qml/pages/NewHiddenPage.qml" line="69"/>
+        <source>Show in New episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/NewHiddenPage.qml" line="76"/>
+        <source>Off: the podcast&apos;s episodes stay out of the page New episodes (both views). Playlist, downloads and the podcast page work as usual.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/NewHiddenPage.qml" line="85"/>
+        <source>All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/NewHiddenPage.qml" line="90"/>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/NewHiddenPage.qml" line="104"/>
+        <source>%n new</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/NewHiddenPage.qml" line="105"/>
+        <source>%n unplayed</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/NewHiddenPage.qml" line="114"/>
+        <source>No podcasts yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>PasswordDialog</name>
     <message>
         <location filename="../qml/pages/PasswordDialog.qml" line="19"/>
@@ -4317,57 +4530,57 @@
 <context>
     <name>PlayerBar</name>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="438"/>
+        <location filename="../qml/PlayerBar.qml" line="441"/>
         <source>min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="395"/>
+        <location filename="../qml/PlayerBar.qml" line="398"/>
         <source>End of episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="562"/>
+        <location filename="../qml/PlayerBar.qml" line="565"/>
         <source>Close player</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="562"/>
+        <location filename="../qml/PlayerBar.qml" line="565"/>
         <source>Open player</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="584"/>
+        <location filename="../qml/PlayerBar.qml" line="587"/>
         <source>Next chapter or episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="604"/>
+        <location filename="../qml/PlayerBar.qml" line="607"/>
         <source>Pause</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="604"/>
+        <location filename="../qml/PlayerBar.qml" line="607"/>
         <source>Play</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="681"/>
+        <location filename="../qml/PlayerBar.qml" line="684"/>
         <source>Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="720"/>
+        <location filename="../qml/PlayerBar.qml" line="723"/>
         <source>Bookmark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="751"/>
+        <location filename="../qml/PlayerBar.qml" line="754"/>
         <source>Sleep timer · stop after this episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/PlayerBar.qml" line="817"/>
+        <location filename="../qml/PlayerBar.qml" line="820"/>
         <source>Previous: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4708,22 +4921,22 @@
 <context>
     <name>PodcastChoiceDialog</name>
     <message>
-        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="116"/>
+        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="118"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="138"/>
+        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="140"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="143"/>
+        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="145"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="161"/>
+        <location filename="../qml/pages/PodcastChoiceDialog.qml" line="163"/>
         <source>ended – not changed automatically</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4883,228 +5096,238 @@
     </message>
     <message>
         <location filename="../qml/pages/PodcastSettingsPage.qml" line="258"/>
-        <source>Podcast has ended</source>
+        <source>Show in statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../qml/pages/PodcastSettingsPage.qml" line="259"/>
+        <source>Off: its listening time is kept but not counted in the statistics, the listening line and the shared web page.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="271"/>
+        <source>Podcast has ended</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="272"/>
         <source>For a podcast that has ended: no more automatic updates, no automatic downloads and no adding to the playlist. &quot;Update&quot; on its own page still works. Episodes, downloads and the listening state are kept; &quot;Delete played downloads&quot; leaves its downloads alone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="325"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="338"/>
         <source>Playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="328"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="341"/>
         <source>Add new episodes to the playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="330"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="343"/>
         <source>After a feed update, new unplayed episodes are added to the playlist. &quot;To the front&quot; means right after the episode playing; &quot;Sorted in&quot; follows the sorting of the playlist. The circle arrow at the handle stays until you move the episode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="338"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="351"/>
         <source>To the end</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="342"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="355"/>
         <source>To the front</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="346"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="359"/>
         <source>Sorted in</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="354"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="367"/>
         <source>At most per update</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="355"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="368"/>
         <source>Of the episodes found in one update the newest ones; the others are not added later.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="359"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="372"/>
         <source>All new episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="363"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="376"/>
         <source>1 episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="367"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="380"/>
         <source>3 episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="371"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="384"/>
         <source>5 episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="377"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="390"/>
         <source>Downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="380"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="393"/>
         <source>Download new episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="384"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="397"/>
         <source>After a feed update, up to 3 new episodes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="388"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="401"/>
         <source>As set globally (on)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="388"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="401"/>
         <source>As set globally (off)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="392"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="405"/>
         <source>Always</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="404"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="417"/>
         <source>Download location</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="409"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="422"/>
         <source>As set globally (Music folder)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="409"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="422"/>
         <source>As set globally (phone)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="413"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="426"/>
         <source>Phone (hidden)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="417"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="430"/>
         <source>Music folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="434"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="447"/>
         <source>Move %n downloads to Music</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="435"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="448"/>
         <source>Move %n downloads to the phone</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="466"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="479"/>
         <source>Download episodes …</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="483"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="496"/>
         <source>Delete %n downloads (%1)</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="484"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="488"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="497"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="501"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="484"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="488"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="497"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="501"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="487"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="500"/>
         <source>Deleting %n downloads</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="303"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="316"/>
         <source>Skip the end (outro)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="517"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="530"/>
         <source>Copies the episodes, feed and cover into a folder you can back up elsewhere (e.g. with rclone)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="524"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="537"/>
         <source>Cancel copying</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="524"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="537"/>
         <source>Copy podcast to archive folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="549"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="558"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="562"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="571"/>
         <source>Login</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="558"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="571"/>
         <source>Change login</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="573"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="586"/>
         <source>Support</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="581"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="594"/>
         <source>Support the podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="585"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="598"/>
         <source>Subscription</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="590"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="603"/>
         <source>Unsubscribe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../qml/pages/PodcastSettingsPage.qml" line="95"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="396"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="409"/>
         <source>Never</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5114,23 +5337,23 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="383"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="396"/>
         <source>After a feed update, up to 3 new episodes – this is a video podcast, its files are large (loaded only on Wi-Fi)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="267"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="280"/>
         <source>Playback</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="270"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="283"/>
         <source>Speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="278"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="453"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="291"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="466"/>
         <source>As set globally (%1)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5162,55 +5385,55 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="405"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="418"/>
         <source>For new downloads. Music/Podcasts/&lt;podcast&gt; (video episodes: Videos/Podcasts/&lt;podcast&gt;) is visible to other apps, also the music player. To keep the episodes there, set &quot;Delete played downloads&quot; below to &quot;Never&quot;.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="443"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="456"/>
         <source>Delete played downloads</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="444"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="457"/>
         <source>Never: downloads of this podcast are kept – also with &quot;Delete played downloads&quot; on the downloads page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="500"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="513"/>
         <source>Save downloads in Music</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="286"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="299"/>
         <source>Skip intro</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="292"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="309"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="305"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="322"/>
         <source>%1 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="292"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="309"/>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="334"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="305"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="322"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="347"/>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="504"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="517"/>
         <source>Archive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="542"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="555"/>
         <source>Archive folder: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/PodcastSettingsPage.qml" line="322"/>
+        <location filename="../qml/pages/PodcastSettingsPage.qml" line="335"/>
         <source>An episode that starts from the beginning starts after the intro. The outro ends the episode early: it counts as played and the next one follows. With a speed of its own, the speed on the episode page changes this podcast&apos;s speed.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6775,62 +6998,62 @@ New folder: pull down</source>
 <context>
     <name>ShareChoicePage</name>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="53"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="55"/>
         <source>Share</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="76"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="78"/>
         <source>Share link</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="81"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="83"/>
         <source>Web address of the episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="82"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="84"/>
         <source>This episode has no address that can be shared</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="108"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="110"/>
         <source>Share link from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="113"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="115"/>
         <source>Opens the episode at this position</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="145"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="147"/>
         <source>Share file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="146"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="148"/>
         <source>Downloading... %1 %</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="147"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="149"/>
         <source>Download the episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="153"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="155"/>
         <source>The downloaded file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="154"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="156"/>
         <source>A tap cancels; the file can be shared when it is done</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ShareChoicePage.qml" line="155"/>
+        <location filename="../qml/pages/ShareChoicePage.qml" line="157"/>
         <source>Then you can share the file</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6927,57 +7150,57 @@ New folder: pull down</source>
 <context>
     <name>SortDownloadsPage</name>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="18"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="20"/>
         <source>Last downloaded first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="18"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="20"/>
         <source>The most recent download first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="19"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="21"/>
         <source>Newest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="19"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="21"/>
         <source>By release date, the newest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="20"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="22"/>
         <source>Oldest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="20"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="22"/>
         <source>By release date, the oldest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="21"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="23"/>
         <source>By podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="21"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="23"/>
         <source>Podcast by podcast in alphabetical order</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="23"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="25"/>
         <source>Largest first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="23"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="25"/>
         <source>The biggest files first, to free up space</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortDownloadsPage.qml" line="37"/>
+        <location filename="../qml/pages/SortDownloadsPage.qml" line="39"/>
         <source>Sort downloads</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7078,112 +7301,112 @@ New folder: pull down</source>
 <context>
     <name>SortPlaylistPage</name>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="23"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="25"/>
         <source>Oldest first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="23"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="25"/>
         <source>By release date, the oldest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="24"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="26"/>
         <source>Newest first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="24"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="26"/>
         <source>By release date, the newest episode first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="25"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="27"/>
         <source>Shortest first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="25"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="27"/>
         <source>Short episodes first (same length: the newer first), unknown length last</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="26"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="28"/>
         <source>The most recent download first, not downloaded ones last (by release date)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="28"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="30"/>
         <source>Podcasts mixed, order within a podcast stays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="52"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="54"/>
         <source>Works with the sorting you choose below: the list is sorted when you choose it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="53"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="55"/>
         <source>Episodes added later are put in the matching place. Switching this on moves nothing; choosing a sorting below sorts the list. &quot;Play next&quot; (right after the episode playing, else at the front) and &quot;Add to end of playlist&quot; in the menu pin the episode where you put it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="26"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="28"/>
         <source>Last downloaded first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="27"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="29"/>
         <source>By podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="27"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="29"/>
         <source>Podcast by podcast in alphabetical order, each in its own episode order</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="28"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="30"/>
         <source>Smart Shuffle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="42"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="44"/>
         <source>Sort playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="46"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="48"/>
         <source>Automatic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="50"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="52"/>
         <source>Keep sorted</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="62"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="64"/>
         <source>Sort by</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="102"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="104"/>
         <source>Pins</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="111"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="113"/>
         <source>The episode playing and episodes you moved by hand (pin at the handle) stay where they are.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="136"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="138"/>
         <source>Release pins (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SortPlaylistPage.qml" line="141"/>
+        <location filename="../qml/pages/SortPlaylistPage.qml" line="143"/>
         <source>Sort the episodes you moved by hand like the others again</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7191,199 +7414,254 @@ New folder: pull down</source>
 <context>
     <name>StatisticsPage</name>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="60"/>
-        <location filename="../qml/pages/StatisticsPage.qml" line="70"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="71"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="81"/>
         <source>%1 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="63"/>
-        <location filename="../qml/pages/StatisticsPage.qml" line="68"/>
-        <location filename="../qml/pages/StatisticsPage.qml" line="69"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="74"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="83"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="84"/>
         <source>%1 h</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="63"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="74"/>
         <source>%1 h %2 min</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="100"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="114"/>
         <source>Reset statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="110"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="125"/>
         <source>Listening statistics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="116"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="131"/>
         <source>7 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="117"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="132"/>
         <source>30 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="118"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="133"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="129"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="147"/>
         <source>Nothing recorded yet. Your listening time appears here after you have played an episode.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="138"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="156"/>
         <source>listened</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="139"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="157"/>
         <source>time saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="140"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="158"/>
         <source>episodes listened to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="151"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="169"/>
         <source>Listened: your actual listening time. Time saved: how much less time you needed by playing faster. Episodes: listened to for at least one minute.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="202"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="220"/>
         <source>Activity in the last year</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="243"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="261"/>
         <source>days in a row (current)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="250"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="268"/>
         <source>days with listening</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="251"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="269"/>
         <source>per listening day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="156"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="174"/>
         <source>Over time</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="240"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="146"/>
+        <source>All podcasts with listening time are hidden.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatisticsPage.qml" line="258"/>
         <source>Streak (all time)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="244"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="262"/>
         <source>days in a row (record, all time)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="247"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="265"/>
         <source>Rhythm</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="262"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="280"/>
         <source>Days in a row: days one after the other on which you listened. The current count goes up to yesterday if nothing was played today. Both counts ignore the chosen period.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="266"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="284"/>
         <source>Weekdays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="304"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="322"/>
         <source>Records</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="307"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="325"/>
         <source>Longest listening day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="322"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="340"/>
         <source>Most listened podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="330"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="348"/>
         <source>Favourite weekday</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="337"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="355"/>
         <source>Folders</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="348"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="366"/>
         <source>Categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="353"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="371"/>
         <source>Main category</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="354"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="372"/>
         <source>All categories</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="365"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="383"/>
         <source>The time of a podcast is shared equally between its categories.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="366"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="384"/>
         <source>Each podcast counts only for its first category.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="405"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="423"/>
         <source>Podcasts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="418"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="437"/>
+        <source>Hide from statistics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatisticsPage.qml" line="441"/>
         <source>Delete listening history of this podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="474"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="497"/>
         <source>Recorded since %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/StatisticsPage.qml" line="474"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="497"/>
         <source>d MMM yyyy</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/StatisticsPage.qml" line="476"/>
+        <location filename="../qml/pages/StatisticsPage.qml" line="499"/>
         <source>plus %n episodes marked as played without a time</source>
         <translation type="unfinished">
             <numerusform></numerusform>
         </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/pages/StatisticsPage.qml" line="522"/>
+        <source>%n podcasts hidden</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+</context>
+<context>
+    <name>StatsHiddenPage</name>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="30"/>
+        <source>Hidden from statistics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="37"/>
+        <source>Their listening time is kept but not counted. Switch a podcast on to count it again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="47"/>
+        <source>%1 listened</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="47"/>
+        <source>%1 h %2 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="47"/>
+        <source>%1 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="48"/>
+        <source>not subscribed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/StatsHiddenPage.qml" line="59"/>
+        <source>No podcast is hidden</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

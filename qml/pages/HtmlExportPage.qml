@@ -11,6 +11,8 @@ import "../"
 // is then written with what was loaded). The switches are remembered;
 // bookmarks and listening time are off by default (private).
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "htmlExportPage"
 

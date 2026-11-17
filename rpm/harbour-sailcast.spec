@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.4
+Version:    1.4.1
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -59,6 +59,16 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
+* Tue Nov 17 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.4.1-1
+- Download filter on New episodes; a line with the podcasts hidden
+  there and a page to choose them all at once; download symbol next
+  to the size again; "Add to playlist without downloading"; hide a
+  podcast from the listening statistics; a heard episode put back
+  into the playlist becomes unplayed; folder choice as a page.
+  Fixes: play after putting an episode back, Smart Shuffle and pins,
+  waiting downloads, shared web page names only its podcasts, no
+  login after a redirect to http, video archive, player bar on
+  choice pages.
 * Sun Nov 15 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.4-1
 - New episodes rebuilt: "New" and "All unplayed", set an episode aside
   without marking it played, "Clear New", by date or grouped by podcast,

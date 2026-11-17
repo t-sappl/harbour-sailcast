@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "feedupdater.h"
 
+#include <QDebug>
 #include <QMetaObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -141,6 +142,7 @@ void FeedUpdater::startJob(qint64 podcastId)
     job->authUser = state.authUser;
     job->forceFull = m_forceFull.remove(podcastId);
     job->authHost = job->url.host();
+    job->authSecure = job->url.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) == 0;
     m_active.insert(job->id, job);
 
     if (!job->url.isValid() || job->url.scheme().isEmpty()) {
@@ -166,7 +168,9 @@ void FeedUpdater::sendRequest(const JobPtr &job)
 
     job->sentCredentials = false;
     if (!job->authUser.isEmpty() && m_passwords.contains(job->podcastId)
-            && job->url.host().compare(job->authHost, Qt::CaseInsensitive) == 0) {
+            && job->url.host().compare(job->authHost, Qt::CaseInsensitive) == 0
+            // (333, code review) never in clear text after a redirect from https to http
+            && !(job->authSecure && job->url.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) != 0)) {
         const QByteArray credentials = (job->authUser + QLatin1Char(':')
                                         + m_passwords.value(job->podcastId)).toUtf8();
         request.setRawHeader("Authorization", "Basic " + credentials.toBase64());
@@ -283,6 +287,14 @@ void FeedUpdater::onParsed(int jobId)
     }
     if (!job->parsed.newUrl.isEmpty()) {
         newUrl = job->parsed.newUrl.trimmed();
+    }
+    // (337, review 16 Nov) A feed with a login does not move from https to
+    // plain http: the stored address decides authSecure on the next update,
+    // the password would go in clear text from then on
+    if (!newUrl.isEmpty() && !job->authUser.isEmpty() && job->authSecure
+            && QUrl(newUrl).scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) != 0) {
+        qWarning() << "Feed with login moved to plain http, address kept:" << job->podcastId;
+        newUrl.clear();
     }
     QString etag = job->responseEtag;
     QString lastModified = job->responseLastModified;

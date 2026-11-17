@@ -23,8 +23,19 @@ Page {
     property real maxWeekday: 1
     property real maxHeat: 1
 
+    // (334) Podcasts hidden from the statistics (row at the end)
+    property var hiddenPodcasts: []
+    // (337, review) Hidden ones that have listening time (after "Reset
+    // statistics" the list stays, but nothing is behind it)
+    property bool hiddenWithTime: false
     function refresh() {
         stats = core.listeningStatistics(period)
+        hiddenPodcasts = core.statsHiddenPodcasts()
+        var withTime = false
+        for (var k = 0; k < hiddenPodcasts.length; k++) {
+            if (hiddenPodcasts[k].seconds > 0) withTime = true
+        }
+        hiddenWithTime = withTime
         var bars = stats.bars || []
         var m = 1
         for (var i = 0; i < bars.length; i++) m = Math.max(m, bars[i].seconds)
@@ -63,11 +74,14 @@ Page {
         return r === 0 ? qsTr("%1 h").arg(h) : qsTr("%1 h %2 min").arg(h).arg(r)
     }
     // Short value for a tile: "52 h", "1.5 h", "25 min"
+    // (333, code review) Round first, then choose the form: 9.96 h was
+    // "10.0 h" and 3599 s "60 min"
     function tileValue(seconds) {
-        var hours = seconds / 3600
-        if (hours >= 10) return qsTr("%1 h").arg(Math.round(hours))
-        if (hours >= 1) return qsTr("%1 h").arg(Number(hours).toLocaleString(Qt.locale(), "f", 1))
-        return qsTr("%1 min").arg(Math.round(seconds / 60))
+        var minutes = Math.round(seconds / 60)
+        if (minutes < 60) return qsTr("%1 min").arg(minutes)
+        var tenths = Math.round(seconds / 360) / 10
+        if (tenths >= 10) return qsTr("%1 h").arg(Math.round(seconds / 3600))
+        return qsTr("%1 h").arg(Number(tenths).toLocaleString(Qt.locale(), "f", 1))
     }
     function heatColor(value) {
         if (value < 0) return "transparent"
@@ -98,7 +112,8 @@ Page {
         PullDownMenu {
             MenuItem {
                 text: qsTr("Reset statistics")
-                visible: !page.empty
+                // (336) Also when all podcasts with time are hidden (the log has data)
+                visible: !page.empty || page.hiddenWithTime
                 onClicked: appWindow.remorseResetStatistics()
             }
         }
@@ -126,7 +141,10 @@ Page {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
                 color: Theme.secondaryHighlightColor
-                text: qsTr("Nothing recorded yet. Your listening time appears here after you have played an episode.")
+                // (336, review) Everything hidden is not "nothing recorded"
+                text: page.hiddenWithTime
+                      ? qsTr("All podcasts with listening time are hidden.")
+                      : qsTr("Nothing recorded yet. Your listening time appears here after you have played an episode.")
             }
 
             Column {
@@ -414,6 +432,11 @@ Page {
                         onClicked: if (modelData.exists) pageStack.push(Qt.resolvedUrl("EpisodesPage.qml"), { podcastId: modelData.podcastId })
                         menu: Component {
                             ContextMenu {
+                                // (334) Hiding comes first: it can be undone
+                                MenuItem {
+                                    text: qsTr("Hide from statistics")
+                                    onClicked: core.setHiddenFromStats(modelData.podcastId, true)
+                                }
                                 MenuItem {
                                     text: qsTr("Delete listening history of this podcast")
                                     onClicked: appWindow.remorseResetListeningOf(modelData.podcastId)
@@ -476,6 +499,27 @@ Page {
                                ? t + " · " + qsTr("plus %n episodes marked as played without a time", "", page.stats.noTime)
                                : t
                     }
+                }
+            }
+
+            // (334) Also with everything hidden (then the page is empty):
+            // the way back to the hidden podcasts
+            Item { width: 1; height: Theme.paddingMedium; visible: hiddenRow.visible }
+            BackgroundItem {
+                id: hiddenRow
+                visible: page.hiddenPodcasts.length > 0
+                width: parent.width
+                height: Theme.itemSizeSmall
+                onClicked: pageStack.push(Qt.resolvedUrl("StatsHiddenPage.qml"))
+                Label {
+                    x: Theme.horizontalPageMargin
+                    width: parent.width - 2 * Theme.horizontalPageMargin
+                    anchors.verticalCenter: parent.verticalCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    truncationMode: TruncationMode.Fade
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: hiddenRow.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                    text: qsTr("%n podcasts hidden", "", page.hiddenPodcasts.length) + " ›"
                 }
             }
         }

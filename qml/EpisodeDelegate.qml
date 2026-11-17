@@ -34,6 +34,8 @@ ListItem {
     // (309) Real file size on the right of the status line. (310) Everywhere,
     // the playlist included: a size means "on the phone", none means stream
     property bool showFileSize: true
+    // (334) The "downloaded" symbol; off on the Downloads page (all are)
+    property bool showDownloadIcon: true
     // (306) Grouped by podcast: the cover is in the group header, the row
     // goes without (text indented by textIndent); video and bookmarks then
     // show as small symbols in the status line
@@ -120,6 +122,15 @@ ListItem {
                 visible: !item.inPlaylist && !model.queued
                 text: qsTr("Add to end of playlist")
                 onClicked: core.queueAddPlaced(model.episodeId, false)
+            }
+            // (334, forum 16 Nov) ➕ with the other download choice: steer
+            // "playlist" and "download" apart without the setting. Where ➕
+            // puts it (end or next), only for episodes not downloaded
+            MenuItem {
+                visible: !item.inPlaylist && !model.queued && model.downloaded !== true && model.downloading !== true
+                text: core.setting("playlist.download", "1") === "1" ? qsTr("Add to playlist without downloading")
+                                                                     : qsTr("Add to playlist and download")
+                onClicked: core.queueAddDefaultOtherDownload(model.episodeId)
             }
             MenuItem {
                 visible: model.queued
@@ -504,7 +515,8 @@ ListItem {
                             }
                             // (191) "in playlist" is a symbol now (queueIcon) - the
                             // word was cut off next to date, time and download
-                            return parts.join(" · ")
+                            // (333, code review) No empty date: it began with " · "
+                            return parts.filter(function(p) { return p !== "" }).join(" · ")
                         }
                         font.pixelSize: Theme.fontSizeExtraSmall
                         // (299) Started: the time left in the accent colour (the
@@ -556,9 +568,11 @@ ListItem {
 
                     // (303) Not on New episodes (the quick button says it) and
                     // not on Downloads (everything there is downloaded)
+                    // (334, forum 16 Nov) Back next to the size: the size alone
+                    // was not seen as "downloaded" on New episodes
                     Image {
                         id: downloadIcon
-                        visible: model.downloaded && !item.showFileSize
+                        visible: item.showDownloadIcon && model.downloaded === true
                         anchors.verticalCenter: parent.verticalCenter
                         source: "image://theme/icon-s-cloud-download?" + Theme.secondaryHighlightColor
                         width: Theme.iconSizeExtraSmall
@@ -685,7 +699,18 @@ ListItem {
                 if (queueBubble.takeHeld()) return
                 model.queued ? core.queueRemove(model.episodeId) : core.queueAddDefault(model.episodeId)
             }
-            HoldNameBubble { id: queueBubble; attached: true; name: model.queued ? qsTr("Remove from playlist") : (core.setting("playlist.addTo", "end") === "next" ? qsTr("Add to playlist as next") : qsTr("Add to end of playlist")) }
+            // (334, forum 16 Nov) Says that ➕ also downloads (setting
+            // "Download playlist episodes"), so the setting can be found
+            HoldNameBubble {
+                id: queueBubble
+                attached: true
+                readonly property bool loads: model.downloaded !== true && model.downloading !== true
+                                              && core.setting("playlist.download", "1") === "1"
+                name: model.queued ? qsTr("Remove from playlist")
+                    : core.setting("playlist.addTo", "end") === "next"
+                      ? (loads ? qsTr("Add to playlist as next and download") : qsTr("Add to playlist as next"))
+                      : (loads ? qsTr("Add to end of playlist and download") : qsTr("Add to end of playlist"))
+            }
 
             // (309) In the playlist and being loaded: the ring around the check
             ProgressRing {

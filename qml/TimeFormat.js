@@ -41,14 +41,17 @@ function day(ms, today, yesterday) {
     var date = new Date(ms)
     var now = new Date()
     var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    var dayMs = 24 * 3600 * 1000
+    // (333, code review) Midnights from the calendar, not "minus 24 h": on
+    // the days after a change of the clock a day has 23 or 25 hours
+    var startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime()
+    var startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime()
     if (ms >= startOfToday) {
         return today
     }
-    if (ms >= startOfToday - dayMs) {
+    if (ms >= startOfYesterday) {
         return yesterday
     }
-    if (ms >= startOfToday - 6 * dayMs) {
+    if (ms >= startOfWeek) {
         return Qt.formatDate(date, "dddd")
     }
     return Qt.formatDate(date, Qt.DefaultLocaleShortDate)

@@ -192,6 +192,9 @@ void DownloadManager::start(const Queued &queued)
     const Database::FeedState feed = m_database->feedState(episode.podcastId);
     job->authUser = feed.authUser;
     job->authHost = QUrl(feed.url).host();
+    // (333) An https media address keeps the login on https (a plain http
+    // address of the feed host gets it as before)
+    job->authSecure = job->url.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) == 0;
 
     if (!QDir().mkpath(QFileInfo(job->target).absolutePath())) {
         fail(job, QStringLiteral("Cannot create the folder %1").arg(QFileInfo(job->target).absolutePath()));
@@ -215,7 +218,9 @@ void DownloadManager::send(const JobPtr &job)
         request.setRawHeader("Range", "bytes=" + QByteArray::number(job->resumeFrom) + '-');
     }
     if (!job->authUser.isEmpty() && m_passwords.contains(job->podcastId)
-            && job->url.host().compare(job->authHost, Qt::CaseInsensitive) == 0) {
+            && job->url.host().compare(job->authHost, Qt::CaseInsensitive) == 0
+            // (333, code review) never in clear text after a redirect from https to http
+            && !(job->authSecure && job->url.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) != 0)) {
         const QByteArray credentials = (job->authUser + QLatin1Char(':')
                                         + m_passwords.value(job->podcastId)).toUtf8();
         request.setRawHeader("Authorization", "Basic " + credentials.toBase64());
@@ -351,6 +356,7 @@ void DownloadManager::onFeedUpdated(qint64 podcastId)
             continue;
         }
         job->url = QUrl(episode.url);
+        job->authSecure = job->url.scheme().compare(QLatin1String("https"), Qt::CaseInsensitive) == 0;
         job->redirects = 0;
         send(job);
     }

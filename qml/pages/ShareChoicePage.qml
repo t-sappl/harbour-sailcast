@@ -11,6 +11,8 @@ import "../TimeFormat.js" as TimeFormat
 // Layout as the other pages: header with the episode name, full rows with a
 // grey explanation (Thomas 6 Nov, mockup m8).
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "shareChoicePage"
 

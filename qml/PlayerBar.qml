@@ -82,9 +82,12 @@ Rectangle {
     readonly property bool isHiddenPage: {
         var page = pageStack.currentPage
         return page !== null && page !== undefined
+                // (338) A page says it itself: choice, sort and settings-like
+                // pages and dialogs (new pages set it instead of this list)
+                && (page.hidesPlayerBar === true
                 // The episode page has its own player controls - for other
                 // episodes the bar would only be in the way there (18)
-                && (page.objectName === "episodePage"
+                    || page.objectName === "episodePage"
                     || page.objectName === "settingsPage" || page.objectName === "podcastSettingsPage" || page.objectName === "aboutPage"
                     // Settings sub-pages (88)
                     || page.objectName.indexOf("settings") === 0

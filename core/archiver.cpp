@@ -389,6 +389,8 @@ void Archiver::archiveEpisodes()
             }
             ++m_result.present;
         } else if (e.downloaded && e.downloadPath != target && QFile::exists(e.downloadPath)
+                   // (333, code review) the Videos folder of the podcast may not exist yet
+                   && QDir().mkpath(info.absolutePath())
                    && moveFile(e.downloadPath, target)) {
             m_database->setDownloaded(e.id, target);
             ++m_result.moved;
@@ -469,6 +471,8 @@ bool Archiver::writeMetadata(qint64 podcastId, QString *error)
     p.insert(QStringLiteral("archived"), podcast.archived);
 
     QJsonArray list;
+    const QString videoFolder = m_videoRoot.isEmpty() ? QString()
+            : m_videoRoot + QLatin1Char('/') + QFileInfo(folder).fileName();
     QList<EpisodeRow> episodes = m_database->episodes(podcastId);
     std::reverse(episodes.begin(), episodes.end());
     for (int i = 0; i < episodes.size(); ++i) {
@@ -481,8 +485,11 @@ bool Archiver::writeMetadata(qint64 podcastId, QString *error)
         o.insert(QStringLiteral("url"), e.url);
         o.insert(QStringLiteral("mime_type"), e.mimeType);
         o.insert(QStringLiteral("file_size"), static_cast<double>(e.fileSize));
+        // (334, code review Downloads 10) Videos lie in the same folder name
+        // under the Videos root (rootFor): look there, too
         const bool present = !e.archiveFile.isEmpty()
-                && QFile::exists(folder + QLatin1Char('/') + e.archiveFile);
+                && (QFile::exists(folder + QLatin1Char('/') + e.archiveFile)
+                    || (!videoFolder.isEmpty() && QFile::exists(videoFolder + QLatin1Char('/') + e.archiveFile)));
         o.insert(QStringLiteral("file"), present ? e.archiveFile : QString());
         o.insert(QStringLiteral("link"), e.link);
         o.insert(QStringLiteral("image_url"), e.imageUrl);
@@ -658,9 +665,14 @@ ArchiveImportResult Archiver::importFolder(const QString &folder)
             continue;
         }
         const QString fileName = o.value(QStringLiteral("file")).toString();
-        if (!fileName.isEmpty() && QFile::exists(dir + QLatin1Char('/') + fileName)) {
+        // (334) A video may lie in the folder of the same name under the Videos root
+        QString fileDir = dir;
+        if (!fileName.isEmpty() && !QFile::exists(dir + QLatin1Char('/') + fileName) && !m_videoRoot.isEmpty()) {
+            fileDir = m_videoRoot + QLatin1Char('/') + QFileInfo(dir).fileName();
+        }
+        if (!fileName.isEmpty() && QFile::exists(fileDir + QLatin1Char('/') + fileName)) {
             m_database->setArchiveFile(episodeId, fileName);
-            m_database->setDownloaded(episodeId, dir + QLatin1Char('/') + fileName);
+            m_database->setDownloaded(episodeId, fileDir + QLatin1Char('/') + fileName);
             ++result.filesFound;
         }
         const qint64 updated = static_cast<qint64>(o.value(QStringLiteral("position_updated")).toDouble());

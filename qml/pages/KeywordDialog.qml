@@ -8,6 +8,8 @@ import "../"
 // list and fyyd's category names while the word is typed, until they are
 // edited by hand; without a translation a hint asks for the English word.
 Dialog {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: dialog
 
     property int kind: 1

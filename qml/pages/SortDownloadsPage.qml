@@ -9,6 +9,8 @@ import Sailfish.Silica 1.0
 // Stored: downloads.sort (0 last downloaded, 1 newest episode, 2 oldest
 // episode, 3 by podcast, 5 largest file first - 303).
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "sortDownloadsPage"
 

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "database.h"
+
+#include <limits>
 #include "sqltext.h"
 #include "urlmask.h"
 
@@ -1391,6 +1393,10 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         if (filter == HomeNew) {
             where << QStringLiteral("e.is_new = 1");
         }
+        const QString loaded = homeDownloadCondition();     // (335)
+        if (!loaded.isEmpty()) {
+            where << loaded;
+        }
         const QList<qint64> hidden = hiddenFromNew();
         if (!hidden.isEmpty()) {
             QStringList ids;
@@ -1694,7 +1700,8 @@ qint64 Database::listenedSeconds(qint64 podcastId, qint64 *mediaSeconds) const
                                  " FROM listening_log WHERE podcast_id = ?"));
         q.addBindValue(podcastId);
     } else {
-        q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log"));
+        q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log WHERE ")
+                  + statsShownFilter());
     }
     if (q.exec() && q.next()) {
         if (mediaSeconds) {
@@ -1709,15 +1716,17 @@ ListeningSummary Database::listeningSummary() const
 {
     ListeningSummary r;
     QSqlQuery q(handle());
-    if (q.exec(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log")) && q.next()) {
+    const QString shown = statsShownFilter();   // (334) without podcasts hidden from the statistics
+    if (q.exec(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0) FROM listening_log WHERE ") + shown) && q.next()) {
         r.seconds = q.value(0).toLongLong();
         r.mediaSeconds = q.value(1).toLongLong();
     }
-    if (q.exec(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log"
-                              " GROUP BY episode_id HAVING SUM(seconds) >= 60)")) && q.next()) {
+    if (q.exec(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log WHERE ") + shown
+               + QStringLiteral(" GROUP BY episode_id HAVING SUM(seconds) >= 60)")) && q.next()) {
         r.episodes = q.value(0).toInt();
     }
-    if (q.exec(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"))) {
+    if (q.exec(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log WHERE ") + shown
+               + QStringLiteral(" GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"))) {
         QDate previous;
         int streak = 0;
         while (q.next()) {
@@ -1735,8 +1744,8 @@ ListeningSummary Database::listeningSummary() const
             r.weekdays[date.dayOfWeek() - 1] += q.value(1).toLongLong();
         }
     }
-    if (q.exec(QStringLiteral("SELECT MAX(podcast_title), SUM(seconds) FROM listening_log"
-                              " GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 5"))) {
+    if (q.exec(QStringLiteral("SELECT MAX(podcast_title), SUM(seconds) FROM listening_log WHERE ") + shown
+               + QStringLiteral(" GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 5"))) {
         while (q.next()) {
             r.top.append(qMakePair(q.value(0).toString(), q.value(1).toLongLong()));
         }
@@ -1749,7 +1758,8 @@ ListeningTotals Database::listeningTotals(int fromDay) const
     ListeningTotals r;
     QSqlQuery q(handle());
     q.prepare(QStringLiteral("SELECT COALESCE(SUM(seconds), 0), COALESCE(SUM(media_seconds), 0),"
-                             " COALESCE(SUM(MAX(0, media_seconds - seconds)), 0) FROM listening_log WHERE day >= ?"));
+                             " COALESCE(SUM(MAX(0, media_seconds - seconds)), 0) FROM listening_log WHERE day >= ? AND ")
+              + statsShownFilter());
     q.addBindValue(fromDay);
     if (q.exec() && q.next()) {
         r.seconds = q.value(0).toLongLong();
@@ -1757,8 +1767,8 @@ ListeningTotals Database::listeningTotals(int fromDay) const
         r.savedSeconds = q.value(2).toLongLong();
     }
     QSqlQuery e(handle());
-    e.prepare(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log WHERE day >= ?"
-                             " GROUP BY episode_id HAVING SUM(seconds) >= 60)"));
+    e.prepare(QStringLiteral("SELECT COUNT(*) FROM (SELECT episode_id FROM listening_log WHERE day >= ? AND ")
+              + statsShownFilter() + QStringLiteral(" GROUP BY episode_id HAVING SUM(seconds) >= 60)"));
     e.addBindValue(fromDay);
     if (e.exec() && e.next()) {
         r.episodes = e.value(0).toInt();
@@ -1770,8 +1780,8 @@ QList<QPair<int, qint64>> Database::listeningPerDay(int fromDay) const
 {
     QList<QPair<int, qint64>> r;
     QSqlQuery q(handle());
-    q.prepare(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log WHERE day >= ?"
-                             " GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"));
+    q.prepare(QStringLiteral("SELECT day, SUM(seconds) FROM listening_log WHERE day >= ? AND ")
+              + statsShownFilter() + QStringLiteral(" GROUP BY day HAVING SUM(seconds) > 0 ORDER BY day"));
     q.addBindValue(fromDay);
     if (q.exec()) {
         while (q.next()) {
@@ -1785,8 +1795,8 @@ QList<ListeningRank> Database::listeningRanking(int fromDay, int limit) const
 {
     QList<ListeningRank> r;
     QSqlQuery q(handle());
-    q.prepare(QStringLiteral("SELECT podcast_id, MAX(podcast_title), SUM(seconds) FROM listening_log WHERE day >= ?"
-                             " GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 3 DESC LIMIT ?"));
+    q.prepare(QStringLiteral("SELECT podcast_id, MAX(podcast_title), SUM(seconds) FROM listening_log WHERE day >= ? AND ")
+              + statsShownFilter() + QStringLiteral(" GROUP BY podcast_id HAVING SUM(seconds) > 0 ORDER BY 3 DESC LIMIT ?"));
     q.addBindValue(fromDay);
     q.addBindValue(limit);
     if (q.exec()) {
@@ -1804,8 +1814,8 @@ QList<ListeningRank> Database::listeningRanking(int fromDay, int limit) const
 qint64 Database::listeningTopEpisode(int fromDay, qint64 *seconds) const
 {
     QSqlQuery q(handle());
-    q.prepare(QStringLiteral("SELECT episode_id, SUM(seconds) FROM listening_log WHERE day >= ?"
-                             " GROUP BY episode_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 1"));
+    q.prepare(QStringLiteral("SELECT episode_id, SUM(seconds) FROM listening_log WHERE day >= ? AND ")
+              + statsShownFilter() + QStringLiteral(" GROUP BY episode_id HAVING SUM(seconds) > 0 ORDER BY 2 DESC LIMIT 1"));
     q.addBindValue(fromDay);
     if (q.exec() && q.next()) {
         if (seconds) {
@@ -1821,7 +1831,8 @@ int Database::listenedWithoutTime() const
     QSqlQuery q(handle());
     if (q.exec(QStringLiteral("SELECT COUNT(*) FROM episodes WHERE played = 1"
                               " AND id NOT IN (SELECT episode_id FROM listening_log WHERE seconds > 0)"
-                              " AND podcast_id NOT IN (SELECT id FROM podcasts WHERE provisional = 1)")) && q.next()) {
+                              " AND podcast_id NOT IN (SELECT id FROM podcasts WHERE provisional = 1) AND ")
+               + statsShownFilter()) && q.next()) {
         return q.value(0).toInt();
     }
     return 0;
@@ -1842,7 +1853,8 @@ QHash<qint64, qint64> Database::listeningByPodcast() const
 {
     QHash<qint64, qint64> r;
     QSqlQuery q(handle());
-    if (q.exec(QStringLiteral("SELECT podcast_id, SUM(seconds) FROM listening_log GROUP BY podcast_id"))) {
+    if (q.exec(QStringLiteral("SELECT podcast_id, SUM(seconds) FROM listening_log WHERE ") + statsShownFilter()
+               + QStringLiteral(" GROUP BY podcast_id"))) {
         while (q.next()) {
             r.insert(q.value(0).toLongLong(), q.value(1).toLongLong());
         }
@@ -2289,6 +2301,78 @@ QList<qint64> Database::hiddenFromNew() const
     return ids;
 }
 
+// (334) Setting "stats.hiddenPodcasts": podcast ids, comma separated, like
+// "home.hiddenPodcasts". Their listening time stays in the log but counts
+// nowhere (statistics page, listening line, shared web page) until shown
+// again. Local, part of the database copy, not synchronized.
+QList<qint64> Database::statsHidden() const
+{
+    QList<qint64> ids;
+    const QStringList parts = setting(QStringLiteral("stats.hiddenPodcasts")).split(QLatin1Char(','), QString::SkipEmptyParts);
+    for (const QString &part : parts) {
+        bool ok = false;
+        const qint64 id = part.trimmed().toLongLong(&ok);
+        if (ok && id > 0 && !ids.contains(id)) {
+            ids.append(id);
+        }
+    }
+    return ids;
+}
+
+bool Database::setStatsHidden(const QList<qint64> &ids)
+{
+    QStringList parts;
+    for (qint64 id : ids) {
+        parts << QString::number(id);
+    }
+    return setSetting(QStringLiteral("stats.hiddenPodcasts"), parts.join(QLatin1Char(',')));
+}
+
+// SQL condition on the column podcast_id: true for podcasts not hidden.
+// Only numbers from statsHidden() go into the text.
+QString Database::statsShownFilter() const
+{
+    const QList<qint64> ids = statsHidden();
+    if (ids.isEmpty()) {
+        return QStringLiteral("1 = 1");
+    }
+    QStringList parts;
+    for (qint64 id : ids) {
+        parts << QString::number(id);
+    }
+    return QStringLiteral("podcast_id NOT IN (") + parts.join(QLatin1Char(',')) + QLatin1Char(')');
+}
+
+QString Database::listeningTitle(qint64 podcastId) const
+{
+    QSqlQuery q(handle());
+    q.prepare(QStringLiteral("SELECT MAX(podcast_title) FROM listening_log WHERE podcast_id = ?"));
+    q.addBindValue(podcastId);
+    return q.exec() && q.next() ? q.value(0).toString() : QString();
+}
+
+// (335) Setting "home.downloadFilter" of the page New episodes: "" all,
+// "downloaded", "notDownloaded". A running download counts as not
+// downloaded, an archived copy as downloaded (download_state 2).
+QString Database::homeDownloadFilter() const
+{
+    const QString f = setting(QStringLiteral("home.downloadFilter"));
+    return f == QLatin1String("downloaded") || f == QLatin1String("notDownloaded") ? f : QString();
+}
+
+// SQL condition on episodes e for that filter; empty without a filter
+QString Database::homeDownloadCondition() const
+{
+    const QString f = homeDownloadFilter();
+    if (f == QLatin1String("downloaded")) {
+        return QStringLiteral("e.download_state = 2");
+    }
+    if (f == QLatin1String("notDownloaded")) {
+        return QStringLiteral("e.download_state != 2");
+    }
+    return QString();
+}
+
 bool Database::setHiddenFromNew(const QList<qint64> &ids)
 {
     QStringList parts;
@@ -2329,6 +2413,10 @@ QList<EpisodeRef> Database::homeUnplayedRefs(bool onlyNew) const
     if (onlyNew) {
         sql += QStringLiteral(" AND e.is_new = 1");     // (322) "New" by podcast
     }
+    const QString loaded = homeDownloadCondition();     // (335)
+    if (!loaded.isEmpty()) {
+        sql += QStringLiteral(" AND ") + loaded;
+    }
     const QList<qint64> hidden = hiddenFromNew();
     if (!hidden.isEmpty()) {
         QStringList ids;
@@ -2356,10 +2444,24 @@ QList<EpisodeRef> Database::homeUnplayedRefs(bool onlyNew) const
 
 int Database::homeNewCount() const
 {
-    // Same rows as episodes(..., HomeNew): subscribed, unplayed, flag set,
-    // not hidden - without the limit of the list
+    return homeCount(true, true);
+}
+
+// (335) Rows of the page: "New" (onlyNew) or "All unplayed", with or without
+// the download filter - for the chip and "4 of 12"
+int Database::homeCount(bool onlyNew, bool filtered) const
+{
+    // Same rows as episodes(..., HomeNew/HomeUnplayed): subscribed, unplayed,
+    // (flag set,) not hidden - without the limit of the list
     QString sql = QStringLiteral("SELECT COUNT(*) FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
-                                 " WHERE p.provisional = 0 AND e.played = 0 AND e.is_new = 1");
+                                 " WHERE p.provisional = 0 AND e.played = 0");
+    if (onlyNew) {
+        sql += QStringLiteral(" AND e.is_new = 1");
+    }
+    const QString loaded = filtered ? homeDownloadCondition() : QString();
+    if (!loaded.isEmpty()) {
+        sql += QStringLiteral(" AND ") + loaded;
+    }
     const QList<qint64> hidden = hiddenFromNew();
     if (!hidden.isEmpty()) {
         QStringList ids;
@@ -2375,12 +2477,89 @@ int Database::homeNewCount() const
     return q.value(0).toInt();
 }
 
+// (340) Unplayed (onlyNew: flagged new) episodes in the podcasts hidden
+// from New episodes, without the download filter - for the line
+// "3 podcasts hidden · 5 new episodes in them" (Thomas 17 Nov)
+int Database::homeHiddenCount(bool onlyNew) const
+{
+    const QList<qint64> hidden = hiddenFromNew();
+    if (hidden.isEmpty()) {
+        return 0;
+    }
+    QStringList ids;
+    for (qint64 id : hidden) {
+        ids << QString::number(id);
+    }
+    QString sql = QStringLiteral("SELECT COUNT(*) FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                                 " WHERE p.provisional = 0 AND e.played = 0");
+    if (onlyNew) {
+        sql += QStringLiteral(" AND e.is_new = 1");
+    }
+    sql += QStringLiteral(" AND e.podcast_id IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+    QSqlQuery q(handle());
+    if (!q.exec(sql) || !q.next()) {
+        return 0;
+    }
+    return q.value(0).toInt();
+}
+
+// (340) Hidden podcasts still subscribed (the list can keep ids of removed ones)
+int Database::hiddenFromNewCount() const
+{
+    const QList<qint64> hidden = hiddenFromNew();
+    if (hidden.isEmpty()) {
+        return 0;
+    }
+    QStringList ids;
+    for (qint64 id : hidden) {
+        ids << QString::number(id);
+    }
+    QSqlQuery q(handle());
+    if (!q.exec(QStringLiteral("SELECT COUNT(*) FROM podcasts WHERE provisional = 0 AND id IN (")
+                + ids.join(QLatin1Char(',')) + QLatin1Char(')')) || !q.next()) {
+        return 0;
+    }
+    return q.value(0).toInt();
+}
+
+// (340) The same per podcast (all subscribed podcasts), for the choice page
+QHash<qint64, int> Database::homeCountsByPodcast(bool onlyNew) const
+{
+    QHash<qint64, int> result;
+    QString sql = QStringLiteral("SELECT e.podcast_id, COUNT(*) FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                                 " WHERE p.provisional = 0 AND e.played = 0");
+    if (onlyNew) {
+        sql += QStringLiteral(" AND e.is_new = 1");
+    }
+    sql += QStringLiteral(" GROUP BY e.podcast_id");
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (!q.exec(sql)) {
+        fail(QStringLiteral("homeCountsByPodcast"), q.lastError().text());
+        return result;
+    }
+    while (q.next()) {
+        result.insert(q.value(0).toLongLong(), q.value(1).toInt());
+    }
+    return result;
+}
+
 bool Database::clearAllNew(qint64 upToEpisodeId)
 {
     QSqlQuery q(handle());
     if (upToEpisodeId >= 0) {
         // (322) Episodes that came in while the countdown ran stay "new"
-        q.prepare(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE is_new = 1 AND id <= ?"));
+        // (340) Hidden podcasts keep theirs (the page did not show them)
+        QString sql = QStringLiteral("UPDATE episodes SET is_new = 0 WHERE is_new = 1 AND id <= ?");
+        const QList<qint64> hidden = hiddenFromNew();
+        if (!hidden.isEmpty()) {
+            QStringList ids;
+            for (qint64 id : hidden) {
+                ids << QString::number(id);
+            }
+            sql += QStringLiteral(" AND podcast_id NOT IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+        }
+        q.prepare(sql);
         q.addBindValue(upToEpisodeId);
         if (!q.exec()) {
             return fail(QStringLiteral("clearAllNew"), q.lastError().text());
@@ -2389,6 +2568,39 @@ bool Database::clearAllNew(qint64 upToEpisodeId)
     }
     if (!q.exec(QStringLiteral("UPDATE episodes SET is_new = 0 WHERE is_new = 1"))) {
         return fail(QStringLiteral("clearAllNew"), q.lastError().text());
+    }
+    return true;
+}
+
+// (335) "Clear %n shown": only the episodes the filtered page shows -
+// subscribed, unplayed, not hidden, matching the download filter; up to the
+// snapshot of the tap (322)
+bool Database::clearShownNew(qint64 upToEpisodeId, const QString &filter)
+{
+    // (336) The filter given (the one of the tap); only the two known values
+    const QString loaded = filter == QLatin1String("downloaded") ? QStringLiteral("e.download_state = 2")
+                         : filter == QLatin1String("notDownloaded") ? QStringLiteral("e.download_state != 2")
+                         : QString();
+    if (loaded.isEmpty()) {
+        return clearAllNew(upToEpisodeId);
+    }
+    QString sql = QStringLiteral("UPDATE episodes SET is_new = 0 WHERE id IN (SELECT e.id FROM episodes e"
+                                 " JOIN podcasts p ON p.id = e.podcast_id WHERE p.provisional = 0"
+                                 " AND e.played = 0 AND e.is_new = 1 AND e.id <= ? AND ") + loaded;
+    const QList<qint64> hidden = hiddenFromNew();
+    if (!hidden.isEmpty()) {
+        QStringList ids;
+        for (qint64 id : hidden) {
+            ids << QString::number(id);
+        }
+        sql += QStringLiteral(" AND e.podcast_id NOT IN (") + ids.join(QLatin1Char(',')) + QLatin1Char(')');
+    }
+    sql += QLatin1Char(')');
+    QSqlQuery q(handle());
+    q.prepare(sql);
+    q.addBindValue(upToEpisodeId >= 0 ? upToEpisodeId : std::numeric_limits<qint64>::max());
+    if (!q.exec()) {
+        return fail(QStringLiteral("clearShownNew"), q.lastError().text());
     }
     return true;
 }

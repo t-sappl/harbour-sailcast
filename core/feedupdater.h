@@ -88,6 +88,7 @@ private:
         QUrl url;
         QString authUser;
         QString authHost;       // credentials are only sent to this host
+        bool authSecure = false;  // (333) the address with the login was https
         bool sentCredentials = false;
         QString etag;
         QString lastModified;

@@ -646,7 +646,17 @@ Page {
                     // "+" / check mark (the theme's looked like a play button)
                     playlistMark: page.queued ? 1 : 0
                     label: page.showHints ? qsTr("Playlist") : ""
-                    HoldNameBubble { id: queueBubble; attached: true; name: page.queued ? qsTr("Remove from playlist") : (core.setting("playlist.addTo", "end") === "next" ? qsTr("Add to playlist as next") : qsTr("Add to end of playlist")) }
+                    // (334, forum 16 Nov) Says that it also downloads, as in the rows
+                    HoldNameBubble {
+                        id: queueBubble
+                        attached: true
+                        readonly property bool loads: page.episode.downloaded !== true && !page.downloading
+                                                      && core.setting("playlist.download", "1") === "1"
+                        name: page.queued ? qsTr("Remove from playlist")
+                            : core.setting("playlist.addTo", "end") === "next"
+                              ? (loads ? qsTr("Add to playlist as next and download") : qsTr("Add to playlist as next"))
+                              : (loads ? qsTr("Add to end of playlist and download") : qsTr("Add to end of playlist"))
+                    }
                     onClicked: {
                         if (queueBubble.takeHeld()) return
                         page.queued ? core.queueRemove(page.episodeId) : core.queueAddDefault(page.episodeId)

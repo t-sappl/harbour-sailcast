@@ -1580,6 +1580,14 @@ Item {
         onEpisodeChanged: {
             if (episodeId === controller.episodeId) {
                 controller._setInfo(core.episode(controller.episodeId))
+                // (337, review 16 Nov) Counted as played (pause near the end)
+                // and then unplayed again (➕ on a heard episode, "Mark as
+                // unplayed"): play starts this episode again, not the next one
+                if (controller._needsLoad && controller._playedEnd && controller.info.played !== true) {
+                    controller._playedEnd = false
+                    controller._playedBefore = false
+                    controller._restoreJumped = false
+                }
                 // Position changed elsewhere (sync) before the first play
                 // (290) not after the user jumped in this state (seek())
                 if (controller._needsLoad && !controller._restoreJumped) {

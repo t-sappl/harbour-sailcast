@@ -1,6 +1,32 @@
 # Changelog
 
-## 1.4 (not released yet – draft 15 Nov 2026)
+## 1.4.1 (2026-11-17)
+
+A small release after 1.4 – thanks for the feedback in the forum. A few things that make everyday use easier, and fixes from two code reviews.
+
+### New
+
+- **Download filter on New episodes:** pull-down menu "Filter by download …" – only downloaded or only not downloaded episodes. While it is on, a line under the view chips says so with the count ("Only not downloaded (4 of 12)"); tap it to switch, ✕ to show everything again. "Clear New" then clears only the shown episodes
+- **Downloaded at a glance again:** the download symbol is back next to the size on New episodes (and everywhere else except the Downloads page)
+- **Playlist and download apart:** the menu of an episode has "Add to playlist without downloading" (or "… and download" when "Download playlist episodes" is off); holding ➕ tells whether it downloads
+- **Hide a podcast from the statistics** instead of deleting its listening history: from the ranking, in the podcast settings ("Show in statistics") or in the list "n podcasts hidden" at the end of the statistics page. The time is kept and counts again when you show the podcast
+- **A heard episode put back into the playlist** becomes unplayed, so the next update does not take it out again (only heard ones – a started episode keeps its position)
+- **Podcasts hidden from New episodes at a glance:** a line "3 podcasts hidden · 5 new episodes in them" on New episodes; ("All podcasts shown" when none is hidden) – tap it to choose the podcasts shown there – all on one page, with All / None, instead of in each podcast's settings. The update message names the new episodes in hidden podcasts ("7 new episodes – 5 of them in podcasts not shown in New"), so an empty page after "7 new episodes" is no longer a riddle
+- **Folder choice** as a page of its own (no longer partly under the player bar with many folders)
+
+### Fixed
+
+- Play started the next episode instead of the one you had just put back into the playlist (or marked as unplayed) after it had counted as played
+- Smart Shuffle: releasing a pin mixed the whole playlist; now only that episode finds its place, the episode playing and "Play next" episodes stay where they are
+- "Add to playlist and download" waiting for Wi-Fi was never downloaded when "Download playlist episodes" was off
+- Removing an episode from the playlist could stop a download you had started yourself
+- The shared web page (Share my podcasts, statistics "Everything") could name podcasts that were not on the page – listened to without subscribing, unsubscribed, feeds with a login, other folders
+- Feeds and downloads with a login never send it after a redirect from https to plain http, and such a feed keeps its https address
+- Archiving a video podcast: the Videos folder is created, and the archive import finds the videos
+- The player bar no longer covers choice and settings-like pages (sorting, filters, folder choice, confirmations)
+- Smaller things: day names around the change of the clock, rounding of the statistics tiles, sizes with a filter on the Downloads page, a "%" in a podcast title on the shared web page, "Unfold all"
+
+## 1.4 (2026-11-15)
 
 The journey that started with 1.3 goes on: everyday things should take fewer taps and less thinking. This time the two pages you use every day were rebuilt – New episodes and Downloads – together with the playlist, the player and a few things just for fun.
 

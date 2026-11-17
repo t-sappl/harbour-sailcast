@@ -115,6 +115,7 @@ private:
         QString target;
         QString authUser;
         QString authHost;
+        bool authSecure = false;  // (333) the address with the login was https
         int redirects = 0;
         bool refreshed = false;     // feed already updated for this job
         bool restarted = false;     // already restarted without Range (416)

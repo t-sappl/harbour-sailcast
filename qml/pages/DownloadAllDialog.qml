@@ -12,6 +12,8 @@ import "../TimeFormat.js" as TimeFormat
 // declared in the feed (often incomplete). Without Wi-Fi ("only on Wi-Fi")
 // a note, as in the archive dialog; accepting loads them anyway.
 Dialog {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: dialog
     objectName: "downloadAllDialog"
     property int podcastId: 0

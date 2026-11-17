@@ -14,6 +14,8 @@ import "../TimeFormat.js" as TimeFormat
 // thousands of downloads. Ended podcasts are left out. Without Wi-Fi ("only
 // on Wi-Fi") the user is asked after accepting, with the size.
 Dialog {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
     objectName: "downloadUnplayedDialog"
 

@@ -6,6 +6,8 @@ import Sailfish.Silica 1.0
 // 139, which did not scroll): "Aus meinen Abos" (every language of at least
 // 20 % of the subscriptions) or a choice of one or more.
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
 
     property var info: core.interests()

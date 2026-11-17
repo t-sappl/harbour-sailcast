@@ -12,6 +12,8 @@ import "../"
 // Discover computes "Für dich" once when it is shown again
 // (core.interestsRevision).
 Page {
+    // (338) No player bar here (choice/settings-like page, PlayerBar.isHiddenPage)
+    readonly property bool hidesPlayerBar: true
     id: page
 
     property var info: core.interests()

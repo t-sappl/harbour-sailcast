@@ -322,6 +322,13 @@ public:
     qint64 maxNewEpisodeId() const;
     // (304) Episodes in the view "New" of New episodes (the chip counter)
     int homeNewCount() const;
+    int homeCount(bool onlyNew, bool filtered) const;   // (335)
+    int homeHiddenCount(bool onlyNew) const;             // (340)
+    int hiddenFromNewCount() const;                      // (340) still subscribed
+    QHash<qint64, int> homeCountsByPodcast(bool onlyNew) const;   // (340)
+    bool clearShownNew(qint64 upToEpisodeId, const QString &filter);   // (335, 336)
+    QString homeDownloadFilter() const;                  // (335) "", downloaded, notDownloaded
+    QString homeDownloadCondition() const;
     // (306) Unplayed episodes of the view "All unplayed" (subscribed, not
     // hidden), newest first - the grouped view picks a few per podcast
     QList<EpisodeRef> homeUnplayedRefs(bool onlyNew = false) const;
@@ -334,6 +341,11 @@ public:
     bool clearNewOfPodcast(qint64 podcastId);
     // (302) Podcast ids hidden on the page "New episodes"
     QList<qint64> hiddenFromNew() const;
+    // (334) Podcasts hidden from the statistics (setting stats.hiddenPodcasts)
+    QList<qint64> statsHidden() const;
+    bool setStatsHidden(const QList<qint64> &ids);
+    QString statsShownFilter() const;
+    QString listeningTitle(qint64 podcastId) const;
     bool setHiddenFromNew(const QList<qint64> &ids);
 
     // --- Downloads and archive (stage 3) ---

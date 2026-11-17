@@ -40,6 +40,7 @@ class EpisodeListModel : public RowListModel<EpisodeRow>
     Q_PROPERTY(int sortMode READ sortMode WRITE setSortMode NOTIFY sortModeChanged)
     // (293) New episodes list: group by podcast (sections = podcast title)
     Q_PROPERTY(bool groupByPodcast READ groupByPodcast WRITE setGroupByPodcast NOTIFY groupByPodcastChanged)
+    Q_PROPERTY(QString downloadFilter READ downloadFilter WRITE setDownloadFilter NOTIFY downloadFilterChanged)
     // (302) New episodes page: an episode that was in the list and drops out
     // because the user dealt with it (flag gone, marked played) stays until
     // clearKept(): no jumping rows, the change is visible, a wrong tap can be
@@ -114,6 +115,8 @@ public:
     QString search() const { return m_search; }
     int sortMode() const { return m_sortMode; }
     bool groupByPodcast() const { return m_groupByPodcast; }
+    QString downloadFilter() const { return m_downloadFilter; }
+    void setDownloadFilter(const QString &filter);
     void setGroupByPodcast(bool on);
     void setSortMode(int mode);
     void setSearch(const QString &search);
@@ -161,6 +164,7 @@ signals:
     void searchChanged();
     void sortModeChanged();
     void groupByPodcastChanged();
+    void downloadFilterChanged();
     void sectionsChanged();
     void keepVanishedChanged();
     void episodeIdChanged();
@@ -191,6 +195,7 @@ private:
     QString m_search;
     int m_sortMode = 0;
     bool m_groupByPodcast = false;
+    QString m_downloadFilter;   // (335) only to reload; the database reads the setting
     int m_episodeId = -1;
     int m_excludeEpisodeId = -1;
     bool m_reloadPending = false;
