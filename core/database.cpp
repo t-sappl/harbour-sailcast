@@ -16,6 +16,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPair>
+#include <QRegularExpression>
 #include <QSet>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -1154,7 +1155,9 @@ static const char *const PodcastColumns =
         " SUM(CASE WHEN e.played = 0 AND e.is_new = 1 AND e.added >"
         " COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'podcast.' || p.id || '.seenAt'), 0)"
         " THEN 1 ELSE 0 END) > 0,"
-        " p.funding, p.title, p.custom_title, p.language, p.categories, p.provisional, MAX(e.published), p.added"
+        " p.funding, p.title, p.custom_title, p.language, p.categories, p.provisional, MAX(e.published), p.added,"
+        // (362) Started but not finished - part of the unplayed ones
+        " SUM(CASE WHEN e.played = 0 AND e.position > 0 THEN 1 ELSE 0 END)"
         " FROM podcasts p LEFT JOIN episodes e ON e.podcast_id = p.id";
 
 static PodcastRow podcastFromQuery(const QSqlQuery &q)
@@ -1193,6 +1196,7 @@ static PodcastRow podcastFromQuery(const QSqlQuery &q)
     row.provisional = q.value(25).toInt() != 0;
     row.newestPublished = q.value(26).toLongLong();
     row.added = q.value(27).toLongLong();
+    row.startedCount = q.value(28).toInt();
     return row;
 }
 
@@ -1253,6 +1257,26 @@ PodcastRow Database::podcast(qint64 id) const
         return podcastFromQuery(q);
     }
     return PodcastRow();
+}
+
+QList<Database::FailedPodcast> Database::failedPodcasts() const
+{
+    QList<FailedPodcast> result;
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    // As podcastIdsForUpdate: a paused or archived podcast (or one of a
+    // "manual update" folder) keeps an old error that no update clears
+    if (q.exec(QStringLiteral("SELECT id, COALESCE(NULLIF(custom_title, ''), NULLIF(title, ''), url), last_error"
+                              " FROM podcasts WHERE paused = 0 AND archived = 0 AND provisional = 0"
+                              " AND last_error IS NOT NULL AND last_error <> ''"
+                              " AND (folder_id IS NULL OR folder_id NOT IN"
+                              " (SELECT id FROM folders WHERE manual_update = 1))"
+                              " ORDER BY COALESCE(NULLIF(custom_title, ''), NULLIF(title, ''), url) COLLATE NOCASE"))) {
+        while (q.next()) {
+            result << FailedPodcast { q.value(0).toLongLong(), q.value(1).toString(), q.value(2).toString() };
+        }
+    }
+    return result;
 }
 
 QList<qint64> Database::podcastIdsForUpdate() const
@@ -1415,6 +1439,7 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
     // first letter (101: "öffentlich" finds "Öffentlich", "MÜNCHEN" "München")
     const QString needle = search.trimmed();
     QStringList variants;
+    QStringList compactVariants;
     // (274) The Downloads page filters by the podcast's title too
     const bool withPodcast = downloadedAny;
     if (!needle.isEmpty()) {
@@ -1422,12 +1447,25 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         variants << needle << lower << needle.toUpper()
                  << (lower.left(1).toUpper() + lower.mid(1));
         variants.removeDuplicates();
+        const QString compact = compactForSearch(needle);
+        if (compact.length() >= 2) {
+            const QString compactLower = compact.toLower();
+            compactVariants << compactLower << compact.toUpper()
+                            << (compactLower.left(1).toUpper() + compactLower.mid(1));
+            compactVariants.removeDuplicates();
+        }
         QStringList likes;
         for (int i = 0; i < variants.size(); ++i) {
             likes << QStringLiteral("e.title LIKE ? ESCAPE '\\'");
             if (withPodcast) {
                 likes << QStringLiteral("COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url) LIKE ? ESCAPE '\\'");
             }
+        }
+        // (348) The title without spaces, hyphens, dots and apostrophes
+        for (int i = 0; i < compactVariants.size(); ++i) {
+            likes << QStringLiteral("REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(e.title, ' ', ''), '-', ''), '.', ''), '''', ''),"
+                                    " char(8217), ''), char(8211), ''), char(160), '')"
+                                    " LIKE ? ESCAPE '\\'");
         }
         where << QStringLiteral("(") + likes.join(QStringLiteral(" OR ")) + QStringLiteral(")");
     }
@@ -1471,6 +1509,13 @@ QList<EpisodeRow> Database::episodes(qint64 podcastId, int limit, EpisodeFilter 
         if (withPodcast) {
             q.addBindValue(QLatin1Char('%') + pattern + QLatin1Char('%'));
         }
+    }
+    for (int i = 0; i < compactVariants.size(); ++i) {
+        QString pattern = compactVariants.at(i);
+        pattern.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+        pattern.replace(QLatin1Char('%'), QStringLiteral("\\%"));
+        pattern.replace(QLatin1Char('_'), QStringLiteral("\\_"));
+        q.addBindValue(QLatin1Char('%') + pattern + QLatin1Char('%'));
     }
     q.addBindValue(limit < 0 ? -1 : limit);
     if (!q.exec()) {
@@ -2390,6 +2435,171 @@ static QString podcastSortKey(const QString &title)
         ++i;
     }
     return i < title.size() ? title.mid(i) : title;
+}
+
+QString Database::compactForSearch(const QString &text)
+{
+    QString result;
+    result.reserve(text.size());
+    for (int i = 0; i < text.size(); ++i) {
+        const QChar ch = text.at(i);
+        if (ch.isSpace() || ch == QLatin1Char('-') || ch == QLatin1Char('.') || ch == QLatin1Char('\'')
+                || ch == QChar(0x2019) || ch == QChar(0x2013)) {
+            continue;
+        }
+        result += ch;
+    }
+    return result;
+}
+
+bool Database::containsLoosely(const QString &text, const QString &needle)
+{
+    if (text.contains(needle, Qt::CaseInsensitive)) {
+        return true;
+    }
+    const QString compact = compactForSearch(needle);
+    return compact.length() >= 2 && compactForSearch(text).contains(compact, Qt::CaseInsensitive);
+}
+
+QString Database::foldForSearch(const QString &text)
+{
+    // (review 353) Decomposed umlauts (u + U+0308) as the composed ones
+    const QString source = text.normalized(QString::NormalizationForm_C);
+    QString result;
+    result.reserve(source.size() + 4);
+    for (int i = 0; i < source.size(); ++i) {
+        const QChar ch = source.at(i);
+        if (ch.isSpace() || ch == QLatin1Char('-') || ch == QLatin1Char('.') || ch == QLatin1Char('\'')
+                || ch == QChar(0x2019) || ch == QChar(0x2013)) {
+            continue;
+        }
+        const QChar lower = ch.toLower();
+        switch (lower.unicode()) {
+        case 0x00E4: result += QStringLiteral("ae"); break;
+        case 0x00F6: result += QStringLiteral("oe"); break;
+        case 0x00FC: result += QStringLiteral("ue"); break;
+        case 0x00DF: result += QStringLiteral("ss"); break;
+        default: result += lower; break;
+        }
+    }
+    return result;
+}
+
+Database::SearchTerm Database::prepareSearch(const QString &needle)
+{
+    SearchTerm term;
+    term.raw = needle.trimmed();
+    term.folded = foldForSearch(term.raw);
+    static const QRegularExpression space(QStringLiteral("\\s+"));
+    const QStringList parts = term.raw.split(space, QString::SkipEmptyParts);
+    if (parts.size() >= 2) {
+        for (int i = 0; i < parts.size(); ++i) {
+            // (review 353) "ct 4": single characters would match nearly anything
+            const QString word = foldForSearch(parts.at(i));
+            if (word.length() >= 2) {
+                term.words << word;
+            }
+        }
+        if (term.words.size() < 2) {
+            term.words.clear();
+        }
+    }
+    return term;
+}
+
+bool Database::matchesSearch(const QStringList &fields, const QString &needle)
+{
+    return matchesSearch(fields, prepareSearch(needle));
+}
+
+bool Database::matchesSearch(const QStringList &fields, const SearchTerm &term, int titleField)
+{
+    if (term.folded.length() < 2) {
+        return false;
+    }
+    QStringList folded;
+    for (int i = 0; i < fields.size(); ++i) {
+        folded << foldForSearch(fields.at(i));
+        if ((titleField < 0 || i == titleField)
+                && (fields.at(i).contains(term.raw, Qt::CaseInsensitive) || folded.last().contains(term.folded))) {
+            return true;
+        }
+    }
+    if (term.words.isEmpty()) {
+        return false;
+    }
+    bool inTitle = titleField < 0;
+    for (int w = 0; w < term.words.size(); ++w) {
+        bool hit = false;
+        for (int i = 0; i < folded.size(); ++i) {
+            if (folded.at(i).contains(term.words.at(w))) {
+                hit = true;
+                if (i == titleField) {
+                    inTitle = true;
+                }
+            }
+        }
+        if (!hit) {
+            return false;
+        }
+    }
+    return inTitle;
+}
+
+QList<EpisodeRow> Database::searchEpisodes(const QString &needle, int limit) const
+{
+    QList<EpisodeRow> result;
+    const SearchTerm term = prepareSearch(needle);
+    if (term.folded.length() < 2) {
+        return result;
+    }
+    // Titles only (small): matched here, then the rows of the hits. The
+    // podcast name is folded once per podcast (review 353)
+    QSqlQuery q(handle());
+    q.setForwardOnly(true);
+    if (!q.exec(QStringLiteral("SELECT e.id, e.title, e.podcast_id, COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url)"
+                               " FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                               " WHERE p.provisional = 0 ORDER BY e.published DESC, e.id DESC"))) {
+        fail(QStringLiteral("searchEpisodes"), q.lastError().text());
+        return result;
+    }
+    QHash<qint64, QString> podcastFolded;
+    QList<qint64> ids;
+    while (q.next() && (limit < 0 || ids.size() < limit)) {
+        const QString title = q.value(1).toString();
+        const QString foldedTitle = foldForSearch(title);
+        // The whole term in the title: the quick case
+        if (title.contains(term.raw, Qt::CaseInsensitive) || foldedTitle.contains(term.folded)) {
+            ids << q.value(0).toLongLong();
+            continue;
+        }
+        if (term.words.isEmpty()) {
+            continue;
+        }
+        const qint64 podcastId = q.value(2).toLongLong();
+        if (!podcastFolded.contains(podcastId)) {
+            podcastFolded.insert(podcastId, foldForSearch(q.value(3).toString()));
+        }
+        const QString &foldedPodcast = podcastFolded[podcastId];
+        bool inTitle = false;
+        bool all = true;
+        for (int w = 0; w < term.words.size() && all; ++w) {
+            const bool t = foldedTitle.contains(term.words.at(w));
+            inTitle = inTitle || t;
+            all = t || foldedPodcast.contains(term.words.at(w));
+        }
+        if (all && inTitle) {
+            ids << q.value(0).toLongLong();
+        }
+    }
+    q.finish();
+    for (int i = 0; i < ids.size(); ++i) {
+        const EpisodeRow row = episode(ids.at(i));
+        if (row.id != 0) {
+            result << row;
+        }
+    }
+    return result;
 }
 
 int Database::comparePodcastTitles(const QString &a, const QString &b)

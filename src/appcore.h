@@ -15,6 +15,9 @@
 #include "podnews.h"
 #include "feedtypes.h"
 #include "htmlexport.h"
+#ifndef SAILCAST_STORE
+#include "updatechecker.h"
+#endif
 
 struct ForYouProfile;
 struct EpisodeRow;
@@ -54,6 +57,8 @@ class AppCore : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(bool updating READ updating NOTIFY updatingChanged)
+    // (372) "Keep a log" (About, Log page): off deletes the log
+    Q_PROPERTY(bool logEnabled READ logEnabled WRITE setLogEnabled NOTIFY logEnabledChanged)
     Q_PROPERTY(qreal updateProgress READ updateProgress NOTIFY updatingChanged)
     Q_PROPERTY(bool syncing READ syncing NOTIFY syncingChanged)
     // Number of bookmarks in all episodes (47)
@@ -72,6 +77,22 @@ class AppCore : public QObject
     Q_PROPERTY(int interestsRevision READ interestsRevision NOTIFY interestsChanged)
     Q_PROPERTY(QString databaseError READ databaseError CONSTANT)
     Q_PROPERTY(QString version READ version CONSTANT)
+    // (350) Update of the GitHub build: the Jolla Store build has none
+    // (appUpdateSupported false). State: idle, uptodate, available,
+    // downloading, ready. Error: kind "check", "download", "space",
+    // "install" or "" - set by a user action, cleared by the next one.
+    Q_PROPERTY(bool appUpdateSupported READ appUpdateSupported CONSTANT)
+    Q_PROPERTY(bool appUpdateEnabled READ appUpdateEnabled NOTIFY appUpdateChanged)
+    Q_PROPERTY(QString appUpdateState READ appUpdateState NOTIFY appUpdateChanged)
+    Q_PROPERTY(bool appUpdateChecking READ appUpdateChecking NOTIFY appUpdateChanged)
+    Q_PROPERTY(QString appUpdateVersion READ appUpdateVersion NOTIFY appUpdateChanged)
+    Q_PROPERTY(QString appUpdateNotes READ appUpdateNotes NOTIFY appUpdateChanged)
+    Q_PROPERTY(double appUpdateSize READ appUpdateSize NOTIFY appUpdateChanged)
+    Q_PROPERTY(double appUpdateReceived READ appUpdateReceived NOTIFY appUpdateProgressChanged)
+    Q_PROPERTY(QString appUpdateErrorKind READ appUpdateErrorKind NOTIFY appUpdateChanged)
+    Q_PROPERTY(double appUpdateChecked READ appUpdateChecked NOTIFY appUpdateChanged)
+    // The hint line on the Podcasts page: a new version that was not dismissed
+    Q_PROPERTY(bool appUpdateHint READ appUpdateHint NOTIFY appUpdateChanged)
 
 public:
     explicit AppCore(QObject *parent = nullptr);
@@ -95,12 +116,51 @@ public:
     int archivingPodcastId() const { return m_archivingId; }
     QString databaseError() const { return m_databaseError; }
     QString version() const;
+    // (351) The same, before an AppCore exists (the log header in main)
+    static QString versionText();
+
+    // --- App update (350) ---
+    bool appUpdateSupported() const;
+    bool appUpdateEnabled() const;
+    QString appUpdateState() const { return m_updState; }
+    bool appUpdateChecking() const { return m_updChecking; }
+    QString appUpdateVersion() const { return m_updVersion; }
+    QString appUpdateNotes() const { return m_updNotes; }
+    double appUpdateSize() const { return double(m_updSize); }
+    double appUpdateReceived() const { return double(m_updReceived); }
+    QString appUpdateErrorKind() const { return m_updErrorKind; }
+    double appUpdateChecked() const;
+    bool appUpdateHint() const;
+    // manual: user asked - ignores the once-a-day limit and reports failures
+    Q_INVOKABLE void checkAppUpdate(bool manual);
+    Q_INVOKABLE void setAppUpdateEnabled(bool enabled);
+    Q_INVOKABLE void downloadAppUpdate();
+    Q_INVOKABLE void cancelAppUpdate();
+    // Opens the package installer and quits Sailcast
+    Q_INVOKABLE void installAppUpdate();
+    // The hint line on the Podcasts page stays away until the next version
+    Q_INVOKABLE void dismissAppUpdate();
+    // (347) The installed CHANGELOG.md by version, newest first, up to the
+    // running version: {version, dateText, text, current} (also Store build)
+    Q_INVOKABLE QVariantList changelog() const;
+    // (354) Log page: the header with the player settings + the last lines
+    // of the log; and the (possibly edited) text into the Downloads folder
+    Q_INVOKABLE QString logText() const;
+    Q_INVOKABLE QString saveLogText(const QString &text) const;
+    // (371) "Replace names" on the log page: titles, folders and addresses of
+    // podcasts and episodes -> "Podcast #12" / "Episode #345"; returns
+    // {text, podcasts, episodes} (counts of what was replaced)
+    Q_INVOKABLE QVariantMap anonymizedLog(const QString &text) const;
+    bool logEnabled() const;
+    void setLogEnabled(bool on);
+    // (355) Podcasts of "Update" whose last update failed: [{podcastId, title, error}]
+    Q_INVOKABLE QVariantList failedPodcasts() const;
 
     // --- Feeds ---
     Q_INVOKABLE void updateAll();
     Q_INVOKABLE void updatePodcast(int podcastId);
     // folderId (45): put the new podcast into this folder (0 = none)
-    Q_INVOKABLE void subscribe(const QString &url, int folderId = 0);
+    Q_INVOKABLE void subscribe(const QString &url, int folderId = 0, bool hiddenFromNew = false);
     // (156) Subscribes a podcast listened to without subscribing (147)
     Q_INVOKABLE void subscribePodcast(int podcastId);
     // (158) Category names as shown: "Society & Culture/Documentary" ->
@@ -225,6 +285,10 @@ public:
     // Images: "imageUrl" (episode image, else the podcast cover),
     // "episodeImageUrl" (own image only) and "coverUrl" (podcast cover).
     Q_INVOKABLE QVariantMap episode(int episodeId) const;
+    // (348) What the episode menu needs, without the description: episodeId,
+    // podcastId, podcastTitle, played, inProgress, isNew, downloaded,
+    // downloading, queued, pinned, provisional (search results, EpisodeMenu)
+    Q_INVOKABLE QVariantMap episodeStatus(int episodeId) const;
     Q_INVOKABLE QVariantMap podcast(int podcastId) const;
     // (162) Statistics of a podcast for "Über diesen Podcast": listened
     // (seconds), started (episodes played or begun), downloads (count, bytes
@@ -330,6 +394,8 @@ public:
     // (323) All downloads of a podcast that can go at once: {count, bytes};
     // not the archive, not the episode in the player, not running ones
     Q_INVOKABLE QVariantMap deletableDownloads(int podcastId) const;
+    // (366) An episode of this podcast is loaded in the player (no unsubscribe)
+    Q_INVOKABLE bool podcastInPlayer(int podcastId) const;
     Q_INVOKABLE int deletePodcastDownloads(int podcastId);
     // Moves a downloaded episode into the archive folder in Music (120)
     Q_INVOKABLE void keepEpisode(int episodeId);
@@ -557,7 +623,12 @@ public:
     // Feeds with a login or a key in the address are left out. With chapters
     // the missing ones are loaded first (progress, cancel = write what is
     // there). options: descriptions, episodes, chapters, bookmarks, statistics
-    Q_INVOKABLE QVariantMap htmlExportPreview(const QVariantList &folderIds = QVariantList()) const;
+    // (348) excluded: podcast ids left out of the page (setting htmlExport.excluded)
+    Q_INVOKABLE QVariantMap htmlExportPreview(const QVariantList &folderIds = QVariantList(),
+                                              const QVariantList &excluded = QVariantList()) const;
+    // (348) The podcasts of the chosen folders that can go into the page
+    // (not private, not provisional): {podcastId, title, coverUrl}
+    Q_INVOKABLE QVariantList htmlExportPodcasts(const QVariantList &folderIds) const;
     Q_INVOKABLE void startHtmlExport(const QVariantList &folderIds, const QVariantMap &options);
     Q_INVOKABLE void cancelHtmlExport();
     Q_INVOKABLE QString exportDatabase();
@@ -591,6 +662,8 @@ public:
     Q_INVOKABLE bool restoreBackup(const QString &path);
 
 signals:
+    void failedPodcastsChanged();   // (355)
+    void logEnabledChanged();       // (372)
     void htmlExportProgress(int done, int total);
     // building the page after the chapters (slices, no cancel)
     void htmlExportBuilding(int done, int total);
@@ -599,6 +672,8 @@ signals:
     void updatingChanged();
     void syncingChanged();
     void settingsChanged();
+    void appUpdateChanged();
+    void appUpdateProgressChanged();
     void dataChanged();
     void episodeChanged(int episodeId);
     // (320) Marked as played / states from the sync: the player checks its episode
@@ -647,6 +722,7 @@ signals:
     void browserLoginFailed(const QString &error);
 
 private:
+    QString logHeader() const;     // (354)
     void emitMessage(const QString &text);
     void bookmarkArchiveChanged(qint64 episodeId);
     void openDatabase();
@@ -662,6 +738,10 @@ private:
     bool isKept(const EpisodeRow &e) const;
     void forgetPendingPlaylistDownload(int episodeId);
     QStringList oldArchiveRoots() const;
+    // (366, forum 19 Nov) After deleting downloads: the folders they were in
+    // go when they are empty now - never a root folder (downloads, archive,
+    // Videos) and nothing outside them; QDir::rmdir only removes empty ones
+    void removeEmptyFolders(const QSet<QString> &folders);
     void emitUpdateSummary();
     bool storageAllows(qint64 bytes, bool quiet);
     void saveResumable();
@@ -706,12 +786,30 @@ private:
     FeedUpdater *m_updater;
     SyncEngine *m_sync;
     DownloadManager *m_downloads;
+    // (350) App update (not in the Jolla Store build)
+    void setupAppUpdate();
+    QString m_updState = QStringLiteral("idle");
+    QString m_updVersion;
+    QString m_updNotes;
+    QString m_updErrorKind;
+    qint64 m_updSize = 0;
+    qint64 m_updReceived = 0;
+    bool m_updChecking = false;
+    bool m_updManual = false;
+#ifndef SAILCAST_STORE
+    void applyRelease(const QByteArray &json);
+    void setUpdateState(const QString &state);
+    QString updateDirectory() const;
+    UpdateChecker *m_updateChecker = nullptr;
+    UpdateInfo m_updInfo;
+    qint64 m_updEmitted = 0;
+#endif
     Archiver *m_archiver;
     ChaptersLoader *m_chapters;
     // (294) HTML export: plan (which podcasts), build one podcast, work in slices
     struct HtmlExportJob;
     void deleteHtmlJob();
-    void planHtmlExport(const QVariantList &folderIds, HtmlExportJob *job) const;
+    void planHtmlExport(const QVariantList &folderIds, const QVariantList &excluded, HtmlExportJob *job) const;
     HtmlExport::Podcast buildHtmlPodcast(const PodcastRow &podcast, const QVariantMap &options) const;
     void stepHtmlExport();
     void writeHtmlExport();
@@ -805,6 +903,7 @@ private:
     int m_updateNew = 0;
     int m_updateNewHidden = 0;      // (340) of those in podcasts hidden from New
     int m_updateFailed = 0;
+    QStringList m_updateFailedNames;   // (355) for the message
     // (147) Podcasts loaded for "Anhören ohne Abo": id -> guid of the
     // episode to play ("" = the podcast page)
     QHash<qint64, QString> m_previews;

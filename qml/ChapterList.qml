@@ -58,6 +58,9 @@ SilicaListView {
         height: list.rowHeight
         highlighted: down || current
         onClicked: list.player.seek(modelData.start / 1000)
+        // (348) Hold: bookmark this chapter (named after it); the panel
+        // that opens shows what happened
+        onPressAndHold: appWindow.addChapterBookmark(list.player.episodeId, modelData.start / 1000, modelData.title)
 
         Label {
             id: timeLabel

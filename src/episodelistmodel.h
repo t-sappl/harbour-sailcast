@@ -96,7 +96,8 @@ public:
         GroupCountRole,      // (306) episodes of this podcast in the view (header)
         GroupMoreRole,       // (306) last row of a shortened group: episodes not shown
         GroupExpandedRole,   // (306) last row of an unfolded group
-        GroupCollapsedRole   // (307) the group is folded: the row only carries its header
+        GroupCollapsedRole,  // (307) the group is folded: the row only carries its header
+        LeftFilterRole       // (345) New episodes: downloaded under "only not downloaded" (or the reverse) - kept until the page is left
     };
 
     explicit EpisodeListModel(QObject *parent = nullptr);

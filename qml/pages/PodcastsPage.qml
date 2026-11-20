@@ -43,6 +43,23 @@ Page {
              : qsTr("Alphabetical")
     }
     id: page
+    // (355) Podcasts whose last update failed (hint line)
+    property var failedList: core.failedPodcasts()
+    property bool failedDismissed: false
+    Connections {
+        target: core
+        onFailedPodcastsChanged: {
+            page.failedList = core.failedPodcasts()
+            page.failedDismissed = false
+        }
+        // A podcast updated by hand afterwards: away once it works (review
+        // 355: not during "Update" - the end of it reloads anyway)
+        onPodcastRefreshed: {
+            if (!core.updating) {
+                page.failedList = core.failedPodcasts()
+            }
+        }
+    }
     objectName: "podcastsPage"
     property bool ringMember: false
     property bool gridMode: core.setting("ui.podcastGrid", "1") === "1"
@@ -97,7 +114,16 @@ Page {
     function refreshOverview() {
         overview = appWindow.statsLineOn ? core.listeningOverview() : ({})
     }
-    onStatusChanged: if (status === PageStatus.Active) refreshOverview()
+    onStatusChanged: {
+        if (status === PageStatus.Active) {
+            refreshOverview()
+            // (362) A podcast marked ended or left out of "Update" on the
+            // list of failed ones is no longer counted (x stays as it was)
+            if (!core.updating) {
+                failedList = core.failedPodcasts()
+            }
+        }
+    }
     Connections {
         target: appWindow
         onStatsLineOnChanged: page.refreshOverview()
@@ -169,14 +195,115 @@ Page {
                 PageArrow { id: overviewArrow }
             }
 
+            // (350) A new Sailcast version: a line in the accent colour like the
+            // listening line (no banner). Tap: About page; x: away until the
+            // next version (About and Settings still show it).
+            Item {
+                id: updateLine
+                visible: core.appUpdateHint
+                width: parent.width
+                height: visible ? Theme.itemSizeExtraSmall : 0
+                BackgroundItem {
+                    id: updateOpen
+                    anchors { left: parent.left; right: updateClear.left; top: parent.top; bottom: parent.bottom }
+                    onClicked: pageStack.push(Qt.resolvedUrl("AboutPage.qml"))
+                    Label {
+                        anchors {
+                            left: parent.left
+                            leftMargin: Theme.horizontalPageMargin
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
+                        truncationMode: TruncationMode.Fade
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.highlightColor
+                        text: (core.appUpdateState === "ready" ? qsTr("Sailcast %1 is ready to install")
+                                                               : qsTr("Sailcast %1 is available")).arg(core.appUpdateVersion) + " ›"
+                    }
+                }
+                // (358, Thomas 18 Nov) The text character - system icons brought
+                // their own disc or box (icon-m-clear, icon-m-close); a plain
+                // MouseArea, no highlight box
+                MouseArea {
+                    id: updateClear
+                    anchors { right: parent.right; rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium; verticalCenter: parent.verticalCenter }
+                    width: Theme.itemSizeExtraSmall
+                    height: Theme.itemSizeExtraSmall
+                    Label {
+                        anchors.centerIn: parent
+                        text: "\u2715"
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: parent.pressed ? Theme.highlightColor : Theme.secondaryColor
+                    }
+                    onClicked: {
+                        if (updateClearBubble.takeHeld()) return
+                        core.dismissAppUpdate()
+                    }
+                    HoldNameBubble { id: updateClearBubble; attached: true; name: qsTr("Remind me at the next version") }
+                }
+            }
+
+            // (355, Thomas 18 Nov) Podcasts whose last update failed: a line
+            // like the update line. Tap: the podcast's page (one) or a list
+            // (several); x: away until the next update. No re-sorting.
+            Item {
+                id: failedLine
+                visible: page.failedList.length > 0 && !page.failedDismissed
+                width: parent.width
+                height: visible ? Theme.itemSizeExtraSmall : 0
+                BackgroundItem {
+                    anchors { left: parent.left; right: failedClear.left; top: parent.top; bottom: parent.bottom }
+                    // (362) Always the list, also for one: it says what to do
+                    onClicked: pageStack.push(Qt.resolvedUrl("FailedPodcastsPage.qml"), { podcasts: page.failedList })
+                    Label {
+                        anchors {
+                            left: parent.left
+                            leftMargin: Theme.horizontalPageMargin
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                        }
+                        truncationMode: TruncationMode.Fade
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.errorColor
+                        text: "\u26a0 " + qsTr("%n podcasts not updated", "", page.failedList.length) + " \u203a"
+                    }
+                }
+                // (358, Thomas 18 Nov) The text character - system icons brought
+                // their own disc or box (icon-m-clear, icon-m-close); a plain
+                // MouseArea, no highlight box
+                MouseArea {
+                    id: failedClear
+                    anchors { right: parent.right; rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium; verticalCenter: parent.verticalCenter }
+                    width: Theme.itemSizeExtraSmall
+                    height: Theme.itemSizeExtraSmall
+                    Label {
+                        anchors.centerIn: parent
+                        text: "\u2715"
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: parent.pressed ? Theme.highlightColor : Theme.secondaryColor
+                    }
+                    onClicked: {
+                        if (failedClearBubble.takeHeld()) return
+                        page.failedDismissed = true
+                    }
+                    HoldNameBubble { id: failedClearBubble; attached: true; name: qsTr("Hide until the next update") }
+                }
+            }
+
             // (246) Order of the podcasts in every folder, list and grid
             ListItem {
                 id: sortLine
-                visible: core.podcastCount > 1
+                // (345, review UI 19) Also with one podcast (grid/list and the
+                // folders); only the sorting needs two
+                visible: core.podcastCount > 0
+                readonly property bool sortable: core.podcastCount > 1
                 width: parent.width
                 contentHeight: Theme.itemSizeExtraSmall
                 readonly property string order: page.sortOrder
-                onClicked: openMenu()
+                onClicked: if (sortable) openMenu()
+                highlighted: sortable && (down || menuOpen)
+                // (345, review) No sort menu by press and hold either
+                showMenuOnPressAndHold: sortable
 
                 // (253) A pill like the video switch of the episode page
                 // (250: "worked perfectly") instead of plain text, so it
@@ -280,6 +407,7 @@ Page {
                 // (314) ▲▼ and the order, as on New episodes and Downloads
                 // (was "Sorted: …"); a short name, faded when there is no room
                 Row {
+                    visible: sortLine.sortable
                     anchors.right: parent.right
                     anchors.rightMargin: Theme.horizontalPageMargin
                     anchors.verticalCenter: parent.verticalCenter

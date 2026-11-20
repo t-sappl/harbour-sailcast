@@ -17,10 +17,15 @@ INCLUDEPATH += /usr/include/Sailfish
 
 # The core library (database, feeds, OPML, importers), shared with the
 # desktop test tool in cli/
+# (350) Jolla Store build: no app update (Harbour does not allow installing
+# packages); qmake CONFIG+=store, from the spec with "--with store"
+CONFIG(store): DEFINES += SAILCAST_STORE
+
 include(core/core.pri)
 
 SOURCES += src/harbour-sailcast.cpp \
     src/appcore.cpp \
+    src/applog.cpp \
     src/artcomposer.cpp \
     src/episodelistmodel.cpp \
     src/imagecache.cpp \
@@ -29,6 +34,7 @@ SOURCES += src/harbour-sailcast.cpp \
 
 HEADERS += \
     src/appcore.h \
+    src/applog.h \
     src/artcomposer.h \
     src/episodelistmodel.h \
     src/imagecache.h \
@@ -37,6 +43,11 @@ HEADERS += \
     src/podcastlistmodel.h \
     src/rowlistmodel.h \
     src/secretstore.h
+
+# (347) The changelog, shown by version on the About page
+changelog.files = CHANGELOG.md CHANGELOG.de.md
+changelog.path = /usr/share/$${TARGET}
+INSTALLS += changelog
 
 # Listed only so that Qt Creator shows them in the project tree.
 # Installation is handled by CONFIG += sailfishapp (the whole qml/ folder).
@@ -53,6 +64,7 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/Chip.qml \
     qml/EpisodeArt.qml \
     qml/EpisodeDelegate.qml \
+    qml/EpisodeMenu.qml \
     qml/ProgressRing.qml \
     qml/SortArrows.qml \
     qml/MessageBanner.qml \
@@ -116,6 +128,8 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/InterestsCategoriesPage.qml \
     qml/pages/KeywordDialog.qml \
     qml/pages/LocalSearchPage.qml \
+    qml/pages/LogPage.qml \
+    qml/pages/FailedPodcastsPage.qml \
     qml/pages/SettingsPage.qml \
     qml/pages/SettingsGeneralPage.qml \
     qml/pages/SettingsSyncPage.qml \
@@ -132,11 +146,13 @@ OTHER_FILES += rpm/harbour-sailcast.spec \
     qml/pages/StatsHiddenPage.qml \
     qml/pages/DownloadFilterPage.qml \
     qml/pages/NewHiddenPage.qml \
+    qml/pages/HtmlExportPodcastsPage.qml \
     qml/pages/FolderPodcastsPage.qml \
     qml/pages/PodcastChoiceDialog.qml \
     qml/pages/ShareChoicePage.qml \
     qml/pages/MoveDownloadsDialog.qml \
     qml/pages/FolderDeleteDialog.qml \
+    qml/pages/UnsubscribeDialog.qml \
     qml/pages/GpodderDeviceDialog.qml \
     qml/pages/BookmarksPage.qml \
     qml/pages/StatisticsPage.qml \

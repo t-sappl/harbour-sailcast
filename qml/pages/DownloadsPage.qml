@@ -80,6 +80,15 @@ Page {
         selectedCount = ids.length
         selectedBytes = downloaded.bytesOf(ids)
     }
+    // (345, review UI 13) A marked episode that becomes the one playing (the
+    // playlist moved on) leaves the selection - it cannot be deleted
+    Connections {
+        target: appWindow.player
+        onEpisodeIdChanged: {
+            if (page.anchorId === appWindow.player.episodeId) page.anchorId = -1
+            if (page.selectMode && page.selected[appWindow.player.episodeId] === true) page.applySelection(page.copySelection())
+        }
+    }
     function selectedIds() {
         var ids = []
         for (var k in selected) {
@@ -107,9 +116,14 @@ Page {
     function toggleSelect(id) {
         if (id === appWindow.player.episodeId) return
         var map = copySelection()
-        if (map[id] === true) delete map[id]
-        else map[id] = true
-        anchorId = id
+        if (map[id] === true) {
+            delete map[id]
+            // (345, review UI 13) The anchor of a range only on a marked row
+            if (anchorId === id) anchorId = -1
+        } else {
+            map[id] = true
+            anchorId = id
+        }
         applySelection(map)
         hintRange()
     }
@@ -278,7 +292,7 @@ Page {
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeExtraSmall
             color: Theme.secondaryHighlightColor
-            text: qsTr("Ended podcasts, files saved with \"Save in Music\" and copied archives – also their files that are still on the phone. \"Delete played downloads\" leaves them alone.")
+            text: qsTr("Ended podcasts, files saved with \"Save in Music\" and copied archives – also their files that are still on the phone. \"Delete played\" leaves them alone.")
         }
         // (287) Way to the settings of the archive (the other download
         // settings stay in the pulley, as on the other pages)

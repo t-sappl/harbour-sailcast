@@ -27,6 +27,22 @@ Nextcloud with the app **GPodder Sync** or a gpodder.net compatible server.
 <img src="screenshots/landscape.png" width="58%" alt="Landscape with the player column">
 </p>
 
+## Install and update
+
+Packages for every release are on the
+[GitHub release page](https://github.com/t-sappl/harbour-sailcast/releases):
+
+1. Once: Settings → Untrusted software → allow.
+2. Download the RPM for your device and tap it in Downloads (or the
+   notification): `aarch64` for 64-bit devices (Jolla Phone (2026), Jolla C2),
+   `armv7hl` for 32-bit installations (older Xperias), `i486` for the Jolla
+   Tablet.
+3. Updating keeps your podcasts, settings and listening state.
+
+From 1.5 on, Sailcast tells you about a new version itself (About page and a
+line on the Podcasts page – once a day at GitHub, can be switched off) and
+installs it with one tap. The Jolla Store version updates through the store.
+
 ## Features
 
 - **Discover** (1.2): "For you" – suggestions from what you really listen to
@@ -169,6 +185,14 @@ make -j$(nproc)
 
 Design decisions: [`DESIGN.md`](DESIGN.md); changes:
 [`CHANGELOG.md`](CHANGELOG.md).
+
+## Feedback and problems
+
+- **Sailfish OS forum:** [the Sailcast thread](https://forum.sailfishos.org/t/sailcast-podcast-client-with-podcast-index-integration/35669)
+- **GitHub:** [issues](https://github.com/t-sappl/harbour-sailcast/issues)
+- **E-mail:** sailcast@proton.me
+
+When something goes wrong (from 1.5): Settings → About → **Show log**. The page shows the short log of what the player and the updates did, only for finding errors – it stays on the phone, nothing is sent unless you share it. You can read and edit it before you share or save it. Passwords and tokens in web addresses and e-mail addresses are masked as far as they can be recognised.
 
 ## Privacy
 

@@ -10,6 +10,7 @@
 #include <QtQml>
 
 #include "appcore.h"
+#include "applog.h"
 #include "artcomposer.h"
 #include "episodelistmodel.h"
 #include "imagecache.h"
@@ -20,6 +21,14 @@
 int main(int argc, char *argv[])
 {
     QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
+    // (351) Warnings also into the app's own log file ("Show log", About).
+    // (356) SAILCAST_NO_LOG=1 starts without it - to test whether the crash
+    // when switching to the app overview (Lipstick, 18 Nov) comes from it
+    if (qgetenv("SAILCAST_NO_LOG") != "1") {
+        AppLog::install(AppCore::versionText());
+    } else {
+        qWarning("Sailcast: app log off (SAILCAST_NO_LOG=1)");
+    }
 
     // Harbour requires private QML imports to start with the app name
     qmlRegisterType<PodcastListModel>("harbour.sailcast", 1, 0, "PodcastListModel");

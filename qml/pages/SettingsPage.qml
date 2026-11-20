@@ -2,6 +2,7 @@
 import QtQuick 2.6
 import Sailfish.Silica 1.0
 import "../"
+import "../TimeFormat.js" as TimeFormat
 
 // Settings (88, as in Sailfeed): a short main page with one entry per
 // subject and a summary of its current values; the settings themselves are
@@ -23,12 +24,38 @@ Page {
         onSyncingChanged: page.settingsVersion++
     }
 
+    // (346) Icons of the entries - one place to change a name. (350, Thomas
+    // 17 Nov: decided on the device - the icons stay; test switch removed)
+    readonly property var icons: ({
+        "general": "icon-m-home",
+        "sync": "icon-m-sync",
+        "playback": "icon-m-media-playlists",
+        "downloads": "icon-m-cloud-download",
+        "importExport": "icon-m-transfer",
+        "backup": "icon-m-history",
+        "about": "icon-m-about"
+    })
+    readonly property bool iconsOn: true
+
+    // (350) "Sailcast 1.6 available" under About while there is a new version
+    readonly property bool updateFound: core.appUpdateEnabled
+                                        && (core.appUpdateState === "available" || core.appUpdateState === "ready"
+                                            || core.appUpdateState === "downloading")
+
     function join(parts) {
         return parts.filter(function(p) { return p !== "" }).join(" · ")
     }
 
+    // (350) Short, so the line fits next to the icon: "today 19:19",
+    // "yesterday 08:12", "Monday 21:05", older ones only the date
     function dateText(ms) {
-        return ms > 0 ? Qt.formatDateTime(new Date(ms), Qt.DefaultLocaleShortDate) : qsTr("never")
+        if (!(ms > 0)) {
+            return qsTr("never")
+        }
+        var now = new Date()
+        var startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime()
+        var day = TimeFormat.day(ms, qsTr("today"), qsTr("yesterday"))
+        return ms >= startOfWeek ? day + " " + Qt.formatTime(new Date(ms), Qt.DefaultLocaleShortDate) : day
     }
 
     function startPageName(name) {
@@ -79,6 +106,8 @@ Page {
             // (327, Thomas) Order as when setting up the app: pages, account,
             // playback, downloads, bringing data in, backup; About as a row
             SettingsEntry {
+                icon: page.icons.general
+                showIcon: page.iconsOn
                 title: qsTr("Pages and navigation")
                 summary: page.settingsVersion >= 0
                          && page.join([qsTr("Start: %1").arg(page.startPageName(core.setting("ui.startPage", "home"))),
@@ -87,6 +116,8 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.sync
+                showIcon: page.iconsOn
                 title: qsTr("Synchronization")
                 // (254, usability audit #4) Before an account is set up,
                 // "no account" alone didn't say what this is for
@@ -100,6 +131,8 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.playback
+                showIcon: page.iconsOn
                 title: qsTr("Playback and playlist")
                 summary: page.settingsVersion >= 0
                          && page.join([page.speedText(appWindow.player.globalRate),
@@ -109,6 +142,8 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.downloads
+                showIcon: page.iconsOn
                 title: qsTr("Downloads and storage")
                 summary: page.settingsVersion >= 0
                          && page.join([core.setting("downloads.wifiOnly", "0") === "1" ? qsTr("Wi-Fi only") : "",
@@ -118,6 +153,8 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.importExport
+                showIcon: page.iconsOn
                 title: qsTr("Import and export")
                 // (312) Its own line for "Share your podcasts"
                 summary: qsTr("OPML · gpodder-sailfish · archive folders · share")
@@ -125,6 +162,8 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.backup
+                showIcon: page.iconsOn
                 title: qsTr("Backup and restore")
                 summary: {
                     var dummy = page.settingsVersion
@@ -136,8 +175,12 @@ Page {
             }
 
             SettingsEntry {
+                icon: page.icons.about
+                showIcon: page.iconsOn
                 title: qsTr("About Sailcast")
-                summary: "Sailcast " + core.version
+                summary: page.updateFound ? qsTr("Sailcast %1 available").arg(core.appUpdateVersion)
+                                          : "Sailcast " + core.version
+                summaryHighlighted: page.updateFound
                 target: Qt.resolvedUrl("AboutPage.qml")
             }
         }

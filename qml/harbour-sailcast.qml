@@ -217,6 +217,14 @@ ApplicationWindow {
         fileShare.trigger()
     }
 
+    // (352) The app's log (About → Share log)
+    function shareLogFile(path) {
+        fileShare.title = qsTr("Share log")
+        fileShare.mimeType = "text/plain"
+        fileShare.resources = [path]
+        fileShare.trigger()
+    }
+
     // --- Sailcast as a share target (84) ---
     // .desktop: one share method "podcast" for links (text/x-url, from the
     // browser) and text (text/plain), ExecDBus so a share also starts the app; the
@@ -350,7 +358,89 @@ ApplicationWindow {
     }
 
     function remorseUnsubscribe(podcastId, title) {
-        windowRemorse.execute(qsTr("Unsubscribing %1").arg(title), function() { appWindow.unsubscribe(podcastId) })
+        askUnsubscribe(podcastId, title)
+    }
+
+    // (366, forum 19 Nov) Every single unsubscribe (podcast menu, podcast
+    // settings): with downloads that would be deleted a page says so and
+    // offers to move them to the archive first; without, the countdown as
+    // before. Afterwards the podcast's own pages (podcast page, its
+    // settings) are popped, then it is unsubscribed.
+    function askUnsubscribe(podcastId, title) {
+        if (core.podcastInPlayer(podcastId)) {
+            showMessage(qsTr("Cannot unsubscribe while an episode of this podcast is loaded in the player"))
+            return
+        }
+        var d = core.deletableDownloads(podcastId)
+        if ((d.count || 0) === 0) {
+            windowRemorse.execute(qsTr("Unsubscribing %1").arg(title), function() {
+                appWindow._startUnsubscribe(podcastId, false)
+            })
+            return
+        }
+        var page = pageStack.push(Qt.resolvedUrl("pages/UnsubscribeDialog.qml"),
+                                  { podcastTitle: title, count: d.count, bytes: d.bytes,
+                                    inPlace: d.inPlace || 0, keepFolder: d.folder || "" })
+        page.chosen.connect(function(choice) {
+            appWindow._startUnsubscribe(podcastId, choice === "keep")
+        })
+    }
+
+    // Plain values, no function in a property (Qt 5.6, see unsubscribe())
+    property int _unsubscribeId: 0
+    property bool _unsubscribeKeep: false
+    function _startUnsubscribe(podcastId, keep) {
+        _unsubscribeId = podcastId
+        _unsubscribeKeep = keep
+        unsubscribeTimer.restart()
+    }
+    Timer {
+        id: unsubscribeTimer
+        interval: 100
+        repeat: true
+        onTriggered: {
+            if (pageStack.busy) {
+                return      // the dialog is still going away
+            }
+            stop()
+            var id = appWindow._unsubscribeId
+            appWindow._unsubscribeId = 0
+            if (id <= 0) {
+                return
+            }
+            // (366, review) An episode of it started during the countdown:
+            // the core would refuse - leave the pages where they are
+            if (core.podcastInPlayer(id)) {
+                showMessage(qsTr("Cannot unsubscribe while an episode of this podcast is loaded in the player"))
+                return
+            }
+            if (appWindow._unsubscribeKeep) {
+                core.keepPodcastDownloads(id)
+                // Not all could be moved (message from the core): nothing is deleted
+                if ((core.deletableDownloads(id).count || 0) > 0) {
+                    return
+                }
+            }
+            // The podcast's pages go first (lowest of them and above)
+            var lowest = null
+            var p = pageStack.find(function(pg) {
+                return (pg.objectName === "episodesPage" || pg.objectName === "podcastSettingsPage")
+                       && pg.podcastId === id
+            })
+            while (p) {
+                lowest = p
+                var below = pageStack.previousPage(p)
+                p = below && (below.objectName === "episodesPage" || below.objectName === "podcastSettingsPage")
+                    && below.podcastId === id ? below : null
+            }
+            if (lowest) {
+                var target = pageStack.previousPage(lowest)
+                if (target) {
+                    pageStack.pop(target, PageStackAction.Immediate)
+                }
+            }
+            appWindow.unsubscribe(id)
+        }
     }
 
     // Covers of all podcasts into the image cache once the start-up update
@@ -439,6 +529,18 @@ ApplicationWindow {
         }
     }
 
+    // (348) "Bookmark chapter": a bookmark at the chapter's start, named
+    // after the chapter (stored right away), then the panel for a note
+    function addChapterBookmark(episodeId, seconds, title) {
+        var id = core.addBookmark(episodeId, Math.round(seconds))
+        if (id > 0) {
+            if ((title || "").length > 0) {
+                core.editBookmark(id, title, "")
+            }
+            windowBookmarkPanel.show(id, Math.round(seconds), title || "")
+        }
+    }
+
     // (297) Statistics page: countdowns here, as the page itself may be left
     function remorseResetStatistics() {
         windowRemorse.execute(qsTr("Resetting statistics"), function() { core.resetListeningStatistics() })
@@ -497,7 +599,7 @@ ApplicationWindow {
 
     function askDeleteFolder(folderId, name, podcastCount) {
         var dialog = pageStack.push(Qt.resolvedUrl("pages/FolderDeleteDialog.qml"),
-                                    { folderName: name, podcastCount: podcastCount })
+                                    { folderName: name, podcastCount: podcastCount, folderId: folderId })
         dialog.accepted.connect(function() { appWindow.remorseDeleteFolder(folderId, name, dialog.withPodcasts) })
     }
 
@@ -959,13 +1061,13 @@ ApplicationWindow {
         target: Qt.application
         onStateChanged: {
             if (Qt.application.state !== Qt.ApplicationActive) {
-                playerController.save()
+                playerController.save("app in the background")
             }
         }
     }
 
     Component.onDestruction: {
-        playerController.save()
+        playerController.save("app closed")
         playerController.countAsPlayedIfNearEnd()
     }
 

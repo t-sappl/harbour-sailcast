@@ -256,12 +256,18 @@ Page {
                               .arg(page.filterShown).arg(page.filterAll)
                     }
                 }
-                IconButton {
+                // (359, Thomas 18 Nov) The same plain "✕" as the hint lines (358)
+                MouseArea {
                     id: filterClear
                     anchors { right: parent.right; rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium; verticalCenter: parent.verticalCenter }
                     width: Theme.itemSizeExtraSmall
                     height: Theme.itemSizeExtraSmall
-                    icon.source: "image://theme/icon-m-clear"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "\u2715"
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: parent.pressed ? Theme.highlightColor : Theme.secondaryColor
+                    }
                     onClicked: {
                         if (clearBubble.takeHeld()) return
                         core.setSetting("home.downloadFilter", "")

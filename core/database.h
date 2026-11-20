@@ -36,7 +36,8 @@ struct PodcastRow
     qint64 lastUpdate = 0;  // seconds since the epoch, 0 = never
     QString lastError;      // empty if the last update worked
     int episodeCount = 0;
-    int unplayedCount = 0;
+    int unplayedCount = 0;      // not finished (started ones included)
+    int startedCount = 0;       // (362) of those: started (position > 0)
     int newCount = 0;
     bool archived = false;      // no more feed updates, downloads are kept
     bool manualUpdate = false;  // left out of "update all" (column "paused", 44)
@@ -335,6 +336,34 @@ public:
     // (306) Podcast order everywhere: leading quotes and other marks do not
     // count ("\"Literatur wird Oper\"" under L), umlauts and numbers right
     static int comparePodcastTitles(const QString &a, const QString &b);
+    // (348) Search without spaces, hyphens, dots and apostrophes:
+    // "Sud Stream" finds "Sudstream" and back (forum 17 Nov)
+    static QString compactForSearch(const QString &text);
+    static bool containsLoosely(const QString &text, const QString &needle);
+    // (353) Even looser (Thomas 18 Nov): lower case, umlauts as ae/oe/ue/ss,
+    // without spaces, hyphens, dots and apostrophes
+    static QString foldForSearch(const QString &text);
+    // (353) The term loosely in one field, or every word of it in one of
+    // the fields ("ct4004 iphone": podcast name + episode title)
+    static bool matchesSearch(const QStringList &fields, const QString &needle);
+    // (review 353) Prepared once per search, not per row
+    struct SearchTerm {
+        QString raw;            // trimmed
+        QString folded;         // foldForSearch(raw)
+        QStringList words;      // folded words of 2+ characters
+    };
+    static SearchTerm prepareSearch(const QString &needle);
+    // titleField >= 0: the whole term counts only in that field, and in the
+    // word mode at least one word must be in it (an episode is not found by
+    // its podcast's name alone - the podcast has its own section)
+    static bool matchesSearch(const QStringList &fields, const SearchTerm &term, int titleField = -1);
+    // (353) Episodes of subscribed podcasts by matchesSearch over title and
+    // podcast name, newest first
+    QList<EpisodeRow> searchEpisodes(const QString &needle, int limit) const;
+    // (355, review) Podcasts of "Update" whose last update failed: a small
+    // query (podcasts() sums over all episodes). Each entry: id, name, error
+    struct FailedPodcast { qint64 id; QString name; QString error; };
+    QList<FailedPodcast> failedPodcasts() const;
     // (302) Sets the flag again (undo of "to the playlist"), and clears it for
     // a whole podcast (shown again after it was hidden on the page)
     bool setNew(qint64 episodeId);

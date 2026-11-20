@@ -26,6 +26,12 @@ ListItem {
     // (302) New episodes: the row was set aside / left the view and is kept
     // until the view changes - dimmed, with "Undo"
     property bool setAside: false
+    // (345, Thomas + Gemini 17 Nov) New episodes with the download filter: the
+    // row was downloaded (or its download deleted) while the page is open and
+    // stays until it is left - the left part dimmed, "· downloaded" instead
+    // of the cloud; the buttons stay bright (318)
+    // (345, review) not while it is being downloaded again
+    readonly property bool leftFilter: model.leftFilter === true && model.downloading !== true
     // (304) "Set aside" only in the view "New" (in "All unplayed" it had
     // no visible effect - Gemini 13 Nov)
     property bool newView: false
@@ -101,157 +107,16 @@ ListItem {
     menu: (menuEnabled && !selectMode) ? contextMenu : null
 
     property Component contextMenu: Component {
-        // (259, Thomas 6 Nov: "same items same order, group by use") Order:
-        // playlist, file, status, other. No "Play" (the row has the play
-        // button), no "Save in Music/Videos" (episode page menu)
-        ContextMenu {
-            // (304, Thomas 13 Nov: first item) (253, usability audit #35) Out of "New episodes" without
-            // pretending it was heard: only the "new" flag goes
-            MenuItem {
-                visible: item.newEpisodesList && item.newView && model.isNew === true && !model.played
-                text: qsTr("Set aside")
-                onClicked: core.removeFromNew(model.episodeId)
-            }
-            // Playlist
-            MenuItem {
-                visible: !item.inPlaylist && !model.queued
-                text: qsTr("Play next")
-                onClicked: core.queueAddPlaced(model.episodeId, true)
-            }
-            MenuItem {
-                visible: !item.inPlaylist && !model.queued
-                text: qsTr("Add to end of playlist")
-                onClicked: core.queueAddPlaced(model.episodeId, false)
-            }
-            // (334, forum 16 Nov) ➕ with the other download choice: steer
-            // "playlist" and "download" apart without the setting. Where ➕
-            // puts it (end or next), only for episodes not downloaded
-            MenuItem {
-                visible: !item.inPlaylist && !model.queued && model.downloaded !== true && model.downloading !== true
-                text: core.setting("playlist.download", "1") === "1" ? qsTr("Add to playlist without downloading")
-                                                                     : qsTr("Add to playlist and download")
-                onClicked: core.queueAddDefaultOtherDownload(model.episodeId)
-            }
-            MenuItem {
-                visible: model.queued
-                text: qsTr("Remove from playlist")
-                onClicked: core.queueRemove(model.episodeId)
-            }
-            // (277) Lets go of the pin of this episode alone
-            MenuItem {
-                visible: model.queued && model.pinned === true
-                text: qsTr("Release pin")
-                onClicked: core.queueUnpin(model.episodeId)
-            }
-            // (314) Status before the file (Gemini 14 Nov: with ➕ loading by
-            // itself "Download" is rare, marking as played is the clean-up);
-            // on the Downloads page (selectable) the file comes first, the
-            // status follows below.
-            // Status; started episodes offer both: finish them or start
-            // over (22)
-            MenuItem {
-                visible: !item.selectable && !model.played
-                text: qsTr("Mark as played")
-                onClicked: {
-                    if (item.isCurrent) {
-                        appWindow.player.pause()
-                    }
-                    core.markPlayed(model.episodeId)
-                }
-            }
-            MenuItem {
-                visible: !item.selectable && (model.played || model.inProgress)
-                text: qsTr("Mark as unplayed")
-                onClicked: {
-                    if (item.isCurrent) {
-                        appWindow.player.pause()
-                        appWindow.player.seek(0)
-                    }
-                    core.markUnplayed(model.episodeId)
-                }
-            }
-            // Catching up in the middle of a podcast (53); countdown in the
-            // app window (not in this menu)
-            // (320) Only where the list runs by publication date (podcast
-            // page, New episodes): "older" means the feed's date, and it
-            // reaches episodes the page may not show
-            MenuItem {
-                visible: item.showMarkOlder
-                text: qsTr("Mark older ones as played")
-                onClicked: appWindow.remorseMarkOlderPlayed(model.episodeId)
-            }
-            // File
-            MenuItem {
-                visible: !model.downloaded && !model.downloading
-                text: qsTr("Download")
-                onClicked: appWindow.requestDownload(model.episodeId)
-            }
-            MenuItem {
-                visible: model.downloading
-                text: qsTr("Cancel download")
-                onClicked: core.cancelDownload(model.episodeId)
-            }
-            MenuItem {
-                visible: model.downloaded
-                text: qsTr("Delete download")
-                // The countdown and its action live in the app window: a
-                // function created in this menu loses its context when the
-                // menu is destroyed - the countdown ran, the row went blank,
-                // but nothing was deleted (25)
-                onClicked: appWindow.remorseDeleteDownload(model.episodeId)
-            }
-            // (313) Starts the selection mode with this row marked; (314)
-            // named after what it is for. "… of this podcast": all its
-            // downloads marked, to look over before "Delete"
-            MenuItem {
-                visible: item.selectable && model.downloaded
-                text: qsTr("Delete several …")
-                onClicked: item.selectStart()
-            }
-            MenuItem {
-                visible: item.selectable && model.downloaded
-                text: qsTr("Delete all of this podcast …")
-                onClicked: item.selectPodcast()
-            }
-            // (314) Status on the Downloads page: after the file
-            MenuItem {
-                visible: item.selectable && !model.played
-                text: qsTr("Mark as played")
-                onClicked: {
-                    if (item.isCurrent) {
-                        appWindow.player.pause()
-                    }
-                    core.markPlayed(model.episodeId)
-                }
-            }
-            MenuItem {
-                visible: item.selectable && (model.played || model.inProgress)
-                text: qsTr("Mark as unplayed")
-                onClicked: {
-                    if (item.isCurrent) {
-                        appWindow.player.pause()
-                        appWindow.player.seek(0)
-                    }
-                    core.markUnplayed(model.episodeId)
-                }
-            }
-            // Other. (156) Its podcast is not subscribed (147)
-            MenuItem {
-                visible: model.provisional === true
-                text: qsTr("Subscribe to the podcast")
-                onClicked: appWindow.subscribeWithFolder(core.podcast(model.podcastId).url || "", model.podcastTitle || "")
-            }
-            // (256) Where the podcast name is shown - not on its own page
-            MenuItem {
-                visible: item.showPodcastTitle
-                text: qsTr("Show podcast")
-                onClicked: pageStack.push(Qt.resolvedUrl("pages/EpisodesPage.qml"), { podcastId: model.podcastId })
-            }
-            // (83, 259) Link, file or download: the share page
-            MenuItem {
-                text: qsTr("Share...")
-                onClicked: pageStack.push(Qt.resolvedUrl("pages/ShareChoicePage.qml"), { episodeId: model.episodeId })
-            }
+        // (348) The items live in EpisodeMenu.qml (same menu in the search)
+        EpisodeMenu {
+            ep: model
+            setAsideOffered: item.newEpisodesList && item.newView
+            inPlaylist: item.inPlaylist
+            selectable: item.selectable
+            showMarkOlder: item.showMarkOlder
+            showPodcastTitle: item.showPodcastTitle
+            onSelectStart: item.selectStart()
+            onSelectPodcast: item.selectPodcast()
         }
     }
 
@@ -365,7 +230,7 @@ ListItem {
             source: item.showArt ? model.imageUrl : ""
             fallbackText: model.podcastTitle
             // (293) Played much weaker than before (0.6), so unplayed stands out
-            opacity: (model.played && !item.isCurrent) || item.setAside ? 0.35 : 1.0
+            opacity: (model.played && !item.isCurrent) || item.setAside || item.leftFilter ? 0.35 : 1.0
 
             // (251) Video episode (or one with a video version): camera
             // bottom left on a dark spot as on the Podcasts page - behind
@@ -428,7 +293,7 @@ ListItem {
                 font.pixelSize: Theme.fontSizeSmall
                 font.bold: model.isNew && !model.played && !item.setAside
                 // (293) Played: weak and not bold; unplayed: full colour
-                opacity: (model.played && !item.isCurrent && !item.highlighted) || item.setAside ? 0.6 : 1.0
+                opacity: (model.played && !item.isCurrent && !item.highlighted) || item.setAside || item.leftFilter ? 0.6 : 1.0
                 color: item.highlighted || item.isCurrent ? Theme.highlightColor
                                                           : (model.played ? Theme.secondaryColor : Theme.primaryColor)
             }
@@ -439,10 +304,12 @@ ListItem {
                 visible: item.showPodcastTitle
                 width: parent.width
                 height: podcastLabel.height
+                opacity: item.leftFilter ? 0.6 : 1.0
 
                 Label {
                     id: podcastLabel
                     width: parent.width - (sizeLabelTop.visible ? sizeLabelTop.width + Theme.paddingMedium : 0)
+                                        - (cloudTop.visible ? cloudTop.width + Theme.paddingSmall : 0)
                     // (156) Listened to without subscribing: say so
                     text: model.provisional ? model.podcastTitle + " · " + qsTr("not subscribed") : model.podcastTitle
                     // (288) Dots instead of a hard cut at the buttons
@@ -453,6 +320,18 @@ ListItem {
 
                 // (323, blind test) Large font: date and time were cut off next
                 // to the file size - then the size sits at the end of this line
+                // (345, Gemini 17 Nov) The cloud goes with the size (it stayed
+                // in the status line, apart from it)
+                Image {
+                    id: cloudTop
+                    visible: statusItem.sizeMoved && statusItem.downloadIconWanted
+                    anchors { right: sizeLabelTop.left; rightMargin: Theme.paddingSmall; verticalCenter: sizeLabelTop.verticalCenter }
+                    source: "image://theme/icon-s-cloud-download?" + Theme.secondaryHighlightColor
+                    width: Theme.iconSizeExtraSmall
+                    height: width
+                    sourceSize.width: width
+                    sourceSize.height: height
+                }
                 Label {
                     id: sizeLabelTop
                     visible: statusItem.sizeMoved
@@ -468,6 +347,13 @@ ListItem {
                 id: statusItem
                 width: parent.width
                 height: statusLabel.height
+                opacity: item.leftFilter ? 0.6 : 1.0
+                // (345) The cloud: "downloaded" (not on Downloads); a row that
+                // left the download filter says it in words instead
+                readonly property bool downloadIconWanted: item.showDownloadIcon && model.downloaded === true && !item.leftFilter
+                // (345, review) The symbols beside a two-line status sit on its
+                // last line, not between the lines
+                readonly property real lastLineCenter: statusLabel.height - statusLabel.height / Math.max(1, statusLabel.lineCount) / 2
 
                 // (323) From the natural widths (not the shown ones: no loop)
                 readonly property bool sizeMoved: item.showPodcastTitle && item.fileSizeText !== ""
@@ -475,13 +361,15 @@ ListItem {
                        + (rowVideo.visible ? rowVideo.width + Theme.paddingSmall : 0)
                        + (rowBookmark.visible ? rowBookmark.width + Theme.paddingSmall : 0)
                        + (playedIcon.visible ? playedIcon.width + Theme.paddingSmall : 0)
-                       + (downloadIcon.visible ? downloadIcon.width + Theme.paddingSmall : 0)
+                       + (downloadIconWanted ? Theme.iconSizeExtraSmall + Theme.paddingSmall : 0)
                        + sizeLabel.implicitWidth + Theme.paddingMedium > width
 
                 Label {
                     id: sizeLabel
                     visible: item.fileSizeText !== "" && !statusItem.sizeMoved
                     anchors.right: parent.right
+                    // (345, review) On the last line of a two-line status
+                    anchors.bottom: parent.bottom
                     text: item.fileSizeText
                     font.pixelSize: Theme.fontSizeExtraSmall
                     color: item.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
@@ -498,6 +386,10 @@ ListItem {
                             var parts = [TimeFormat.day(model.published, qsTr("today"), qsTr("yesterday"))]
                             if (item.setAside) {
                                 parts.push(qsTr("set aside"))
+                            }
+                            // (345) Left the download filter while the page is open
+                            if (item.leftFilter) {
+                                parts.push(model.downloaded === true ? qsTr("downloaded") : qsTr("download deleted"))
                             }
                             // Season / episode number from the feed (83)
                             // (304) Not when the title starts with the number already
@@ -524,7 +416,11 @@ ListItem {
                         // button shows the progress)
                         color: item.highlighted ? Theme.secondaryHighlightColor
                                : (item.showProgress && !model.played && item.remaining > 0 ? Theme.highlightColor : Theme.secondaryColor)
-                        truncationMode: TruncationMode.Fade
+                        // (345, blind test 9 Nov: "1 h 48 min le") Two lines
+                        // when there is no room, instead of fading out the end
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
                         width: Math.min(implicitWidth, parent.width
                                         - (rowVideo.visible ? rowVideo.width + parent.spacing : 0)
                                         - (rowBookmark.visible ? rowBookmark.width + parent.spacing : 0)
@@ -542,14 +438,14 @@ ListItem {
                     VideoIcon {
                         id: rowVideo
                         visible: !item.showArt && model.video === true
-                        anchors.verticalCenter: parent.verticalCenter
+                        y: statusItem.lastLineCenter - height / 2
                         width: Theme.iconSizeExtraSmall
                         color: Theme.secondaryColor
                     }
                     BookmarkIcon {
                         id: rowBookmark
                         visible: !item.showArt && model.bookmarkCount > 0
-                        anchors.verticalCenter: parent.verticalCenter
+                        y: statusItem.lastLineCenter - height / 2
                         width: Theme.iconSizeExtraSmall
                         filled: true
                         color: Theme.highlightColor
@@ -558,7 +454,7 @@ ListItem {
                     Image {
                         id: playedIcon
                         visible: model.played === true
-                        anchors.verticalCenter: parent.verticalCenter
+                        y: statusItem.lastLineCenter - height / 2
                         source: "image://theme/icon-s-accept?" + Theme.secondaryColor
                         width: Theme.iconSizeExtraSmall
                         height: width
@@ -572,8 +468,8 @@ ListItem {
                     // was not seen as "downloaded" on New episodes
                     Image {
                         id: downloadIcon
-                        visible: item.showDownloadIcon && model.downloaded === true
-                        anchors.verticalCenter: parent.verticalCenter
+                        visible: statusItem.downloadIconWanted && !statusItem.sizeMoved
+                        y: statusItem.lastLineCenter - height / 2
                         source: "image://theme/icon-s-cloud-download?" + Theme.secondaryHighlightColor
                         width: Theme.iconSizeExtraSmall
                         height: width
@@ -663,9 +559,10 @@ ListItem {
                 core.cancelDownload(model.episodeId)
             }
             HoldNameBubble { id: cancelBubble; attached: true; name: qsTr("Cancel download") }
+            // (345, Thomas 17 Nov) As large as the ring around the check mark
             ProgressRing {
                 anchors.centerIn: parent
-                width: Theme.iconSizeSmallPlus
+                width: Theme.iconSizeMedium
                 height: width
                 progress: model.downloadProgress
             }

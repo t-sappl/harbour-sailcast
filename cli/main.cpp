@@ -4,6 +4,7 @@
 // Works on its own database (default: ~/.local/share/sailcast-cli/sailcast.db),
 // never on the phone's.
 
+#include <algorithm>
 #include <functional>
 
 #include <QCommandLineOption>
@@ -45,6 +46,7 @@
 #include "opml.h"
 #include "podcastindex.h"
 #include "podnews.h"
+#include "shownoteschapters.h"
 #include "syncengine.h"
 
 namespace {
@@ -355,6 +357,151 @@ int cmdChapters(Database &db, qint64 episodeId)
                  .arg(chapters.at(i).title) << nl;
     }
     out() << chapters.size() << " chapters" << nl;
+    return 0;
+}
+
+// (344) Chapters from the time stamps in the show notes (preparation for
+// 1.5, the app does not use them yet). Nothing is stored.
+//   shownotes-chapters EPISODE_ID        chapters, the parser's log, the
+//                                        episode's own chapters to compare
+//   shownotes-chapters file PATH [SECS]  a text or HTML file (optional length)
+//   shownotes-chapters all [TEXT]        every episode (podcasts whose name
+//                                        contains TEXT): one line per episode
+//                                        with chapters, compared with its own
+//                                        chapters (Podlove/JSON), and totals
+static bool sameChapters(const QList<ParsedChapter> &a, const QList<ParsedChapter> &b)
+{
+    if (a.size() != b.size()) {
+        return false;
+    }
+    for (int i = 0; i < a.size(); ++i) {
+        if (qAbs(a.at(i).startMs - b.at(i).startMs) > 5000) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void printChapters(const QList<ParsedChapter> &chapters, const QString &indent)
+{
+    for (const ParsedChapter &c : chapters) {
+        out() << indent << QStringLiteral("%1  %2").arg(formatDuration(static_cast<int>(c.startMs / 1000)), 8).arg(c.title) << nl;
+    }
+}
+
+int cmdShownotesChapters(Database &db, const QStringList &args)
+{
+    if (args.isEmpty()) {
+        err() << "shownotes-chapters EPISODE_ID | file PATH [SECONDS] | all [TEXT]" << nl;
+        return 1;
+    }
+    if (args.first() == QLatin1String("file")) {
+        if (args.size() < 2) {
+            err() << "shownotes-chapters file PATH [SECONDS]" << nl;
+            return 1;
+        }
+        QFile f(args.at(1));
+        if (!f.open(QIODevice::ReadOnly)) {
+            err() << "Cannot read " << args.at(1) << nl;
+            return 1;
+        }
+        const QString notes = QString::fromUtf8(f.readAll());
+        QStringList log;
+        const QList<ParsedChapter> chapters = ShownotesChapters::parse(notes, args.size() > 2 ? args.at(2).toInt() : 0, &log);
+        printChapters(chapters, QString());
+        out() << chapters.size() << " chapters (" << log.join(QStringLiteral("; ")) << ")" << nl;
+        return 0;
+    }
+    if (args.first() == QLatin1String("all")) {
+        // (344, review) An empty string, not a null one (bound as NULL, "? = ''" never true)
+        const QString filter = args.size() > 1 ? args.mid(1).join(QLatin1Char(' ')) : QStringLiteral("");
+        QSqlQuery q(db.handle());
+        q.setForwardOnly(true);
+        q.prepare(QStringLiteral("SELECT e.id, COALESCE(NULLIF(p.custom_title, ''), NULLIF(p.title, ''), p.url) AS name, e.title,"
+                                 " e.duration, e.description, e.description_html, e.chapter_count, p.id"
+                                 " FROM episodes e JOIN podcasts p ON p.id = e.podcast_id"
+                                 " WHERE p.provisional = 0 AND (? = '' OR p.title LIKE ? OR p.custom_title LIKE ?)"
+                                 " ORDER BY name, e.published DESC"));
+        q.addBindValue(filter);
+        q.addBindValue(QLatin1Char('%') + filter + QLatin1Char('%'));
+        q.addBindValue(QLatin1Char('%') + filter + QLatin1Char('%'));
+        if (!q.exec()) {
+            err() << "Could not read the episodes." << nl;
+            return 1;
+        }
+        int scanned = 0, found = 0, agree = 0, differ = 0, newOnes = 0, missed = 0;
+        // (344, review) Per podcast id (two podcasts can share a name)
+        QHash<qint64, int> perPodcast;
+        QHash<qint64, QString> podcastNames;
+        while (q.next()) {
+            ++scanned;
+            const qint64 id = q.value(0).toLongLong();
+            const QString html = q.value(5).toString();
+            const QString notes = html.isEmpty() ? q.value(4).toString() : html;
+            const QList<ParsedChapter> chapters = ShownotesChapters::parse(notes, q.value(3).toInt());
+            const int own = q.value(6).toInt();
+            if (chapters.isEmpty()) {
+                if (own >= 3) {
+                    ++missed;
+                }
+                continue;
+            }
+            ++found;
+            perPodcast[q.value(7).toLongLong()] += 1;
+            podcastNames.insert(q.value(7).toLongLong(), q.value(1).toString());
+            QString state;
+            if (own > 0) {
+                const bool same = sameChapters(chapters, db.chapters(id));
+                same ? ++agree : ++differ;
+                state = same ? QStringLiteral("agrees with its own %1").arg(own)
+                             : QStringLiteral("DIFFERS from its own %1").arg(own);
+            } else {
+                ++newOnes;
+                state = QStringLiteral("new");
+            }
+            out() << QStringLiteral("[%1] %2 – %3: %4 chapters, %5").arg(id).arg(elide(q.value(1).toString(), 30))
+                         .arg(elide(q.value(2).toString(), 50)).arg(chapters.size()).arg(state) << nl;
+        }
+        out() << nl << scanned << " episodes, " << found << " with show-notes chapters: " << newOnes
+              << " without chapters of their own, " << agree << " agree and " << differ
+              << " differ from their own; " << missed << " with own chapters the parser found none in" << nl;
+        QList<qint64> ids = perPodcast.keys();
+        std::sort(ids.begin(), ids.end(), [&perPodcast, &podcastNames](qint64 a, qint64 b) {
+            if (perPodcast.value(a) != perPodcast.value(b)) {
+                return perPodcast.value(a) > perPodcast.value(b);
+            }
+            return podcastNames.value(a).localeAwareCompare(podcastNames.value(b)) < 0;
+        });
+        for (qint64 id : ids) {
+            out() << QStringLiteral("  %1  %2").arg(perPodcast.value(id), 5).arg(podcastNames.value(id)) << nl;
+        }
+        return 0;
+    }
+    const qint64 id = args.first().toLongLong();
+    const EpisodeRow e = db.episode(id);
+    if (!e.id) {
+        err() << "No episode " << args.first() << nl;
+        return 1;
+    }
+    QSqlQuery q(db.handle());
+    q.prepare(QStringLiteral("SELECT description, description_html FROM episodes WHERE id = ?"));
+    q.addBindValue(id);
+    QString notes;
+    if (q.exec() && q.next()) {
+        notes = q.value(1).toString().isEmpty() ? q.value(0).toString() : q.value(1).toString();
+    }
+    QStringList log;
+    const QList<ParsedChapter> chapters = ShownotesChapters::parse(notes, e.duration, &log);
+    out() << e.podcastTitle << QStringLiteral(" – ") << e.title << " (" << formatDuration(e.duration) << ")" << nl;
+    out() << "From the show notes: " << chapters.size() << " chapters" << nl;
+    printChapters(chapters, QStringLiteral("  "));
+    out() << "  " << log.join(QStringLiteral("; ")) << nl;
+    const QList<ParsedChapter> own = db.chapters(id);
+    if (!own.isEmpty()) {
+        out() << "Own chapters (Podlove/JSON): " << own.size()
+              << (sameChapters(chapters, own) ? QStringLiteral(" – the same times") : QStringLiteral(" – different")) << nl;
+        printChapters(own, QStringLiteral("  "));
+    }
     return 0;
 }
 
@@ -1683,7 +1830,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("sailcast-cli"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("1.4.1 (build 342)"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("1.5 (build 373)"));
 
     const QString defaultDb = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
             + QStringLiteral("/sailcast-cli/sailcast.db");
@@ -1757,6 +1904,9 @@ int main(int argc, char *argv[])
             "  import-archive FOLDER  import an archive folder (episodes.json)\n"
             "  sources EPISODE_ID     playback sources in the order they are tried\n"
             "  load-chapters [PODCAST_ID]  load podcast:chapters (JSON) files\n"
+            "  shownotes-chapters EPISODE_ID | file PATH [SECONDS] | all [TEXT]\n"
+            "                         chapters from the time stamps in the show notes (nothing\n"
+            "                         stored); \"all\": every episode, compared with its own\n"
             "  queue [list|add ID...|next ID...|remove ID|move ID POS|clear]  playlist\n"
             "  settings               show the settings\n"
             "  set KEY VALUE          change a setting"));
@@ -1999,6 +2149,9 @@ int main(int argc, char *argv[])
             filter = Database::Unplayed;
         }
         return cmdEpisodes(db, id, parser.value(limitOption).toInt(), filter);
+    }
+    if (command == QLatin1String("shownotes-chapters")) {
+        return cmdShownotesChapters(db, args);
     }
     if (command == QLatin1String("chapters")) {
         return needArg(QStringLiteral("EPISODE_ID")) ? cmdChapters(db, args.first().toLongLong()) : 1;

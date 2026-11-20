@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "appcore.h"
+#include "applog.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,10 +10,13 @@
 #include <QHash>
 #include <QSet>
 #include "urlmask.h"
+#include "logscrub.h"
+#include "filenames.h"
 #include "nextcloudlogin.h"
 #include "gpodderdevices.h"
 #include "webdavbackup.h"
 
+#include <QDate>
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QPair>
@@ -54,6 +58,10 @@
 #include <QSaveFile>
 #include "podcastindex.h"
 #include "syncengine.h"
+#include "releasenotes.h"
+#include <QCoreApplication>
+#include <QDesktopServices>
+#include <QProcess>
 
 namespace {
 
@@ -109,6 +117,7 @@ AppCore::AppCore(QObject *parent)
     m_archiver = new Archiver(m_database, m_updater, m_downloads, this);
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
+    m_archiver->setDownloadDirectory(m_downloads->downloadDirectory());
     m_downloads->setVideoRoot(videoRoot());
     m_chapters = new ChaptersLoader(m_database, this);
     m_probe = new FeedProbe(this);
@@ -528,6 +537,16 @@ AppCore::AppCore(QObject *parent)
         }
         m_updateRegular = true;
         ++m_updateFailed;
+        // (355, Thomas 18 Nov) Named in the message and in the log
+        const PodcastRow p = m_database->podcast(id);
+        // (review 355) title is already custom/feed title/URL: a URL masked
+        const QString name = (p.customTitle.isEmpty() && p.feedTitle.isEmpty()) ? UrlMask::maskText(p.url) : p.title;
+        m_updateFailedNames << name;
+        // (review 355) Offline, every feed fails: ten lines, then one summary
+        // line at the end (the Log page shows only the last part)
+        if (m_updateFailedNames.size() <= 10) {
+            qWarning("Update: %s failed: %s", qPrintable(name), qPrintable(UrlMask::maskText(error)));
+        }
     });
     connect(m_updater, &FeedUpdater::finished, this, [this]() {
         m_database->applyPendingActions();
@@ -569,11 +588,14 @@ AppCore::AppCore(QObject *parent)
             return;
         }
         const QList<EpisodeRow> downloads = m_database->episodes(id, -1, Database::Downloaded);
+        QSet<QString> folders;
         for (int i = 0; i < downloads.size(); ++i) {
             if (!isKept(downloads.at(i)) && downloads.at(i).id != m_currentEpisode) {
                 QFile::remove(downloads.at(i).downloadPath);
+                folders.insert(QFileInfo(downloads.at(i).downloadPath).absolutePath());
             }
         }
+        removeEmptyFolders(folders);
     });
     connect(m_sync, &SyncEngine::podcastRemoved, this, [this](qint64 id, const QString &title) {
         m_updater->setPassword(id, QString());
@@ -673,6 +695,7 @@ AppCore::AppCore(QObject *parent)
 
     reloadQueue();
     cleanupOnStart();
+    setupAppUpdate();
     // Not during the start itself: the backup copies the whole database
     QTimer::singleShot(20000, this, &AppCore::backupIfDue);
 }
@@ -767,9 +790,224 @@ QString AppCore::archiveRoot() const
                          : dir;
 }
 
+QString AppCore::versionText()
+{
+    return QStringLiteral("1.5 (build 373)");
+}
+
 QString AppCore::version() const
 {
-    return QStringLiteral("1.4.1 (build 342)");
+    return versionText();
+}
+
+QString AppCore::logHeader() const
+{
+    // The settings the player's decisions depend on - so a log tells the
+    // whole story (no addresses, no account data)
+    const QStringList keys {
+        QStringLiteral("player.afterSingle"), QStringLiteral("player.queueMode"),
+        QStringLiteral("player.remoteButtons"), QStringLiteral("player.countPlayedBelow"),
+        QStringLiteral("player.skipBack"), QStringLiteral("video.mobile"),
+        QStringLiteral("downloads.wifiOnly"), QStringLiteral("player.last")
+    };
+    QString header = QStringLiteral("Sailcast ") + version() + QStringLiteral(" - log of ")
+                     + QDateTime::currentDateTime().toString(Qt::ISODate) + QStringLiteral("\n");
+    for (const QString &key : keys) {
+        const QString value = m_database->setting(key);
+        header += key + QStringLiteral(" = ") + (value.isEmpty() ? QStringLiteral("(default)") : value)
+                  + QStringLiteral("\n");
+    }
+    return header;
+}
+
+QString AppCore::logText() const
+{
+    // (354) The last lines only: a TextArea with the whole 512 KB is sluggish
+    // (review 354: 600, a TextEdit lays out everything at once)
+    return logHeader() + QStringLiteral("\n") + AppLog::tail(600);
+}
+
+QVariantList AppCore::failedPodcasts() const
+{
+    QVariantList result;
+    const QList<Database::FailedPodcast> list = m_database->failedPodcasts();
+    for (const Database::FailedPodcast &p : list) {
+        QVariantMap m;
+        m.insert(QStringLiteral("podcastId"), int(p.id));
+        m.insert(QStringLiteral("title"), p.name.startsWith(QStringLiteral("http")) ? UrlMask::maskText(p.name) : p.name);
+        m.insert(QStringLiteral("error"), UrlMask::maskText(p.error));
+        result << m;
+    }
+    return result;
+}
+
+QString AppCore::saveLogText(const QString &text) const
+{
+    return AppLog::writeText(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation), text);
+}
+
+bool AppCore::logEnabled() const
+{
+    return AppLog::isEnabled();
+}
+
+void AppCore::setLogEnabled(bool on)
+{
+    if (on == AppLog::isEnabled()) {
+        return;
+    }
+    AppLog::setEnabled(on);
+    // the switch shows what really happened (marker not written: still on)
+    emit logEnabledChanged();
+}
+
+QVariantMap AppCore::anonymizedLog(const QString &text) const
+{
+    QList<LogScrub::Name> names;
+    auto add = [&names](const QString &value, const QString &replacement, bool address) {
+        if (value.trimmed().isEmpty()) {
+            return;
+        }
+        LogScrub::Name n;
+        n.text = value;
+        n.replacement = replacement;
+        n.address = address;
+        names << n;
+        if (address) {
+            // (review 371) as the log writes it: long path parts and keys
+            // masked (AppLog::clean)
+            const QString cleaned = AppLog::clean(value);
+            if (cleaned != value) {
+                n.text = cleaned;
+                names << n;
+            }
+        } else if (value.contains(QLatin1Char('"'))) {
+            // qDebug() writes a title in quotes with \"
+            n.text = QString(value).replace(QLatin1Char('"'), QStringLiteral("\\\""));
+            names << n;
+        }
+    };
+    // (review 371) A host that belongs to one podcast only names it
+    // ("freakshow.fm", "feeds.fokus-europa.de"); shared hosts (libsyn,
+    // podigee) are left to the shortening of addresses
+    QHash<QString, QSet<qint64> > hostOwners;
+    // (review 371) Hosting platforms, CDNs and big sites are shared with
+    // podcasts that are not subscribed: never one podcast's name
+    static const QStringList shared {
+        QStringLiteral("libsyn.com"), QStringLiteral("podigee.io"), QStringLiteral("cloudfront.net"),
+        QStringLiteral("amazonaws.com"), QStringLiteral("youtube.com"), QStringLiteral("patreon.com"),
+        QStringLiteral("apple.com"), QStringLiteral("mzstatic.com"), QStringLiteral("spotify.com"),
+        QStringLiteral("scdn.co"), QStringLiteral("soundcloud.com"), QStringLiteral("sndcdn.com"),
+        QStringLiteral("blubrry.com"), QStringLiteral("anchor.fm"), QStringLiteral("megaphone.fm"),
+        QStringLiteral("simplecast.com"), QStringLiteral("podbean.com"), QStringLiteral("buzzsprout.com"),
+        QStringLiteral("transistor.fm"), QStringLiteral("captivate.fm"), QStringLiteral("acast.com"),
+        QStringLiteral("art19.com"), QStringLiteral("omny.fm"), QStringLiteral("omnycontent.com"),
+        QStringLiteral("audioboom.com"), QStringLiteral("spreaker.com"), QStringLiteral("podtrac.com"),
+        QStringLiteral("chtbl.com"), QStringLiteral("pdst.fm"), QStringLiteral("podcastics.com"),
+        QStringLiteral("letscast.fm"), QStringLiteral("podcaster.de"), QStringLiteral("podhost.de"),
+        QStringLiteral("podseed.org"), QStringLiteral("podeo.co"), QStringLiteral("ausha.co"),
+        QStringLiteral("feedburner.com"), QStringLiteral("google.com"), QStringLiteral("googleusercontent.com"),
+        QStringLiteral("github.com"), QStringLiteral("githubusercontent.com"), QStringLiteral("wordpress.com"),
+        QStringLiteral("wp.com"), QStringLiteral("squarespace.com"), QStringLiteral("substack.com"),
+        QStringLiteral("akamaized.net"), QStringLiteral("fastly.net"), QStringLiteral("cdn77.org"),
+        QStringLiteral("ard.de"), QStringLiteral("ardmediathek.de"), QStringLiteral("zdf.de"),
+        QStringLiteral("orf.at"), QStringLiteral("br.de"), QStringLiteral("wdr.de"), QStringLiteral("ndr.de"),
+        QStringLiteral("swr.de"), QStringLiteral("deutschlandfunk.de"), QStringLiteral("srf.ch"),
+        QStringLiteral("bbc.co.uk"), QStringLiteral("bbci.co.uk"), QStringLiteral("npr.org"),
+        QStringLiteral("heise.de"), QStringLiteral("radiofrance.fr")
+    };
+    auto isShared = [](const QString &host) {
+        for (const QString &d : shared) {
+            if (host == d || host.endsWith(QLatin1Char('.') + d)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    // the host itself; the domain of a podcast's own website too
+    auto hostsOf = [&isShared](const QString &address, bool website) {
+        QStringList result;
+        const QString host = QUrl(address).host().toLower();
+        if (host.isEmpty() || !host.contains(QLatin1Char('.')) || isShared(host)) {
+            return result;
+        }
+        result << host;
+        const QStringList labels = host.split(QLatin1Char('.'));
+        if (website && labels.size() > 2) {
+            result << QStringList(labels.mid(labels.size() - 2)).join(QLatin1Char('.'));
+        }
+        return result;
+    };
+    // Podcasts: every name they go by, their folders and addresses
+    const QHash<qint64, QString> musicFolders = m_database->podcastSettings(QStringLiteral("musicFolder"));
+    const QList<PodcastRow> podcasts = m_database->podcasts();
+    for (const PodcastRow &p : podcasts) {
+        for (int i = 0; i < 3; ++i) {
+            const QString address = i == 0 ? p.link : (i == 1 ? p.url : p.coverUrl);
+            for (const QString &host : hostsOf(address, i == 0)) {
+                hostOwners[host].insert(p.id);
+            }
+        }
+    }
+    for (auto it = hostOwners.constBegin(); it != hostOwners.constEnd(); ++it) {
+        // "www.x.de" and "x.de" alike; at least "abc.de" (scrub: addresses
+        // of six characters and more) - never a bare "fm"
+        if (it.value().size() == 1 && it.key().length() >= 6) {
+            add(it.key(), QStringLiteral("‹host of Podcast #%1›").arg(*it.value().constBegin()), true);
+        }
+    }
+    for (const PodcastRow &p : podcasts) {
+        const QString name = QStringLiteral("Podcast #%1").arg(p.id);
+        add(p.title, name, false);
+        add(p.feedTitle, name, false);
+        add(p.customTitle, name, false);
+        if (!p.title.trimmed().isEmpty()) {
+            add(FileNames::safe(p.title), name, false);
+        }
+        add(p.archiveFolder, name, false);
+        add(musicFolders.value(p.id), name, false);
+        add(p.url, QStringLiteral("‹feed of %1›").arg(name), true);
+        add(UrlMask::maskText(p.url), QStringLiteral("‹feed of %1›").arg(name), true);
+        add(p.coverUrl, QStringLiteral("‹cover of %1›").arg(name), true);
+        add(p.link, QStringLiteral("‹website of %1›").arg(name), true);
+    }
+    // Episodes: titles, addresses, file names (the paths go anyway)
+    QSqlQuery q(m_database->handle());
+    q.setForwardOnly(true);
+    if (q.exec(QStringLiteral("SELECT id, title, url, image_url, link, download_path FROM episodes"))) {
+        while (q.next()) {
+            const QString name = QStringLiteral("Episode #%1").arg(q.value(0).toLongLong());
+            add(q.value(1).toString(), name, false);
+            add(q.value(2).toString(), QStringLiteral("‹%1›").arg(name), true);
+            add(q.value(3).toString(), QStringLiteral("‹image of %1›").arg(name), true);
+            add(q.value(4).toString(), QStringLiteral("‹website of %1›").arg(name), true);
+            const QString path = q.value(5).toString();
+            if (!path.isEmpty()) {
+                add(QFileInfo(path).completeBaseName(), name, false);
+            }
+        }
+    }
+    QString result = LogScrub::scrub(text, names);
+    // What the text shows now (review 371: not what was replaced and then
+    // went with a path)
+    QSet<QString> podcastIds;
+    QSet<QString> episodeIds;
+    static const QRegularExpression id(QStringLiteral("(Podcast|Episode) #(\\d+)"));
+    QRegularExpressionMatchIterator ids = id.globalMatch(result);
+    while (ids.hasNext()) {
+        const QRegularExpressionMatch m = ids.next();
+        (m.captured(1) == QLatin1String("Podcast") ? podcastIds : episodeIds).insert(m.captured(2));
+    }
+    // A note for whoever reads it: the numbers are the app's own ids
+    const int firstLine = result.indexOf(QLatin1Char('\n'));
+    const QString note = QStringLiteral("names replaced: \"Podcast #n\" / \"Episode #n\" are ids in the app,"
+                                        " web addresses shortened to the domain\n");
+    result.insert(firstLine >= 0 ? firstLine + 1 : 0, note);
+    QVariantMap map;
+    map.insert(QStringLiteral("text"), result);
+    map.insert(QStringLiteral("podcasts"), podcastIds.size());
+    map.insert(QStringLiteral("episodes"), episodeIds.size());
+    return map;
 }
 
 void AppCore::reloadQueue()
@@ -804,13 +1042,30 @@ void AppCore::emitUpdateSummary()
         } else if (m_updateNewHidden > 0) {
             found += QStringLiteral(" – ") + tr("%n of them in podcasts not shown in New", "", m_updateNewHidden);
         }
-        emitMessage(m_updateFailed > 0
-                     ? found + QStringLiteral(", ") + tr("%n feeds failed", "", m_updateFailed)
-                     : found);
+        // (355, Thomas 18 Nov) Which ones: up to three names, then "and n more"
+        QString failed;
+        if (m_updateFailed > 0) {
+            const int shown = m_updateFailedNames.size() > 3 ? 3 : m_updateFailedNames.size();
+            failed = tr("%n feeds failed", "", m_updateFailed);
+            if (shown > 0) {
+                failed += QStringLiteral(": ") + QStringList(m_updateFailedNames.mid(0, shown)).join(QStringLiteral(", "));
+                if (m_updateFailedNames.size() > shown) {
+                    failed += QStringLiteral(" ") + tr("and %n more", "", m_updateFailedNames.size() - shown);
+                }
+            }
+        }
+        emitMessage(m_updateFailed > 0 ? found + QStringLiteral(", ") + failed : found);
+        if (m_updateFailedNames.size() > 10) {
+            qWarning("Update: %d feeds failed in all (%d more not listed)", m_updateFailedNames.size(),
+                     m_updateFailedNames.size() - 10);
+        }
+        // (355) The hint line on the Podcasts page shows again after an update
+        emit failedPodcastsChanged();
     }
     m_updateNew = 0;
     m_updateNewHidden = 0;
     m_updateFailed = 0;
+    m_updateFailedNames.clear();
     m_updateRegular = false;
 }
 
@@ -872,7 +1127,7 @@ void AppCore::updatePodcast(int podcastId)
     emit updatingChanged();
 }
 
-void AppCore::subscribe(const QString &url, int folderId)
+void AppCore::subscribe(const QString &url, int folderId, bool hiddenFromNew)
 {
     const qint64 id = m_updater->subscribe(url.trimmed());
     if (id < 0) {
@@ -881,6 +1136,14 @@ void AppCore::subscribe(const QString &url, int folderId)
     }
     if (folderId > 0) {
         m_database->setPodcastFolder(id, folderId);
+    }
+    // (343) "Show in New episodes" switched off in the subscribe dialog
+    if (hiddenFromNew) {
+        QList<qint64> ids = m_database->hiddenFromNew();
+        if (!ids.contains(id)) {
+            ids.append(id);
+            m_database->setHiddenFromNew(ids);
+        }
     }
     emit dataChanged();
     emit updatingChanged();
@@ -1423,11 +1686,14 @@ void AppCore::removeProvisional(qint64 podcastId)
         return;
     }
     const QList<EpisodeRow> downloads = m_database->episodes(podcastId, -1, Database::Downloaded);
+    QSet<QString> folders;
     for (int i = 0; i < downloads.size(); ++i) {
         if (!isKept(downloads.at(i))) {
             QFile::remove(downloads.at(i).downloadPath);
+            folders.insert(QFileInfo(downloads.at(i).downloadPath).absolutePath());
         }
     }
+    removeEmptyFolders(folders);
     m_database->removePodcast(podcastId, false);
     m_database->removeSettings(QStringLiteral("podcast.%1.").arg(podcastId));
 }
@@ -1438,7 +1704,7 @@ void AppCore::unsubscribe(int podcastId)
     // player would hold an episode that no longer exists (same rule as for
     // deleting a download, 289)
     if (m_currentEpisode > 0 && m_database->episode(m_currentEpisode).podcastId == podcastId) {
-        emitMessage(tr("Not while an episode of this podcast is loaded in the player"));
+        emitMessage(tr("Cannot unsubscribe while an episode of this podcast is loaded in the player"));
         return;
     }
     flushArchiveMetadata(podcastId);
@@ -1450,13 +1716,16 @@ void AppCore::unsubscribe(int podcastId)
         }
     }
     const QList<EpisodeRow> downloads = m_database->episodes(podcastId, -1, Database::Downloaded);
+    QSet<QString> folders;
     for (int i = 0; i < downloads.size(); ++i) {
         // Files in the archive stay, normal downloads are deleted (209: also
         // those in Music by "Downloads in Music")
         if (!isKept(downloads.at(i))) {
             QFile::remove(downloads.at(i).downloadPath);
+            folders.insert(QFileInfo(downloads.at(i).downloadPath).absolutePath());
         }
     }
+    removeEmptyFolders(folders);
     const QString title = m_database->podcast(podcastId).title;
     // Never subscribed (147): nothing to tell the sync server
     if (!m_database->removePodcast(podcastId, !m_database->podcast(podcastId).provisional)) {
@@ -1575,8 +1844,9 @@ void AppCore::discover()
 
 void AppCore::refreshForYou()
 {
+    // (348) Opt-in (forum 17 Nov): sends the 10 most listened feeds to fyyd
     m_forYou->setUseSubscriptions(m_database->setting(QStringLiteral("discover.fromSubscriptions"),
-                                                      QStringLiteral("1")) == QLatin1String("1"));
+                                                      QStringLiteral("0")) == QLatin1String("1"));
     emit forYouStarted();
     if (m_forYou->isRunning()) {
         m_forYouAgain = true;
@@ -1922,7 +2192,7 @@ QVariantMap AppCore::interests() const
     result.insert(QStringLiteral("customized"), !profile.interests.isEmpty() || !profile.moreKeywords.isEmpty()
                   || !profile.neverKeywords.isEmpty());
     result.insert(QStringLiteral("fromSubscriptions"),
-                  m_database->setting(QStringLiteral("discover.fromSubscriptions"), QStringLiteral("1"))
+                  m_database->setting(QStringLiteral("discover.fromSubscriptions"), QStringLiteral("0"))
                   == QLatin1String("1"));
     return result;
 }
@@ -2486,6 +2756,27 @@ void AppCore::removeSyncAccount()
 
 // --- Episodes ----------------------------------------------------------------
 
+QVariantMap AppCore::episodeStatus(int episodeId) const
+{
+    QVariantMap map;
+    const EpisodeRow e = m_database->episode(episodeId);
+    if (!e.id) {
+        return map;
+    }
+    map.insert(QStringLiteral("episodeId"), int(e.id));
+    map.insert(QStringLiteral("podcastId"), int(e.podcastId));
+    map.insert(QStringLiteral("podcastTitle"), e.podcastTitle);
+    map.insert(QStringLiteral("played"), e.played);
+    map.insert(QStringLiteral("inProgress"), e.inProgress());
+    map.insert(QStringLiteral("isNew"), e.isNew);
+    map.insert(QStringLiteral("downloaded"), e.downloaded);
+    map.insert(QStringLiteral("downloading"), isDownloading(episodeId));
+    map.insert(QStringLiteral("queued"), isQueued(episodeId));
+    map.insert(QStringLiteral("pinned"), isPinned(episodeId));
+    map.insert(QStringLiteral("provisional"), m_database->podcast(e.podcastId).provisional);
+    return map;
+}
+
 QVariantMap AppCore::episode(int episodeId) const
 {
     QVariantMap map;
@@ -2618,6 +2909,7 @@ QVariantMap AppCore::podcast(int podcastId) const
     map.insert(QStringLiteral("url"), p.url);
     map.insert(QStringLiteral("episodeCount"), p.episodeCount);
     map.insert(QStringLiteral("unplayed"), p.unplayedCount);
+    map.insert(QStringLiteral("started"), p.startedCount);
     map.insert(QStringLiteral("archived"), p.archived);
     map.insert(QStringLiteral("manualUpdate"), p.manualUpdate);
     map.insert(QStringLiteral("folderId"), int(p.folderId));
@@ -3283,23 +3575,95 @@ QVariantMap AppCore::deletableDownloads(int podcastId) const
 {
     const QList<EpisodeRow> rows = deletableDownloadRows(podcastId);
     double bytes = 0;
+    int inPlace = 0;
+    int videos = 0;
     for (int i = 0; i < rows.size(); ++i) {
-        bytes += double(QFileInfo(rows.at(i).downloadPath).size());
+        const EpisodeRow &e = rows.at(i);
+        bytes += double(QFileInfo(e.downloadPath).size());
+        // (368) Already in the folder "Keep" would move it to (archive folder,
+        // Videos for video): keeping only marks it, nothing moves
+        if (isInside(e.downloadPath, mediaRootFor(e))) {
+            ++inPlace;
+        }
+        if (e.mimeType.startsWith(QLatin1String("video/"))) {
+            ++videos;
+        }
     }
     QVariantMap map;
     map.insert(QStringLiteral("count"), rows.size());
     map.insert(QStringLiteral("bytes"), bytes);
+    map.insert(QStringLiteral("inPlace"), inPlace);
+    // (369, Thomas 19 Nov) The podcast's own folder, short ("Music/Podcasts/
+    // <podcast>"): all already there -> where they are; else its archive
+    // folder (known after the first save), else the root
+    const QString root = !rows.isEmpty() && videos == rows.size() ? videoRoot() : archiveRoot();
+    QString folder = root;
+    if (!rows.isEmpty() && inPlace == rows.size()) {
+        folder = QFileInfo(rows.first().downloadPath).absolutePath();
+    } else {
+        const QString name = m_database->podcast(podcastId).archiveFolder;
+        if (!name.isEmpty()) {
+            folder = QDir(root).absoluteFilePath(name);
+        }
+    }
+    const QString home = QDir::homePath() + QLatin1Char('/');
+    if (folder.startsWith(home)) {
+        folder = folder.mid(home.size());
+    }
+    map.insert(QStringLiteral("folder"), folder);
     return map;
 }
 
 int AppCore::deletePodcastDownloads(int podcastId)
 {
     QVariantList ids;
+    QSet<QString> folders;
     const QList<EpisodeRow> rows = deletableDownloadRows(podcastId);
     for (int i = 0; i < rows.size(); ++i) {
         ids.append(int(rows.at(i).id));
+        folders.insert(QFileInfo(rows.at(i).downloadPath).absolutePath());
     }
-    return deleteDownloads(ids);
+    const int deleted = deleteDownloads(ids);
+    removeEmptyFolders(folders);    // (366) all of the podcast: its folder too
+    return deleted;
+}
+
+bool AppCore::podcastInPlayer(int podcastId) const
+{
+    return m_currentEpisode > 0 && m_database->episode(m_currentEpisode).podcastId == podcastId;
+}
+
+void AppCore::removeEmptyFolders(const QSet<QString> &folders)
+{
+    QStringList roots;
+    roots << m_downloads->downloadDirectory() << archiveRoot() << videoRoot() << oldArchiveRoots();
+    for (const QString &folder : folders) {
+        const QString path = QDir::cleanPath(QDir(folder).absolutePath());
+        if (path.isEmpty() || path == QLatin1String("/")) {
+            continue;
+        }
+        bool isRoot = false;
+        bool inside = false;
+        for (const QString &root : roots) {
+            if (root.isEmpty()) {
+                continue;
+            }
+            if (QDir::cleanPath(QDir(root).absolutePath()) == path) {
+                isRoot = true;
+            } else if (isInside(path, root)) {
+                inside = true;
+            }
+        }
+        if (isRoot || !inside) {
+            continue;
+        }
+        QDir dir(path);
+        if (dir.exists() && dir.entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot).isEmpty()) {
+            if (QDir().rmdir(path)) {
+                qInfo("[AppCore] Removed the empty folder %s", qPrintable(QFileInfo(path).fileName()));
+            }
+        }
+    }
 }
 
 void AppCore::keepEpisode(int episodeId)
@@ -3732,6 +4096,7 @@ int AppCore::keepPodcastDownloads(int podcastId)
     int saved = 0;
     QString folder;
     QString error;
+    QSet<QString> movedFrom;
     for (int i = 0; i < episodes.size(); ++i) {
         const EpisodeRow &e = episodes.at(i);
         if (!e.downloaded || isKept(e)) {
@@ -3749,10 +4114,13 @@ int AppCore::keepPodcastDownloads(int podcastId)
         if (path.isEmpty()) {
             break;
         }
+        movedFrom.insert(QFileInfo(e.downloadPath).absolutePath());
         folder = QFileInfo(path).absolutePath();
         ++saved;
         emit episodeChanged(int(e.id));
     }
+    // (366) All downloads moved to the archive: the old folder, now empty, goes
+    removeEmptyFolders(movedFrom);
     if (saved > 0) {
         emit dataChanged();
         emitMessage(tr("%n episodes saved in %1", "", saved).arg(folder));
@@ -5040,6 +5408,7 @@ void AppCore::archivePodcast(int podcastId)
     }
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
+    m_archiver->setDownloadDirectory(m_downloads->downloadDirectory());
     m_downloads->setVideoRoot(videoRoot());
     m_archivingId = podcastId;
     m_archiveCancelled = false;
@@ -5151,6 +5520,7 @@ bool AppCore::setArchiveDirectory(const QString &path)
     }
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
+    m_archiver->setDownloadDirectory(m_downloads->downloadDirectory());
     m_downloads->setVideoRoot(videoRoot());
     emit settingsChanged();
     return true;
@@ -5403,6 +5773,7 @@ void AppCore::importDatabase(const QString &path, bool keepFolders)
     }
     m_archiver->setArchiveRoot(archiveRoot());
     m_archiver->setVideoRoot(videoRoot());
+    m_archiver->setDownloadDirectory(m_downloads->downloadDirectory());
     m_downloads->setVideoRoot(videoRoot());
     reloadQueue();
     emit settingsChanged();
@@ -5477,6 +5848,7 @@ struct AppCore::HtmlExportJob
     QList<QPair<int, PodcastRow> > plan;    // folder index, podcast
     QList<HtmlExport::Folder> folders;      // by folder index, "" = other podcasts (last)
     int skipped = 0;                        // private feeds left out
+    int excluded = 0;                       // (348) left out by choice
     int next = 0;
     bool cancelled = false;
 };
@@ -5523,11 +5895,15 @@ HtmlNeeds htmlNeeds(const Database *db, const QList<QPair<int, PodcastRow> > &pl
 // Which podcasts, in which folders: folders alphabetically, "Other podcasts"
 // last, podcasts by title; provisional ones and feeds with a login or a key
 // in the address stay out (a key must not travel in a page)
-void AppCore::planHtmlExport(const QVariantList &folderIds, HtmlExportJob *job) const
+void AppCore::planHtmlExport(const QVariantList &folderIds, const QVariantList &excludedIds, HtmlExportJob *job) const
 {
     QSet<int> wanted;
     for (int i = 0; i < folderIds.size(); ++i) {
         wanted.insert(folderIds.at(i).toInt());
+    }
+    QSet<qint64> excluded;
+    for (int i = 0; i < excludedIds.size(); ++i) {
+        excluded.insert(excludedIds.at(i).toLongLong());
     }
     const QList<PodcastRow> podcasts = m_database->podcasts();
     const QList<FolderRow> folders = m_database->folders();
@@ -5563,6 +5939,12 @@ void AppCore::planHtmlExport(const QVariantList &folderIds, HtmlExportJob *job) 
             }
             if (!p.authUser.isEmpty() || UrlMask::maskText(p.url) != p.url) {
                 ++job->skipped;
+                continue;
+            }
+            // (348) Left out on the page "Podcasts": not named anywhere on
+            // the page (statistics names only podcasts of the plan, 333)
+            if (excluded.contains(p.id)) {
+                ++job->excluded;
                 continue;
             }
             job->plan.append(qMakePair(f, p));
@@ -5659,14 +6041,31 @@ HtmlExport::Podcast AppCore::buildHtmlPodcast(const PodcastRow &p, const QVarian
     return h;
 }
 
-QVariantMap AppCore::htmlExportPreview(const QVariantList &folderIds) const
+QVariantList AppCore::htmlExportPodcasts(const QVariantList &folderIds) const
 {
     HtmlExportJob job;
-    planHtmlExport(folderIds, &job);
+    planHtmlExport(folderIds, QVariantList(), &job);
+    QVariantList result;
+    for (int i = 0; i < job.plan.size(); ++i) {
+        const PodcastRow &p = job.plan.at(i).second;
+        QVariantMap map;
+        map.insert(QStringLiteral("podcastId"), int(p.id));
+        map.insert(QStringLiteral("title"), p.title);
+        map.insert(QStringLiteral("coverUrl"), p.coverUrl);
+        result.append(map);
+    }
+    return result;
+}
+
+QVariantMap AppCore::htmlExportPreview(const QVariantList &folderIds, const QVariantList &excluded) const
+{
+    HtmlExportJob job;
+    planHtmlExport(folderIds, excluded, &job);
     const HtmlNeeds needs = htmlNeeds(m_database, job.plan, 0);
     QVariantMap map;
     map.insert(QStringLiteral("podcasts"), job.plan.size());
     map.insert(QStringLiteral("skipped"), job.skipped);
+    map.insert(QStringLiteral("excluded"), job.excluded);
     map.insert(QStringLiteral("chapterEpisodes"), needs.last5);       // last 5
     map.insert(QStringLiteral("chapterEpisodesAll"), needs.all);
     map.insert(QStringLiteral("episodesAll"), needs.episodes);
@@ -5685,7 +6084,7 @@ void AppCore::startHtmlExport(const QVariantList &folderIds, const QVariantMap &
     const int mode = options.value(QStringLiteral("episodes")).toInt();
     if (mode > 0 && options.value(QStringLiteral("chapters")).toBool()) {
         HtmlExportJob job;
-        planHtmlExport(folderIds, &job);
+        planHtmlExport(folderIds, options.value(QStringLiteral("excluded")).toList(), &job);
         const HtmlNeeds needs = htmlNeeds(m_database, job.plan, mode);
         if (!needs.ids.isEmpty()) {
             m_htmlTotal = needs.ids.size();
@@ -5889,7 +6288,7 @@ void AppCore::finishHtmlExport(bool cancelled)
     delete m_htmlJob;
     m_htmlJob = new HtmlExportJob;
     m_htmlJob->cancelled = cancelled;
-    planHtmlExport(m_htmlFolders, m_htmlJob);
+    planHtmlExport(m_htmlFolders, m_htmlOptions.value(QStringLiteral("excluded")).toList(), m_htmlJob);
     emit htmlExportBuilding(0, m_htmlJob->plan.size());
     QTimer::singleShot(0, this, [this]() { stepHtmlExport(); });
 }
@@ -6485,22 +6884,24 @@ QVariantMap AppCore::searchLocal(const QString &term, bool inDescriptions) const
     const QList<PodcastRow> rows = m_database->podcasts();
     for (int i = 0; i < rows.size() && podcasts.size() < 5; ++i) {
         const PodcastRow &p = rows.at(i);
-        if (p.title.contains(needle, Qt::CaseInsensitive) || p.author.contains(needle, Qt::CaseInsensitive)
-                || p.feedTitle.contains(needle, Qt::CaseInsensitive)) {
+        // (348) Loosely: "Sud Stream" finds "Sudstream"
+        // (353) Every word in one of the fields, umlauts as ae/oe/ue/ss
+        if (Database::matchesSearch(QStringList { p.title, p.author, p.feedTitle }, needle)) {
             QVariantMap map;
             map.insert(QStringLiteral("podcastId"), int(p.id));
             map.insert(QStringLiteral("title"), p.title);
             map.insert(QStringLiteral("author"), p.author);
             map.insert(QStringLiteral("coverUrl"), p.coverUrl);
+            map.insert(QStringLiteral("unplayed"), p.unplayedCount);    // (348) podcast menu
             podcasts.append(map);
         }
     }
     result.insert(QStringLiteral("podcasts"), podcasts);
 
-    // Episodes: titles over all podcasts (the same search as on the podcast
-    // page, 53 - SQLite LIKE, case-insensitive for ASCII)
+    // Episodes: titles over all podcasts
     QVariantList episodes;
-    const QList<EpisodeRow> found = m_database->episodes(-1, 20, Database::AllEpisodes, false, needle);
+    // (353) Word by word over the title and the podcast name ("ct4004 iphone")
+    const QList<EpisodeRow> found = m_database->searchEpisodes(needle, 20);
     for (int i = 0; i < found.size(); ++i) {
         const EpisodeRow &e = found.at(i);
         QVariantMap map;
@@ -6520,8 +6921,16 @@ QVariantMap AppCore::searchLocal(const QString &term, bool inDescriptions) const
     if (inDescriptions) {
         QVariantList described;
         const QList<QPair<EpisodeRow, QString>> hits = m_database->searchDescriptions(needle, 20);
+        // (348) Found loosely in the title already: not again under "In descriptions"
+        QSet<qint64> inTitle;
+        for (int i = 0; i < found.size(); ++i) {
+            inTitle.insert(found.at(i).id);
+        }
         for (int i = 0; i < hits.size(); ++i) {
             const EpisodeRow &e = hits.at(i).first;
+            if (inTitle.contains(e.id)) {
+                continue;
+            }
             QVariantMap map;
             map.insert(QStringLiteral("episodeId"), int(e.id));
             map.insert(QStringLiteral("title"), e.title);
@@ -6542,9 +6951,10 @@ QVariantMap AppCore::searchLocal(const QString &term, bool inDescriptions) const
     const QVariantList all = this->bookmarks(0);
     for (int i = 0; i < all.size() && bookmarks.size() < 5; ++i) {
         const QVariantMap b = all.at(i).toMap();
-        if (b.value(QStringLiteral("title")).toString().contains(needle, Qt::CaseInsensitive)
-                || b.value(QStringLiteral("note")).toString().contains(needle, Qt::CaseInsensitive)
-                || b.value(QStringLiteral("episodeTitle")).toString().contains(needle, Qt::CaseInsensitive)) {
+        if (Database::matchesSearch(QStringList { b.value(QStringLiteral("title")).toString(),
+                                                  b.value(QStringLiteral("note")).toString(),
+                                                  b.value(QStringLiteral("episodeTitle")).toString(),
+                                                  b.value(QStringLiteral("podcastTitle")).toString() }, needle)) {
             bookmarks.append(b);
         }
     }
@@ -6676,3 +7086,335 @@ void AppCore::markOlderPlayed(int episodeId)
     emit dataChanged();
     emitMessage(tr("%n episodes marked as played", "", count));
 }
+
+// --- App update (350) -------------------------------------------------------
+// The GitHub build looks for a newer release once a day (setting
+// "update.check", on by default) and offers the RPM for this architecture;
+// the Jolla Store build (SAILCAST_STORE) has none of this. Kept in settings:
+// update.json (the last answer of releases/latest), update.etag,
+// update.lastCheck (seconds), update.dismissed (version whose hint line on
+// the Podcasts page was closed with x).
+
+bool AppCore::appUpdateSupported() const
+{
+#ifdef SAILCAST_STORE
+    return false;
+#else
+    return true;
+#endif
+}
+
+bool AppCore::appUpdateEnabled() const
+{
+    return appUpdateSupported() && m_database->setting(QStringLiteral("update.check"), QStringLiteral("1")) == QLatin1String("1");
+}
+
+double AppCore::appUpdateChecked() const
+{
+    return m_database->setting(QStringLiteral("update.lastCheck"), QStringLiteral("0")).toDouble();
+}
+
+bool AppCore::appUpdateHint() const
+{
+    return appUpdateEnabled()
+            && (m_updState == QLatin1String("available") || m_updState == QLatin1String("ready")
+                || m_updState == QLatin1String("downloading"))
+            && m_database->setting(QStringLiteral("update.dismissed")) != m_updVersion;
+}
+
+#ifndef SAILCAST_STORE
+// (365) "What's new" of an update on a German phone: the German block of
+// the GitHub release text (tools/release_notes.py), else the English text
+static QString localizedUpdateNotes(const UpdateInfo &info)
+{
+    return QLocale::system().language() == QLocale::German && !info.notesDe.isEmpty()
+           ? info.notesDe : info.notes;
+}
+#endif
+
+QVariantList AppCore::changelog() const
+{
+    // Installed next to the qml folder (harbour-sailcast.pro, INSTALLS)
+    auto readSections = [](const QString &name) {
+        QStringList candidates;
+        candidates << QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("../share/harbour-sailcast/") + name)
+                   << QStringLiteral("/usr/share/harbour-sailcast/") + name;
+        QFile file;
+        for (int i = 0; i < candidates.size() && !file.isOpen(); ++i) {
+            file.setFileName(candidates.at(i));
+            file.open(QIODevice::ReadOnly | QIODevice::Text);
+        }
+        return file.isOpen() ? ReleaseNotes::sections(QString::fromUtf8(file.readAll()))
+                             : QList<ReleaseNotes::Section>();
+    };
+    QVariantList result;
+    QList<ReleaseNotes::Section> sections = readSections(QStringLiteral("CHANGELOG.md"));
+    // (364, Thomas 19 Nov) German phone: the German text of each version
+    // from CHANGELOG.de.md; a version missing there stays English
+    if (QLocale::system().language() == QLocale::German) {
+        const QList<ReleaseNotes::Section> german = readSections(QStringLiteral("CHANGELOG.de.md"));
+        for (int i = 0; i < sections.size(); ++i) {
+            for (const ReleaseNotes::Section &de : german) {
+                if (de.version == sections.at(i).version) {
+                    sections[i] = de;
+                    break;
+                }
+            }
+        }
+    }
+    if (sections.isEmpty()) {
+        return result;
+    }
+    const QString running = version();
+    for (int i = 0; i < sections.size(); ++i) {
+        const ReleaseNotes::Section &s = sections.at(i);
+        // A section for a version still in work (newer than this build) is left out
+        if (ReleaseNotes::compareVersions(s.version, running) > 0) {
+            continue;
+        }
+        const QDate date = QDate::fromString(s.date, Qt::ISODate);
+        QVariantMap entry;
+        entry.insert(QStringLiteral("version"), s.version);
+        entry.insert(QStringLiteral("dateText"), date.isValid() ? QLocale().toString(date, QLocale::ShortFormat) : QString());
+        entry.insert(QStringLiteral("text"), s.text);
+        // (351) Laid out line by line on the About page
+        QVariantList blockList;
+        static const char *const kinds[] = { "heading", "item", "subitem", "numbered", "paragraph", "blank" };
+        for (const ReleaseNotes::Block &block : s.blocks) {
+            QVariantMap b;
+            b.insert(QStringLiteral("kind"), QString::fromLatin1(kinds[block.kind]));
+            b.insert(QStringLiteral("text"), block.text);
+            blockList << b;
+        }
+        entry.insert(QStringLiteral("blocks"), blockList);
+        entry.insert(QStringLiteral("current"), ReleaseNotes::compareVersions(s.version, running) == 0);
+        result << entry;
+    }
+    return result;
+}
+
+#ifdef SAILCAST_STORE
+void AppCore::setupAppUpdate() {}
+void AppCore::checkAppUpdate(bool) {}
+void AppCore::setAppUpdateEnabled(bool) {}
+void AppCore::downloadAppUpdate() {}
+void AppCore::cancelAppUpdate() {}
+void AppCore::installAppUpdate() {}
+void AppCore::dismissAppUpdate() {}
+#else
+QString AppCore::updateDirectory() const
+{
+    return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+}
+
+void AppCore::setUpdateState(const QString &state)
+{
+    m_updState = state;
+    emit appUpdateChanged();
+}
+
+// The version compared with GitHub. For tests of the whole way (download,
+// installer) before a newer release exists: start Sailcast from the
+// terminal with SAILCAST_PRETEND_VERSION=1.4.0 (TEST-PROTOCOL 4.292)
+static QString updateBaseVersion(const QString &running)
+{
+    const QString pretend = QString::fromLocal8Bit(qgetenv("SAILCAST_PRETEND_VERSION"));
+    return UpdateChecker::parseVersion(pretend).isEmpty() ? running : pretend;
+}
+
+void AppCore::applyRelease(const QByteArray &json)
+{
+    if (m_updState == QLatin1String("downloading")) {
+        return;
+    }
+    m_updInfo = UpdateChecker::parseRelease(json, UpdateChecker::architecture());
+    const QString base = updateBaseVersion(version());
+    if (!m_updInfo.valid || UpdateChecker::compareVersions(m_updInfo.version, base) <= 0) {
+        // The release of the running version: its text is "What's new" on
+        // the About page
+        const bool same = m_updInfo.valid && UpdateChecker::compareVersions(m_updInfo.version, base) == 0;
+        m_updVersion = same ? m_updInfo.version : QString();
+        m_updNotes = same ? localizedUpdateNotes(m_updInfo) : QString();
+        m_updSize = 0;
+        setUpdateState(json.isEmpty() ? QStringLiteral("idle") : QStringLiteral("uptodate"));
+        return;
+    }
+    m_updVersion = m_updInfo.version;
+    m_updNotes = localizedUpdateNotes(m_updInfo);
+    m_updSize = m_updInfo.assetSize;
+    // Downloaded before (e.g. the installer refused: "Allow untrusted
+    // software" was off): straight to "Install now"
+    const QFileInfo file(QDir(updateDirectory()).filePath(m_updInfo.assetName));
+    const bool have = file.exists() && (m_updInfo.assetSize <= 0 || file.size() == m_updInfo.assetSize);
+    setUpdateState(have ? QStringLiteral("ready") : QStringLiteral("available"));
+}
+
+void AppCore::setupAppUpdate()
+{
+    m_updateChecker = new UpdateChecker(this);
+    connect(m_updateChecker, &UpdateChecker::checkFinished, this,
+            [this](bool notModified, const QByteArray &body, const QString &etag) {
+        m_updChecking = false;
+        m_database->setSetting(QStringLiteral("update.lastCheck"),
+                               QString::number(QDateTime::currentMSecsSinceEpoch() / 1000));
+        if (!notModified) {
+            m_database->setSetting(QStringLiteral("update.json"), QString::fromUtf8(body));
+            m_database->setSetting(QStringLiteral("update.etag"), etag);
+        }
+        applyRelease(m_database->setting(QStringLiteral("update.json")).toUtf8());
+        emit appUpdateChanged();
+    });
+    connect(m_updateChecker, &UpdateChecker::checkFailed, this, [this](const QString &error) {
+        qWarning() << "Update check failed:" << error;
+        m_updChecking = false;
+        // The daily check fails silently
+        if (m_updManual) {
+            m_updErrorKind = QStringLiteral("check");
+        }
+        emit appUpdateChanged();
+    });
+    connect(m_updateChecker, &UpdateChecker::downloadProgress, this, [this](qint64 received, qint64 total) {
+        m_updReceived = received;
+        if (total > 0 && total != m_updSize) {
+            m_updSize = total;
+            emit appUpdateChanged();    // (review 346) size unknown before
+        }
+        if (received - m_updEmitted >= 32 * 1024 || received == total) {
+            m_updEmitted = received;
+            emit appUpdateProgressChanged();
+        }
+    });
+    connect(m_updateChecker, &UpdateChecker::downloadFinished, this, [this](const QString &path) {
+        // (review 346) Only files Sailcast downloaded itself are cleaned up
+        m_database->setSetting(QStringLiteral("update.file"), QFileInfo(path).fileName());
+        setUpdateState(QStringLiteral("ready"));
+    });
+    connect(m_updateChecker, &UpdateChecker::downloadFailed, this, [this](const QString &error) {
+        qWarning() << "Update download failed:" << error;
+        m_updErrorKind = QStringLiteral("download");
+        setUpdateState(QStringLiteral("available"));
+    });
+
+    if (appUpdateEnabled()) {
+        // The last answer at once (offline too), then the daily check after the start
+        applyRelease(m_database->setting(QStringLiteral("update.json")).toUtf8());
+        QTimer::singleShot(8000, this, [this]() { checkAppUpdate(false); });
+    }
+
+    // Clean-up (review 346: only what Sailcast downloaded itself - a package
+    // the user keeps in Downloads by hand stays): unfinished downloads (none
+    // runs at the start), and the downloaded package once it is installed
+    // (version <= running) or replaced by a newer release
+    const QDir dir(updateDirectory());
+    const QString base = updateBaseVersion(version());
+    const QStringList obsolete = UpdateChecker::obsoletePackages(dir.entryList(QDir::Files), base);
+    const QString own = m_database->setting(QStringLiteral("update.file"));
+    for (int i = 0; i < obsolete.size(); ++i) {
+        if (obsolete.at(i).endsWith(QLatin1String(".part")) || obsolete.at(i) == own) {
+            QFile::remove(dir.filePath(obsolete.at(i)));
+        }
+    }
+    if (!own.isEmpty() && !obsolete.contains(own) && m_updInfo.valid && own != m_updInfo.assetName
+            && UpdateChecker::isOwnPackage(own)) {
+        QFile::remove(dir.filePath(own));
+    }
+    if (!QFileInfo::exists(dir.filePath(own))) {
+        m_database->setSetting(QStringLiteral("update.file"), QString());
+    }
+}
+
+void AppCore::checkAppUpdate(bool manual)
+{
+    if (!m_updateChecker || m_updateChecker->busy() || m_updState == QLatin1String("downloading")) {
+        return;
+    }
+    if (!manual) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
+        if (!appUpdateEnabled() || now - qint64(appUpdateChecked()) < 20 * 3600) {
+            return;
+        }
+    }
+    m_updManual = manual;
+    m_updChecking = true;
+    m_updErrorKind.clear();
+    emit appUpdateChanged();
+    // Without a stored answer the ETag would make GitHub answer "not modified"
+    // with nothing to show
+    const bool haveJson = !m_database->setting(QStringLiteral("update.json")).isEmpty();
+    m_updateChecker->check(haveJson ? m_database->setting(QStringLiteral("update.etag")) : QString());
+}
+
+void AppCore::setAppUpdateEnabled(bool enabled)
+{
+    m_database->setSetting(QStringLiteral("update.check"), enabled ? QStringLiteral("1") : QStringLiteral("0"));
+    if (enabled) {
+        applyRelease(m_database->setting(QStringLiteral("update.json")).toUtf8());
+        checkAppUpdate(true);
+    } else {
+        if (m_updState == QLatin1String("downloading")) {
+            cancelAppUpdate();
+        }
+        m_updErrorKind.clear();
+        // (review 346) Same as after a restart: "Automatic check is off"
+        m_updVersion.clear();
+        m_updNotes.clear();
+        setUpdateState(QStringLiteral("idle"));
+    }
+}
+
+void AppCore::downloadAppUpdate()
+{
+    if (!m_updateChecker || m_updState != QLatin1String("available") || !m_updInfo.valid) {
+        return;
+    }
+    m_updErrorKind.clear();
+    QDir().mkpath(updateDirectory());
+    const QStorageInfo storage(updateDirectory());
+    if (storage.isValid() && storage.bytesAvailable() < m_updInfo.assetSize + 20 * 1024 * 1024) {
+        m_updErrorKind = QStringLiteral("space");
+        emit appUpdateChanged();
+        return;
+    }
+    m_updReceived = 0;
+    m_updEmitted = 0;
+    setUpdateState(QStringLiteral("downloading"));
+    m_updateChecker->download(m_updInfo, updateDirectory());
+}
+
+void AppCore::cancelAppUpdate()
+{
+    if (m_updateChecker && m_updState == QLatin1String("downloading")) {
+        m_updateChecker->cancelDownload();
+        m_updReceived = 0;
+        setUpdateState(QStringLiteral("available"));
+    }
+}
+
+void AppCore::installAppUpdate()
+{
+    const QString path = QDir(updateDirectory()).filePath(m_updInfo.assetName);
+    if (m_updState != QLatin1String("ready") || !QFileInfo::exists(path)) {
+        applyRelease(m_database->setting(QStringLiteral("update.json")).toUtf8());
+        return;
+    }
+    m_updErrorKind.clear();
+    // Detached: the installer is handed the file even though Sailcast quits
+    // (test 4.29x: with "Allow untrusted software" off and on)
+    bool started = QProcess::startDetached(QStringLiteral("/usr/bin/xdg-open"), QStringList() << path);
+    if (!started) {
+        started = QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    }
+    if (!started) {
+        m_updErrorKind = QStringLiteral("install");
+        emit appUpdateChanged();
+        return;
+    }
+    QTimer::singleShot(500, qApp, &QCoreApplication::quit);
+}
+
+void AppCore::dismissAppUpdate()
+{
+    m_database->setSetting(QStringLiteral("update.dismissed"), m_updVersion);
+    emit appUpdateChanged();
+}
+#endif

@@ -64,7 +64,8 @@ Dialog {
     readonly property bool noAudio: checkState === "ok" && (result.episodes || 0) === 0
     canAccept: (checkState === "ok" || checkState === "login") && !alreadySubscribed && !noAudio
 
-    onAccepted: core.subscribe(result.url, folderBox.folderId)
+    // (343) With the choice of New episodes (Thomas 17 Nov)
+    onAccepted: core.subscribe(result.url, folderBox.folderId, !showInNew.checked)
 
     function looksLikeUrl(text) {
         var t = (text || "").trim()
@@ -279,6 +280,15 @@ Dialog {
         FolderComboBox {
             id: folderBox
             visible: dialog.checkState === "ok" || dialog.checkState === "login"
+        }
+
+        // (343, Thomas 17 Nov) As in the podcast settings, chosen right away
+        // (e.g. a news podcast that goes to the playlist only)
+        TextSwitch {
+            id: showInNew
+            visible: folderBox.visible
+            text: qsTr("Show in New episodes")
+            checked: true
         }
 
         // Notes and problems

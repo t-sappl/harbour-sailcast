@@ -23,6 +23,7 @@ HEADERS += \
     $$PWD/htmlexport.h \
     $$PWD/nextcloudlogin.h \
     $$PWD/urlmask.h \
+    $$PWD/logscrub.h \
     $$PWD/downloadmanager.h \
     $$PWD/episodeaction.h \
     $$PWD/feedparser.h \
@@ -37,6 +38,8 @@ HEADERS += \
     $$PWD/opml.h \
     $$PWD/podcastindex.h \
     $$PWD/podnews.h \
+    $$PWD/releasenotes.h \
+    $$PWD/shownoteschapters.h \
     $$PWD/sqltext.h \
     $$PWD/syncengine.h \
     $$PWD/timeparse.h \
@@ -52,6 +55,7 @@ SOURCES += \
     $$PWD/gpodderdevices.cpp \
     $$PWD/htmlexport.cpp \
     $$PWD/nextcloudlogin.cpp \
+    $$PWD/logscrub.cpp \
     $$PWD/downloadmanager.cpp \
     $$PWD/feedparser.cpp \
     $$PWD/feedprobe.cpp \
@@ -63,6 +67,8 @@ SOURCES += \
     $$PWD/opml.cpp \
     $$PWD/podcastindex.cpp \
     $$PWD/podnews.cpp \
+    $$PWD/releasenotes.cpp \
+    $$PWD/shownoteschapters.cpp \
     $$PWD/syncengine.cpp \
     $$PWD/timeparse.cpp \
     $$PWD/topicwords.cpp \
@@ -72,4 +78,11 @@ SOURCES += \
 # podcastindex.pri.example in the project folder
 exists($$PWD/../podcastindex.pri) {
     include($$PWD/../podcastindex.pri)
+}
+
+# (350) Update check of the GitHub build; not in the Jolla Store build
+# (qmake CONFIG+=store, see rpm spec "--with store")
+!CONFIG(store) {
+    HEADERS += $$PWD/updatechecker.h
+    SOURCES += $$PWD/updatechecker.cpp
 }

@@ -11,6 +11,13 @@ python3 tools/gen_ts.py .                      # check / write
 python3 tools/gen_ts.py . extra.json           # extra.json: {"English": "Deutsch", "%n x": ["%n Ding", "%n Dinge"]}
 ```
 
+French (since 19.11.2026): `--lang fr` works on `translations/harbour-sailcast-fr.ts`; `--seed other.ts` also takes translations from another file (e.g. a contributor's TS from a pull request; `unfinished` entries are ignored); `--dump-missing` writes the missing sources to `/tmp/missing_fr.json` as a template. The English plural file is only written for German.
+
+```
+python3 tools/gen_ts.py . --lang fr --seed pr-fr.ts --dump-missing   # what is missing
+python3 tools/gen_ts.py . fr-extra.json --lang fr --seed pr-fr.ts    # write
+```
+
 ## SQL – `sqlcheck.py`
 
 Builds the schema (all `SchemaV*` arrays) in an in-memory SQLite and runs `EXPLAIN` on every statement in `core/database.cpp`:
@@ -55,3 +62,33 @@ gcc -O2 -Itree-sitter/lib/include -Itree-sitter/lib/src tools/qmlcheck.c tree-si
 ```
 
 Only syntax: wrong property names or Qt 5.7+ features (e.g. `padding` on Text, `Qt.callLater`) are not detected – keep to QtQuick 2.6.
+
+## Show-notes chapters – `chapterstest/` (344)
+
+Tests of `core/shownoteschapters.cpp` (cases 1–30 of DESIGN-INTERNAL "Plan: Shownotes-Kapitel-Parser"):
+
+```
+cd tools/chapterstest && qmake-qt5 && make && ./chapterstest
+```
+
+Without qmake, against the system QtCore (as in Claude's sandbox): `g++ -std=gnu++11 -fPIC -I<qt headers> -I../../core main.cpp ../../core/shownoteschapters.cpp -lQt5Core`. On real data: CLI `shownotes-chapters all` on a copy of the database.
+
+## Update check – `updatetest/`
+
+Unit tests of the pure functions of `core/updatechecker` (version compare, architecture, choice of the release asset, plain release notes, clean-up rules). With qmake on a desktop Qt 5: `cd tools/updatetest && qmake-qt5 && make && ./updatetest`. Claude (no moc) compiles a copy without the network part against the system QtCore.
+
+## Release notes – `release_notes.py`
+
+`python3 tools/release_notes.py 1.5` writes `release-notes-1.5.md` from the section "## 1.5" of `CHANGELOG.md`, with the install instructions and the credit line (RELEASE-CHECKLIST E). `updatetest/` also tests the app's side (`core/releasenotes`).
+
+- `dupcheck.py [dir]` (352): findet Eigenschaften/Handler, die im selben QML-Objekt zweimal gesetzt sind (z. B. zwei `Component.onCompleted`) – QML lehnt dann die ganze Datei ab („Could not load page“); qmlcheck sieht das nicht.
+
+- `changelogcheck.py [dir]` (364): CHANGELOG.md und CHANGELOG.de.md müssen zusammenpassen – gleiche Versionen und Daten, pro Version gleich viele Überschriften, Punkte und Unterpunkte (die App zeigt auf deutschen Telefonen den deutschen Text pro Version).
+
+## Properties of own components – `propcheck.py`
+
+A property set on an instance of one of our own QML components (`PodcastTile { started: … }`) must be declared in that component. Qt would otherwise drop the whole surrounding component ("Type FolderSection unavailable", 367). Names that Qt/Silica base types have and `on…` handlers are not checked:
+
+```
+python3 tools/propcheck.py .
+```

@@ -33,12 +33,17 @@ DockedPanel {
     property int bookmarkId: 0
     property int seconds: 0
     property bool saved: true
+    // (review 348) The name it was opened with (chapter bookmark): cleared
+    // by hand, the bookmark loses it
+    property string prefilledName: ""
 
-    function show(id, position) {
+    // (348) name: prefilled (a chapter bookmark carries the chapter's title)
+    function show(id, position, name) {
         bookmarkId = id
         seconds = position
         saved = false
-        nameField.text = ""
+        prefilledName = name || ""
+        nameField.text = name || ""
         noteField.text = ""
         open = true
         nameField.forceActiveFocus()
@@ -60,7 +65,7 @@ DockedPanel {
         saved = true
         var name = nameField.text.trim()
         var note = noteField.text.trim()
-        if (name.length > 0 || note.length > 0) {
+        if (name.length > 0 || note.length > 0 || name !== prefilledName) {
             core.editBookmark(bookmarkId, name, note)
         }
     }

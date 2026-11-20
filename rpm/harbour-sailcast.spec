@@ -2,7 +2,7 @@
 Name:       harbour-sailcast
 
 Summary:    Podcast player for Sailfish OS
-Version:    1.4.1
+Version:    1.5
 Release:    1
 License:    GPL-3.0-or-later
 Source0:    %{name}-%{version}.tar.bz2
@@ -32,6 +32,10 @@ BuildRequires:  desktop-file-utils
 # lrelease for the translations (CONFIG += sailfishapp_i18n)
 BuildRequires:  qt5-qttools-linguist
 
+# (350) Jolla Store build: rpmbuild --with store (no app update, see
+# CONFIG(store) in harbour-sailcast.pro)
+%bcond_with store
+
 %description
 Sailcast is a podcast player for Sailfish OS with a native C++ core and
 gpodder.net-compatible synchronization of subscriptions and playback state.
@@ -40,7 +44,7 @@ gpodder.net-compatible synchronization of subscriptions and playback state.
 %setup -q -n %{name}-%{version}
 
 %build
-%qmake5
+%qmake5 %{?with_store:CONFIG+=store}
 make %{?_smp_mflags}
 
 %install
@@ -59,7 +63,22 @@ desktop-file-install --delete-original \
 %{_datadir}/icons/hicolor/*/apps/%{name}.png
 
 %changelog
-* Tue Nov 17 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.4.1-1
+* Fri Nov 20 2026 Thomas Sappl <sailcast@proton.me> - 1.5-1
+- Sailcast checks once a day for a new version on GitHub and offers
+  it on the About page (not in the Jolla Store build); version
+  history on the About page; a log of what the player and the
+  updates did (stays on the phone, can be switched off, "Replace
+  names" for sharing); looser search in my podcasts; bookmark a
+  chapter; feeds that could not be updated are named; Share my
+  podcasts with a choice of podcasts; unsubscribing with downloads
+  asks first and can keep them in Music.
+  Fixes: an episode counted as played in the middle, the next
+  playlist episode did not start with the screen locked, a moment
+  of the beginning heard when resuming, switching between episodes.
+  Privacy: recommendations from my subscriptions are off until
+  switched on.
+
+* Tue Nov 17 2026 Thomas Sappl <sailcast@proton.me> - 1.4.1-1
 - Download filter on New episodes; a line with the podcasts hidden
   there and a page to choose them all at once; download symbol next
   to the size again; "Add to playlist without downloading"; hide a
@@ -69,7 +88,7 @@ desktop-file-install --delete-original \
   waiting downloads, shared web page names only its podcasts, no
   login after a redirect to http, video archive, player bar on
   choice pages.
-* Sun Nov 15 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.4-1
+* Sun Nov 15 2026 Thomas Sappl <sailcast@proton.me> - 1.4-1
 - New episodes rebuilt: "New" and "All unplayed", set an episode aside
   without marking it played, "Clear New", by date or grouped by podcast,
   the playlist button also downloads, per podcast "Show in New
@@ -86,7 +105,7 @@ desktop-file-install --delete-original \
   many fixes from two code reviews. Note: a backup made with 1.4 cannot
   be opened by 1.3.
 
-* Fri Nov 06 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.3-1
+* Fri Nov 06 2026 Thomas Sappl <sailcast@proton.me> - 1.3-1
 - First release on OpenRepos.
   Video podcasts: picture on the episode page, full screen, "sound only",
   audio and video versions of a feed (podcast:alternateEnclosure), HLS
@@ -104,7 +123,7 @@ desktop-file-install --delete-original \
   Fixed: the speed applies from the first second (next episode, video);
   an episode skipped in the middle keeps its position.
 
-* Sun Nov 01 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.2-1
+* Sun Nov 01 2026 Thomas Sappl <sailcast@proton.me> - 1.2-1
 - Released on GitHub; the first version for OpenRepos and the Jolla
   Store (1.1 was only on GitHub).
   Discover: "For you" from what you listen to, trending, new German- and
@@ -120,7 +139,7 @@ desktop-file-install --delete-original \
   also in the descriptions; podcast:// links; hanging streams recovered;
   a smoother first start with first steps and one-time hints.
 
-* Sat Oct 24 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.1-1
+* Sat Oct 24 2026 Thomas Sappl <sailcast@proton.me> - 1.1-1
 - Sailcast in the sharing menu ("Add podcast") for links and text; search
   on the device (podcasts, episode titles, bookmarks); website addresses
   checked for their podcast feed, links from Spotify, YouTube and other
@@ -132,7 +151,7 @@ desktop-file-install --delete-original \
   gpodder.net device choice for the sync group; name and note right when
   setting a bookmark; settings in sub-pages; setting "Sync and update
   together".
-* Thu Oct 22 2026 Thomas Sappl <thomas.sappl@gmail.com> - 1.0-1
+* Thu Oct 22 2026 Thomas Sappl <sailcast@proton.me> - 1.0-1
 - First public release (source on GitHub): podcast search (Podcast Index)
   with a check of feed addresses, folders, playlist, player with chapters,
   bookmarks and sleep timer, per-podcast speed and intro/outro skipping,
@@ -140,10 +159,10 @@ desktop-file-install --delete-original \
   and landscape, sync with Nextcloud GPodder Sync (browser sign-in) or a
   gpodder.net compatible server, OPML import and export, English and
   German.
-* Fri Oct 09 2026 Thomas Sappl <thomas.sappl@gmail.com> - 0.1-1
+* Fri Oct 09 2026 Thomas Sappl <sailcast@proton.me> - 0.1-1
 - Stage 4a/4b: lists (new episodes, podcasts, playlist, episodes,
   episode page) and the player (mini player, player page, chapters,
   speed, sleep timer, lock screen controls).
-* Tue Oct 06 2026 Thomas Sappl <thomas.sappl@gmail.com> - 0.1-1
+* Tue Oct 06 2026 Thomas Sappl <sailcast@proton.me> - 0.1-1
 - Stage 1: project skeleton, core library (database, feed parser and
   updater, OPML, gpodder-sailfish import), command line test tool.

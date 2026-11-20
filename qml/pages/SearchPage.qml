@@ -76,7 +76,10 @@ Page {
     property var trendLanguages: []
     // (175) "Empfehlungen aus meinen Abos" switched off: offered at the end
     // of Für dich, so it is not forgotten
-    property bool fromSubscriptions: true
+    property bool fromSubscriptions: false
+    // (362, Thomas 19 Nov) The hint to "Recommendations from my subscriptions"
+    // (off by default since 1.5) is at the top of Für dich; x hides it for good
+    property bool subscriptionsHintDismissed: core.setting("hint.recommendFromSubscriptions", "0") === "1"
     property string trendLanguage: ""
     property var languageNames: ({})
     // "Angepasst an: …" - the interests in one line, tap: Meine Interessen
@@ -1482,26 +1485,55 @@ Page {
         // also on "Neu"; since 192 switched on the categories line (no
         // pull-down menu)
         header: page.tab === "forYou" && page.onboarding ? onboardingCard
-              : (page.tab === "new" ? newHeader : null)
-        footer: page.tab === "forYou" && !page.onboarding && !page.fromSubscriptions
-                && forYouModel.count > 0 ? subscriptionsHint : null
+              : (page.tab === "new" ? newHeader
+              : (page.tab === "forYou" && !page.fromSubscriptions && !page.subscriptionsHintDismissed
+                 ? subscriptionsHint : null))
 
         // (175) Below Für dich while "Empfehlungen aus meinen Abos" is off
         Component {
             id: subscriptionsHint
-            BackgroundItem {
+            // (362) Was the footer below all suggestions - nobody scrolled
+            // that far. Now the first line, with x. (363) The header binding
+            // must not depend on forYouModel.count: a new header moves the
+            // list, loadMore() adds rows, count changes, header again -
+            // binding loop (log 19 Nov). Empty list: the line folds itself.
+            Item {
                 width: discoverList.width
-                height: hintLabel.height + 2 * Theme.paddingLarge
-                onClicked: pageStack.push(Qt.resolvedUrl("InterestsPage.qml"))
-                Label {
-                    id: hintLabel
-                    x: Theme.horizontalPageMargin
-                    width: parent.width - 2 * Theme.horizontalPageMargin
+                visible: forYouModel.count > 0
+                height: visible ? hintLabel.height + 2 * Theme.paddingMedium : 0
+                BackgroundItem {
+                    anchors { left: parent.left; right: hintClear.left; top: parent.top; bottom: parent.bottom }
+                    onClicked: pageStack.push(Qt.resolvedUrl("InterestsPage.qml"))
+                    Label {
+                        id: hintLabel
+                        x: Theme.horizontalPageMargin
+                        width: parent.width - Theme.horizontalPageMargin
+                        anchors.verticalCenter: parent.verticalCenter
+                        wrapMode: Text.Wrap
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
+                        text: qsTr("More podcasts similar to your favourites: switch on \"Recommendations from my subscriptions\" in My interests") + " \u203a"
+                    }
+                }
+                MouseArea {
+                    id: hintClear
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.horizontalPageMargin - Theme.paddingMedium
                     anchors.verticalCenter: parent.verticalCenter
-                    wrapMode: Text.Wrap
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: parent.highlighted ? Theme.highlightColor : Theme.secondaryHighlightColor
-                    text: qsTr("More podcasts similar to your favourites: switch on \"Recommendations from my subscriptions\" in My interests") + " \u203a"
+                    width: Theme.itemSizeExtraSmall
+                    height: Theme.itemSizeExtraSmall
+                    Label {
+                        anchors.centerIn: parent
+                        text: "\u2715"
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: parent.pressed ? Theme.highlightColor : Theme.secondaryColor
+                    }
+                    onClicked: {
+                        if (hintClearBubble.takeHeld()) return
+                        core.setSetting("hint.recommendFromSubscriptions", "1")
+                        page.subscriptionsHintDismissed = true
+                    }
+                    HoldNameBubble { id: hintClearBubble; attached: true; name: qsTr("Don't show again") }
                 }
             }
         }

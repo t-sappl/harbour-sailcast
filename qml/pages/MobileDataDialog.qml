@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import Sailfish.Silica 1.0
+import "../"
 
 // Asked before a download the user started while "Downloads only on Wi-Fi"
 // is on and there is no Wi-Fi connection. Automatic downloads never ask -

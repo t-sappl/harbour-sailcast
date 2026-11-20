@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "archiver.h"
 
+#include <sys/stat.h>
+
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -22,6 +25,39 @@
 #include "filenames.h"
 #include "netutil.h"
 #include "syncengine.h"
+
+// (348, code review "Downloads 13") After the database entry was moved to
+// the archive copy: the old file is deleted only when it is the same file -
+// same name, same size - lies in the app's own download folder (review
+// 348: never a "Save in Music" copy or an imported backup) and is not the
+// very same file reached by another path (inode)
+static void removeDuplicate(const QString &previous, const QString &target, const QString &downloadDirectory)
+{
+    if (previous.isEmpty() || previous == target || downloadDirectory.isEmpty()) {
+        return;
+    }
+    const QFileInfo oldInfo(previous);
+    const QFileInfo newInfo(target);
+    if (!oldInfo.exists() || !newInfo.exists() || oldInfo.fileName() != newInfo.fileName()
+            || oldInfo.size() != newInfo.size()) {
+        return;
+    }
+    const QString base = QFileInfo(downloadDirectory).canonicalFilePath();
+    const QString oldPath = oldInfo.canonicalFilePath();
+    if (base.isEmpty() || !oldPath.startsWith(base + QLatin1Char('/'))) {
+        return;
+    }
+    struct stat a;
+    struct stat b;
+    if (::stat(QFile::encodeName(oldPath).constData(), &a) != 0
+            || ::stat(QFile::encodeName(newInfo.canonicalFilePath()).constData(), &b) != 0
+            || (a.st_dev == b.st_dev && a.st_ino == b.st_ino)) {
+        return;
+    }
+    if (QFile::remove(previous)) {
+        qInfo() << "Archive: removed the duplicate" << previous;
+    }
+}
 
 namespace {
 
@@ -385,7 +421,11 @@ void Archiver::archiveEpisodes()
 
         if (info.exists() && info.size() > 0 && !QFile::exists(target + QStringLiteral(".part"))) {
             if (!e.downloaded || e.downloadPath != target) {
+                const QString previous = e.downloaded ? e.downloadPath : QString();
                 m_database->setDownloaded(e.id, target);
+                // (348, review "Downloads 13") The app's copy is the same
+                // file: gone, instead of an orphan nobody sees
+                removeDuplicate(previous, target, m_downloadDirectory);
             }
             ++m_result.present;
         } else if (e.downloaded && e.downloadPath != target && QFile::exists(e.downloadPath)
@@ -671,8 +711,14 @@ ArchiveImportResult Archiver::importFolder(const QString &folder)
             fileDir = m_videoRoot + QLatin1Char('/') + QFileInfo(dir).fileName();
         }
         if (!fileName.isEmpty() && QFile::exists(fileDir + QLatin1Char('/') + fileName)) {
+            const EpisodeRow before = m_database->episode(episodeId);
+            const QString target = fileDir + QLatin1Char('/') + fileName;
             m_database->setArchiveFile(episodeId, fileName);
-            m_database->setDownloaded(episodeId, fileDir + QLatin1Char('/') + fileName);
+            m_database->setDownloaded(episodeId, target);
+            // (348, review "Downloads 13") not the episode playing (file in use)
+            if (before.downloaded && episodeId != m_currentEpisode) {
+                removeDuplicate(before.downloadPath, target, m_downloadDirectory);
+            }
             ++result.filesFound;
         }
         const qint64 updated = static_cast<qint64>(o.value(QStringLiteral("position_updated")).toDouble());

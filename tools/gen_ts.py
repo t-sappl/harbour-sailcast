@@ -1,18 +1,32 @@
 import re, os, sys, glob, json
 import xml.etree.ElementTree as ET
 from xml.sax.saxutils import escape
-root = sys.argv[1]
-ts = os.path.join(root, 'translations/harbour-sailcast-de.ts')
-extra = json.load(open(sys.argv[2])) if len(sys.argv) > 2 else {}
+# usage: gen_ts.py <root> [extra.json] [--lang de|fr] [--seed other.ts]
+args = [a for a in sys.argv[1:] if a != '--dump-missing']
+lang = 'de'
+seed = None
+if '--lang' in args:
+    i = args.index('--lang'); lang = args[i + 1]; del args[i:i + 2]
+if '--seed' in args:
+    i = args.index('--seed'); seed = args[i + 1]; del args[i:i + 2]
+root = args[0]
+ts = os.path.join(root, 'translations/harbour-sailcast-%s.ts' % lang)
+extra = json.load(open(args[1], encoding='utf-8')) if len(args) > 1 else {}
 # existing translations by source (any context), plus by (context, source)
 known = {}
-t = ET.parse(ts)
-for ctx in t.getroot().findall('context'):
-    for m in ctx.findall('message'):
-        src = m.find('source').text
-        tr = m.find('translation')
-        nf = tr.findall('numerusform')
-        known[src] = [n.text for n in nf] if nf else tr.text
+for path in [p for p in (seed, ts) if p and os.path.exists(p)]:
+    t = ET.parse(path)
+    for ctx in t.getroot().findall('context'):
+        for m in ctx.findall('message'):
+            src = m.find('source').text
+            tr = m.find('translation')
+            if tr is None or tr.get('type') in ('unfinished', 'obsolete', 'vanished'):
+                continue
+            nf = tr.findall('numerusform')
+            val = [n.text for n in nf] if nf else tr.text
+            if not val or (isinstance(val, list) and not all(val)):
+                continue
+            known[src] = val
 known.update(extra)
 strpat = r'"((?:[^"\\]|\\.)*)"'
 call = re.compile(r'\b(qsTr|tr)\(\s*' + strpat + r'(\s*,\s*' + strpat + r'\s*,)?')
@@ -31,7 +45,7 @@ for f in files:
         if not any(s == src for s, _ in lst):
             lst.append((src, numerus))
 missing = []
-out = ['<?xml version="1.0" encoding="utf-8"?>', '<!DOCTYPE TS>', '<TS version="2.1" language="de">']
+out = ['<?xml version="1.0" encoding="utf-8"?>', '<!DOCTYPE TS>', '<TS version="2.1" language="%s">' % lang]
 for ctx in sorted(contexts):
     out.append('<context>'); out.append('    <name>%s</name>' % ctx)
     for src, numerus in contexts[ctx]:
@@ -51,6 +65,8 @@ for ctx in sorted(contexts):
 out.append('</TS>')
 if missing:
     print('MISSING:'); [print(' ', c, '|', s) for c, s in missing]
+    if '--dump-missing' in sys.argv:
+        json.dump({s: '' for c, s in missing}, open('/tmp/missing_%s.json' % lang, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 else:
     open(ts, 'w', encoding='utf-8').write('\n'.join(out) + '\n')
     print('written', sum(len(v) for v in contexts.values()), 'messages')
@@ -59,6 +75,8 @@ else:
 # "1 episodes". harbour-sailcast-en.ts holds only the messages with a count
 # (singular from tools/plurals_en.json, plural = the source); all other
 # texts stay the source text.
+if lang != 'de':
+    sys.exit(0)
 plurals_path = os.path.join(root, 'tools/plurals_en.json')
 plurals = json.load(open(plurals_path, encoding='utf-8'))
 missing_en = []

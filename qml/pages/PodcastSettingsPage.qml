@@ -106,20 +106,10 @@ Page {
     // Unsubscribe (143, before in the podcast page's pulley): back to the
     // page below the podcast page first - neither page may be in the way
     // while the podcast disappears
+    // (366) Through the app window: a page about the downloads, or the
+    // countdown; it pops this page and the podcast page itself
     function unsubscribe() {
-        var id = podcastId
-        remorse.execute(qsTr("Unsubscribing"), function() {
-            var target = pageStack.previousPage(page)
-            if (target && target.objectName === "episodesPage") {
-                target = pageStack.previousPage(target)
-            }
-            if (target) {
-                pageStack.pop(target)
-            } else {
-                pageStack.pop()
-            }
-            appWindow.unsubscribe(id)
-        })
+        appWindow.askUnsubscribe(podcastId, (core.podcast(podcastId).title || ""))
     }
 
     RemorsePopup {
@@ -454,7 +444,7 @@ Page {
 
             ComboBox {
                 label: qsTr("Delete played downloads")
-                description: qsTr("Never: downloads of this podcast are kept – also with \"Delete played downloads\" on the downloads page")
+                description: qsTr("Never: downloads of this podcast are kept – also with \"Delete played\" on the downloads page")
                 currentIndex: {
                     var i = page.cleanupOptions.indexOf(page.cleanupDays === "" ? -2 : parseInt(page.cleanupDays))
                     return i >= 0 ? i : 0

@@ -107,6 +107,24 @@ Column {
                 font.pixelSize: Theme.fontSizeExtraSmall
                 color: Theme.secondaryHighlightColor
             }
+            // (355, Thomas 18 Nov) A podcast in this folder could not be
+            // updated: "!" in the error colour, also when unfolded
+            Rectangle {
+                visible: podcasts.failedCount > 0 && !section.manualUpdate
+                anchors.verticalCenter: parent.verticalCenter
+                width: failedMark.height + Theme.paddingSmall / 2
+                height: width
+                radius: width / 2
+                color: Theme.errorColor
+                Label {
+                    id: failedMark
+                    anchors.centerIn: parent
+                    text: "!"
+                    font.pixelSize: Theme.fontSizeExtraSmall
+                    font.bold: true
+                    color: Theme.highlightDimmerColor
+                }
+            }
             Rectangle {
                 visible: section.unplayed > 0
                 anchors.verticalCenter: parent.verticalCenter
@@ -220,6 +238,7 @@ Column {
                 title: model.title
                 coverUrl: model.coverUrl
                 unplayed: model.unplayed
+                started: model.started || 0
                 episodeCount: model.episodeCount
                 listenedSeconds: model.listenedSeconds
                 downloadedCount: model.downloadedCount

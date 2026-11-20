@@ -768,6 +768,15 @@ QVariant EpisodeListModel::data(const QModelIndex &index, int role) const
     case KeptRole: return e.downloaded && !e.archiveFile.isEmpty()
                 && e.downloadPath.endsWith(QLatin1Char('/') + e.archiveFile);
     case DownloadedRole: return e.downloaded;
+    // (345, Thomas + Gemini 17 Nov) A row on New episodes whose download state
+    // no longer matches the download filter (➕ loaded it, Auto-Download,
+    // "Delete download"): it stays until the page is left (335) and says why
+    case LeftFilterRole:
+        if ((m_filter != Home && m_filter != HomeNew) || m_downloadFilter.isEmpty()) {
+            return false;
+        }
+        return m_downloadFilter == QLatin1String("notDownloaded") ? e.downloaded
+             : m_downloadFilter == QLatin1String("downloaded") ? !e.downloaded : false;
     case DownloadingRole: return core ? core->isDownloading(int(e.id)) : false;
     case DownloadProgressRole: return core ? core->downloadProgress(int(e.id)) : 0.0;
     case QueuedRole: return core ? core->isQueued(int(e.id)) : false;
@@ -798,6 +807,7 @@ QHash<int, QByteArray> EpisodeListModel::roleNames() const
     names.insert(SeasonRole, "season");
     names.insert(EpisodeNumberRole, "episodeNumber");
     names.insert(KeptRole, "kept");
+    names.insert(LeftFilterRole, "leftFilter");
     names.insert(ProvisionalRole, "provisional");
     names.insert(VideoRole, "video");
     names.insert(VideoFileRole, "videoFile");

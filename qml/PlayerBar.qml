@@ -301,7 +301,9 @@ Rectangle {
     }
 
     function openEpisode() {
-        if (!player.hasEpisode) {
+        // (353) Journal 18 Nov: the edge swipe to the app overview started on
+        // the bar and opened the episode page while the app went away
+        if (!player.hasEpisode || Qt.application.state !== Qt.ApplicationActive) {
             return
         }
         expanded = false
@@ -443,10 +445,18 @@ Rectangle {
                     color: Theme.secondaryColor
                 }
 
-                IconButton {
+                // (359, Thomas 18 Nov) The same plain "✕" everywhere
+                MouseArea {
                     anchors.centerIn: parent
+                    width: Theme.itemSizeExtraSmall
+                    height: Theme.itemSizeExtraSmall
                     visible: appWindow.sleepTimer.active || player.stopAtEnd
-                    icon.source: "image://theme/icon-m-clear"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "\u2715"
+                        font.pixelSize: Theme.fontSizeMedium
+                        color: parent.pressed ? Theme.highlightColor : Theme.secondaryColor
+                    }
                     onClicked: {
                         appWindow.sleepTimer.cancel()
                         player.stopAtEnd = false
@@ -479,13 +489,22 @@ Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 property real _x0: 0
                 property real _y0: 0
+                // (353) A touch that moved, or that the system took over (the
+                // edge swipe to the app overview), is no tap
+                property bool _moved: false
                 onPressed: {
-                    _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false
+                    _x0 = mouse.x; _y0 = mouse.y; playerBar._swiped = false; _moved = false
                 }
-                onPositionChanged: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
+                onPositionChanged: {
+                    if (Math.abs(mouse.x - _x0) > Theme.paddingLarge || Math.abs(mouse.y - _y0) > Theme.paddingLarge) {
+                        _moved = true
+                    }
+                    playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "move")
+                }
                 onReleased: playerBar.swipeEnded(mouse.x - _x0, mouse.y - _y0, "release")
+                onCanceled: _moved = true
                 // a swipe that began on the title is no tap
-                onClicked: if (!playerBar._swiped) playerBar.openEpisode()
+                onClicked: if (!playerBar._swiped && !_moved) playerBar.openEpisode()
 
                 Row {
                     anchors.fill: parent

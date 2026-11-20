@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
 import QtMultimedia 5.6
+import Nemo.KeepAlive 1.2
 import "TimeFormat.js" as TimeFormat
 
 // Playback of one episode at a time (appWindow.player).
@@ -222,6 +223,21 @@ Item {
         return isNaN(value) || value < 0 ? 0 : value
     }
 
+    // (351) For the player log
+    function _statusName(status) {
+        switch (status) {
+        case MediaPlayer.NoMedia: return "no media"
+        case MediaPlayer.Loading: return "loading"
+        case MediaPlayer.Loaded: return "loaded"
+        case MediaPlayer.Stalled: return "stalled"
+        case MediaPlayer.Buffering: return "buffering"
+        case MediaPlayer.Buffered: return "buffered"
+        case MediaPlayer.EndOfMedia: return "end of media"
+        case MediaPlayer.InvalidMedia: return "invalid media"
+        default: return "unknown (" + status + ")"
+        }
+    }
+
     // Where an episode starts: its stored position (0 when played), but
     // not inside the podcast's intro
     function _startFor(data) {
@@ -289,6 +305,71 @@ Item {
                 player.play()
             }
         }
+    }
+
+    // (351) Forum 17 Nov: "had to restart playback after each episode". After
+    // the next episode was started automatically: still not playing after
+    // 4 s - into the log and one more play(); after another 4 s a message
+    // (and the log) instead of silence. A pause by the user ends the watch.
+    property int _continueId: -1
+    // (351) _load() returned false because it asked about mobile data
+    property bool _askedMobile: false
+    // (352) Last "not saved" line written (episode + reason)
+    property string _lastNotSaved: ""
+    property int _continueTries: 0
+    function _watchContinue(id) {
+        _continueId = id
+        _continueTries = 0
+        continueTimer.restart()
+    }
+    Timer {
+        id: continueTimer
+        interval: 4000
+        onTriggered: {
+            if (controller._continueId !== controller.episodeId || !controller.hasEpisode) {
+                controller._continueId = -1
+                return
+            }
+            // (review 351) Started and paused from outside since (a call)
+            // ends the watch in onPlaybackStateChanged; a stop by a sync
+            // ("played elsewhere", _needsLoad) is no reason to play
+            if (controller._playingState || controller._needsLoad) {
+                controller._continueId = -1
+                return
+            }
+            if (controller._continueTries < 1) {
+                controller._continueTries += 1
+                console.warn("Player: next episode " + controller.episodeId + " did not start (state "
+                             + player.playbackState + ", status " + controller._statusName(player.status)
+                             + ", app " + Qt.application.state + ") - trying again")
+                controller._playWhenLoaded = false
+                player.play()
+                continueTimer.restart()
+                return
+            }
+            console.warn("Player: next episode " + controller.episodeId + " did not start - given up (state "
+                         + player.playbackState + ", status " + controller._statusName(player.status) + ")")
+            controller._continueId = -1
+            appWindow.showMessage(qsTr("The next episode did not start – tap play to continue"))
+        }
+    }
+
+    // (361, Thomas 18 Nov 22:15, log) With the screen locked the phone went
+    // to deep sleep as soon as an episode ended (no sound = no wakelock of
+    // the player): the change to the next episode stopped in the middle
+    // ("finished" 22:12:25, "load" only at 22:12:36 when he woke the phone).
+    // Awake while playing and 20 s after it stops - that bridges the change;
+    // a pause by the user lets the phone sleep again after 20 s.
+    // Set in onPlaybackStateChanged only, so it never drops to false for a
+    // moment between "stopped" and the timer starting
+    property bool _keepAwake: false
+    KeepAlive {
+        enabled: controller._keepAwake
+    }
+    Timer {
+        id: stayAwakeTimer
+        interval: 20000
+        onTriggered: controller._keepAwake = false
     }
 
     signal error(string message)
@@ -390,7 +471,19 @@ Item {
         playbackRate: controller.rate
         // (251) Silent while a reload is checked (the start of an HLS stream
         // was audible until the jump); the check always ends (15 s at most)
+        // (363, Thomas 19 Nov: "audible jump from the beginning to the
+        // position") Also after a load with a stored position: the first
+        // jump gets lost often ("Load landed at 2 s instead of 2133 s"), the
+        // beginning played ~2 s until the check jumped again. Silent while
+        // the player is still clearly before the target - a jump that works
+        // ends it at once, a lost one stays silent until the next jump; the
+        // check always ends (gives up after 15 s / 4 jumps). After a load at
+        // most 8 s silent (a stream not yet seekable may wait up to a minute
+        // - then rather the beginning than silence)
         muted: controller._verifyTarget >= 0 && controller._playingState && !controller._needsLoad
+               && (!controller._verifyLoad
+                   || (player.position < controller._verifyTarget - 5000
+                       && controller._verifyTotal + controller._verifyWait < 8))
 
         onSeekableChanged: {
             controller._applyPendingSeek()
@@ -411,6 +504,11 @@ Item {
             }
         }
         onStatusChanged: {
+            // (351) The player log (buffering left out: streams flip it often)
+            if (status !== MediaPlayer.Buffering && status !== MediaPlayer.Buffered) {
+                console.warn("Player: media " + controller._statusName(status) + " at "
+                             + Math.round(position / 1000) + " s (episode " + controller.episodeId + ")")
+            }
             if (status === MediaPlayer.Loaded || status === MediaPlayer.Buffered) {
                 controller._applyPendingSeek()
                 // (206) Started from the end of the previous one: play
@@ -424,8 +522,11 @@ Item {
                 // to the old position was checked: the episode was marked
                 // played and the next one started (log of 6 Nov, video). Not
                 // the end when the target is far from the real end.
+                // (343, review) Not after a load to a target beyond the real
+                // end of the file (feed length too long): that end is real
                 if (controller._verifyTarget >= 0 && controller._verifyTries < 4
-                        && controller._verifyTarget < (controller.duration - 15) * 1000) {
+                        && controller._verifyTarget < (controller.duration - 15) * 1000
+                        && !(controller._verifyLoad && player.duration > 0 && controller._verifyTarget >= player.duration - 15000)) {
                     controller._verifyTries += 1
                     console.warn("End of media while the reload is checked - jumping to "
                                  + Math.round(controller._verifyTarget / 1000) + " s instead of finishing")
@@ -468,6 +569,25 @@ Item {
             controller._tryNextSource()
         }
         onPlaybackStateChanged: {
+            // (361) Awake for 20 s after it stops (KeepAlive above)
+            controller._keepAwake = true
+            if (playbackState === MediaPlayer.PlayingState) {
+                stayAwakeTimer.stop()
+            } else {
+                stayAwakeTimer.restart()
+            }
+            // (351) The player log
+            console.warn("Player: " + (playbackState === MediaPlayer.PlayingState ? "playing"
+                                       : playbackState === MediaPlayer.PausedState ? "paused" : "stopped")
+                         + " at " + Math.round(position / 1000) + " s (episode " + controller.episodeId
+                         + ", app " + Qt.application.state + ")")
+            // (review 351) It started: the watch of _watchContinue is over -
+            // a later pause from outside (a call) must not be undone by it
+            if (playbackState === MediaPlayer.PlayingState && controller._continueId >= 0) {
+                console.warn("Player: next episode " + controller._continueId + " is playing")
+                controller._continueId = -1
+                continueTimer.stop()
+            }
             if (playbackState !== MediaPlayer.PlayingState) {
                 controller.stuck = false
                 controller._watchTicks = 0
@@ -535,22 +655,34 @@ Item {
             // after 2 s / 2 jumps and stayed at the beginning)
             if (controller._verifyTarget >= 0) {
                 controller._verifyTicks += 1
-                controller._verifyTotal += 1
+                // (343, review) A stream not yet seekable (the jump still
+                // pending) does not use up the 15 s - up to a minute of waiting
+                if (controller._pendingSeek < 0 || controller._verifyWait >= 60) {
+                    controller._verifyTotal += 1
+                } else {
+                    controller._verifyWait += 1
+                }
                 if (controller._verifyTicks >= 2) {
                     var off = Math.abs(player.position - controller._verifyTarget)
+                    // (343) After a load: only "before the target" is a lost jump
+                    if (controller._verifyLoad) {
+                        off = Math.max(0, controller._verifyTarget - player.position)
+                    }
                     if (off <= 5000) {
                         controller._verifyTarget = -1
+                        controller._verifyLoad = false
                     } else if (controller._verifyTries < 4 && player.seekable) {
                         controller._verifyTries += 1
-                        console.warn("Reload landed at " + Math.round(player.position / 1000) + " s instead of "
+                        console.warn((controller._verifyLoad ? "Load" : "Reload") + " landed at " + Math.round(player.position / 1000) + " s instead of "
                                      + Math.round(controller._verifyTarget / 1000) + " s - jumping again ("
                                      + controller._verifyTries + ")")
                         player.seek(controller._verifyTarget)
                         controller._verifyTicks = 0
                     } else if (controller._verifyTotal >= 15 || controller._verifyTries >= 4) {
-                        console.warn("Reload: position " + Math.round(controller._verifyTarget / 1000)
+                        console.warn((controller._verifyLoad ? "Load" : "Reload") + ": position " + Math.round(controller._verifyTarget / 1000)
                                      + " s not reached, giving up")
                         controller._verifyTarget = -1
+                        controller._verifyLoad = false
                     }
                 }
             }
@@ -585,6 +717,12 @@ Item {
     // jump) and plays - for a hanging stream
     function _restart() {
         var ms = _pendingSeek >= 0 ? _pendingSeek : player.position
+        // (343, review) A reload while the jump of a load is still checked
+        // and was lost (player clearly before it): the reload goes to the
+        // target, not to where the player stands near the start
+        if (_verifyTarget >= 0 && _pendingSeek < 0 && player.position < _verifyTarget - 5000) {
+            ms = _verifyTarget
+        }
         var src = player.source
         console.warn("Loading the source again at " + Math.round(ms / 1000) + " s")
         stuck = false
@@ -606,8 +744,10 @@ Item {
         _markOutputsApplied()
         // (245) Check where it really starts (the jump got lost now and then)
         _verifyTarget = _pendingSeek
+        _verifyLoad = false
         _verifyTries = 0
         _verifyTotal = 0
+        _verifyWait = 0
         _verifyTicks = 0
         _rateApplied = false
         player.source = src
@@ -635,6 +775,9 @@ Item {
             player.seek(_pendingSeek)
             _pendingSeek = -1
             _rateApplied = true
+            // (343, review) The check counts from the jump, not from play():
+            // the position reported lags behind a seek
+            _verifyTicks = 0
         } else if (!_rateApplied && player.seekable && Math.abs(rate - 1.0) > 0.01) {
             // (254) An episode that starts at 0:00 has no jump, and the media
             // player takes a new source's rate only with a seek (239): the
@@ -646,6 +789,16 @@ Item {
     }
     // The current source has had a seek (or the rate was applied otherwise)
     property bool _rateApplied: false
+    // (343, Thomas 17 Nov: switched from one episode to a downloaded,
+    // half-heard one, it started from 0) The jump to the stored position of
+    // a newly loaded episode is checked as well: _verifyTarget with this flag
+    // set - (363) muted only while the player is still clearly before the
+    // target (see "muted") - and only a player clearly before the target
+    // counts as a lost jump (it has played on for
+    // a few seconds by then, at any speed)
+    property bool _verifyLoad: false
+    // (343, review) Ticks waited for a stream to become seekable during a check
+    property int _verifyWait: 0
 
     // Feed update after a failed playback: once per episode and load
     property bool _refreshTried: false
@@ -680,8 +833,10 @@ Item {
         // a stale target jumped the next episode to the old position (log of
         // 6 Nov: "landed at 986 s instead of 415 s")
         _verifyTarget = -1
+        _verifyLoad = false
         _verifyTries = 0
         _verifyTotal = 0
+        _verifyWait = 0
         _verifyTicks = 0
         var data = core.episode(id)
         if (!data.episodeId) {
@@ -732,6 +887,8 @@ Item {
                         controller._runNextFinish(id)
                     }
                 })
+                // (351) Not "cannot be played": the question decides
+                _askedMobile = true
                 return false
             }
         }
@@ -792,8 +949,16 @@ Item {
         // (320, code review) After stop(): a status change of the old source
         // took the jump meant for this one (as in _restart, 261)
         _pendingSeek = startSeconds > 0 ? startSeconds * 1000 : -1
+        // (343) Check that it really starts there (from 5 s on; a few
+        // seconds lost at the start do not matter)
+        _verifyTarget = startSeconds > 5 ? startSeconds * 1000 : -1
+        _verifyLoad = _verifyTarget >= 0
         player.source = _sources[0]
         core.setSetting("player.last", "" + id)
+        // (351) The player log
+        console.warn("Player: load episode " + id + " from " + Math.round(startSeconds || 0) + " s, "
+                     + (("" + _sources[0]).indexOf("file:") === 0 ? "file" : "stream")
+                     + (autoPlay ? ", play" : "") + ", playlist mode " + queueMode)
         if (autoPlay) {
             player.play()
         }
@@ -950,6 +1115,7 @@ Item {
     function pause() {
         var wasPending = _playWhenLoaded
         _playWhenLoaded = false
+        _continueId = -1
         // (290) Already paused (sleep timer after a pause, "Stop" of the
         // headset): nothing to save or count again
         if (!_playingState && !wasPending) {
@@ -1024,6 +1190,7 @@ Item {
         // (290) The user's jump wins: the check of a reload would jump back
         // to the old target for up to 15 s ("jumping does not work")
         _verifyTarget = -1
+        _verifyLoad = false
         _userSeeked = true
         console.warn("Seek to " + Math.round(ms / 1000) + " s (was " + Math.round(positionMs / 1000)
                      + " s, seekable " + player.seekable + ")")
@@ -1254,28 +1421,66 @@ Item {
     // newly set mark counts as "marked behind its back"
     property bool _playedBefore: false
 
-    function save() {
+    // reason (351): given by the app (leaving the foreground, closing) - then
+    // the outcome goes to the log, the 15-second saves stay quiet
+    function save(reason) {
         // (290) Also without a length from the player (streams): the
         // feed's length counts then; not while the position is doubtful
         // (320, code review) An episode that has just ended (outro, end of
         // the media) is played and stays so: _load() of the next one saves
         // the episode left, which wrote its position (end - outro) back and
         // made it unplayed again
-        if (hasEpisode && !_needsLoad && player.position > 0 && duration > 0 && episodeId !== _playedId
-                && position === _lastSavedPos) {
+        var why = ""
+        if (!hasEpisode) {
+            why = "no episode"
+        } else if (_needsLoad) {
+            why = "not loaded (position " + _restoreSeconds + " s kept)"
+        } else if (player.position <= 0) {
+            why = "player at 0 (state " + player.playbackState + ", status " + player.status + ")"
+        } else if (duration <= 0) {
+            why = "no length"
+        } else if (episodeId === _playedId) {
+            why = "just finished"
+        } else if (position === _lastSavedPos) {
             // (320, code review) Nothing changed since the last write (paused
             // in the background, locked again): no new stamp - it would beat
             // a later position from another device in the sync
-        } else if (hasEpisode && !_needsLoad && player.position > 0 && duration > 0 && episodeId !== _playedId) {
-            if (_positionDoubtful()) {
-                console.warn("Not saved: position " + Math.round(player.position / 1000) + " s, started at "
-                             + Math.round(_loadStartMs / 1000) + " s (lost jump?)")
-            } else {
-                core.recordPlayback(episodeId, _startedAt, position, duration)
-                _lastSaveSec = Math.floor(Date.now() / 1000)
-                _lastSavedPos = position
-                _playedBefore = false
+            why = "unchanged (" + position + " s)"
+        } else if (_positionDoubtful()) {
+            why = "position " + Math.round(player.position / 1000) + " s, started at "
+                  + Math.round(_loadStartMs / 1000) + " s (lost jump?)"
+            console.warn("Not saved: " + why)
+            why = ""
+            reason = ""
+        } else {
+            // (351) Forum 18 Nov / 343: the length may come from the feed
+            // only (no length from the player, or the player's far longer -
+            // _lengthUnsure). A save in the last 10 s of that length counted
+            // as "finished": played, position 0 - the episode started from
+            // the beginning next time (and left the playlist). Only the real
+            // end (end of media, _finished) or a length the player confirms
+            // may finish an episode; else the position is kept as it is.
+            var total = duration
+            var feedOnly = _playerSeconds <= 0 || _lengthUnsure
+            if (feedOnly && (position + 10 >= total || position >= total * 0.99)) {
+                total = Math.max(position + 11, Math.ceil(position / 0.99) + 1)
+                console.warn("Player: length " + duration + " s only from the feed, at " + position
+                             + " s - saved as a position, not as finished")
             }
+            core.recordPlayback(episodeId, _startedAt, position, total)
+            _lastSaveSec = Math.floor(Date.now() / 1000)
+            _lastSavedPos = position
+            _playedBefore = false
+            if (reason) {
+                console.warn("Player: saved episode " + episodeId + " at " + position + " of " + total
+                             + " s (" + reason + ")")
+            }
+        }
+        // (352) The same reason for the same episode only once (each trip
+        // to the background wrote it again)
+        if (reason && why !== "" && _lastNotSaved !== episodeId + why) {
+            _lastNotSaved = episodeId + why
+            console.warn("Player: not saved (" + reason + "): " + why)
         }
         // (244) Listening log; (245) with the episode time
         if (hasEpisode && _listenSecs > 0) {
@@ -1366,8 +1571,10 @@ Item {
             _userSeeked = false
         }
         _verifyTarget = _pendingSeek
+        _verifyLoad = false
         _verifyTries = 0
         _verifyTotal = 0
+        _verifyWait = 0
         _verifyTicks = 0
         _markOutputsApplied()
         _rateApplied = false
@@ -1410,6 +1617,7 @@ Item {
             if (_load(follow, _startFor(core.episode(follow)), true)) {
                 _playWhenLoaded = true
                 followPlayTimer.restart()
+                _watchContinue(follow)
             }
             return
         }
@@ -1424,6 +1632,11 @@ Item {
         }
         // Playlist context: on with the playlist. Otherwise as set.
         var mode = queueMode ? "play" : core.setting("player.afterSingle", "load")
+        // (351) The player log: why it goes on - or does not
+        console.warn("Player: finished episode " + finished + " - next " + next + ", "
+                     + (queueMode ? "playlist mode" : "single episode, after: " + mode)
+                     + (stopHere ? ", sleep timer: end of episode" : "")
+                     + ", app " + Qt.application.state)
         // (275) "podcast": the next episode of the same podcast plays, the
         // playlist is left alone; none left: stop
         if (mode === "podcast") {
@@ -1433,6 +1646,7 @@ Item {
                 if (_load(following, _startFor(core.episode(following)), true)) {
                     _playWhenLoaded = true
                     followPlayTimer.restart()
+                    _watchContinue(following)
                 }
                 return
             }
@@ -1440,12 +1654,35 @@ Item {
         }
         if (next > 0 && mode === "play") {
             _setQueueMode(true)
-            var data = core.episode(next)
-            // (206) As for the trailer's follow-up: play once loaded
-            if (_load(next, _startFor(data), true)) {
-                _playWhenLoaded = true
-                followPlayTimer.restart()
+            // (351) An episode that cannot be loaded now (a video without
+            // Wi-Fi in the background, no source) stopped the playlist
+            // silently: it stays in the playlist, the next one is tried
+            // (at most 10)
+            var candidate = next
+            for (var tries = 0; candidate > 0 && tries < 10; tries++) {
+                var data = core.episode(candidate)
+                _askedMobile = false
+                // (206) As for the trailer's follow-up: play once loaded
+                if (_load(candidate, _startFor(data), true)) {
+                    _playWhenLoaded = true
+                    followPlayTimer.restart()
+                    _watchContinue(candidate)
+                    return
+                }
+                // The mobile-data question is open (app in front): its
+                // answer loads the episode - nothing else is tried
+                if (_askedMobile) {
+                    _askedMobile = false
+                    return
+                }
+                console.warn("Player: episode " + candidate + " cannot be played now - trying the next one")
+                var following = core.queueNext(candidate)
+                candidate = following === next ? -1 : following
             }
+            console.warn("Player: no playlist episode could be started")
+            _setInfo(core.episode(finished))
+            _pendingSeek = -1
+            player.stop()
         } else if (next > 0 && mode === "load") {
             // Ready in the player bar, one tap continues the playlist
             _setQueueMode(true)
@@ -1610,6 +1847,12 @@ Item {
                 _playedBefore = data.played === true
                 _needsLoad = true
                 episodeId = last
+                // (351) The player log: where the last session left off
+                console.warn("Player: restored episode " + last + " at " + _restoreSeconds + " s (stored "
+                             + (data.position || 0) + " s, " + (data.played ? "played" : "unplayed")
+                             + ", playlist mode " + queueMode + ")")
+            } else {
+                console.warn("Player: last episode " + last + " not restored (gone or no source)")
             }
         }
     }

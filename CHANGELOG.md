@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.5 (2026-11-20)
+
+From now on Sailcast tells you about new versions itself – so fixes reach you quickly, even while OpenRepos is down. Plus a number of wishes from the forum, and fixes for the player. Thanks for all the feedback!
+
+### New
+
+- **Sailcast tells you about new versions:** once a day it asks GitHub (switch "Check for updates" on the About page). A line on the Podcasts page and in the settings says when there is one; download and install it from the About page. Not in the Jolla Store version – the store updates it
+- **Version history** on the About page: what changed in each version, your version first
+- **Report a problem:** when something goes wrong, "Show log" on the About page shows what the player and the updates did – a short technical log that stays on the phone and is never sent by the app. You can switch it off there (the log is deleted then); you can read and edit it before you share, save or copy it, with the ways to send it (forum thread, GitHub issue, sailcast@proton.me). Passwords and tokens in web addresses and e-mail addresses are masked; "Replace names" turns the names of your podcasts and episodes, their folders and web addresses into numbers ("Podcast #12"), so a shared log shows what happened, not what you listen to
+- **Search my podcasts, looser:** the words may be in any order and come from the podcast name and the episode title ("ct4004 iphone"), spaces and hyphens don't matter ("Sud Stream" finds "Sudstream"), umlaut spellings neither ("Fruehdenker" finds "Frühdenker"). The results have the usual menus (episode: download, playlist, played …; podcast; bookmark)
+- **Bookmark a chapter:** hold a chapter on the episode page (or in the expanded player bar) – a bookmark at its start, named after the chapter
+- **Feeds that could not be updated are named:** in the message after an update, in a line on the Podcasts page (tap: a list with the reasons and what you can do – mark an ended podcast as ended or leave an unreliable one out of "Update", also by long press) and with a "!" on the folder
+- **Share my podcasts:** choose single podcasts for the web page, not only folders
+- "Show in New episodes" can be switched off when subscribing
+
+### Changed
+
+- **"Recommendations from my subscriptions" is now off until you switch it on** (My interests) – it sends the addresses of your 10 most listened podcasts to fyyd; while it is off, a line at the top of "For you" points to the switch
+- "Unplayed" in the podcast list and on the podcast page also says how many of them you have started: "2 unplayed (1 started)"
+- The playlist no longer stops silently at an episode that cannot be played right now (a video without Wi-Fi while the screen is locked): it stays in the playlist and the next one plays. If the next episode does not start, Sailcast tries again and then tells you
+- **Unsubscribing a podcast with downloads asks first:** it says how many downloaded episodes (and how much space) would be deleted and offers to save them in Music first (Music/Podcasts/<podcast>), where they stay and can be imported again later. Deleting a folder together with its podcasts names the total too
+- The ✕ of the hint lines is a slim cross
+- More consistent German texts; hints name the "Delete played" button on the downloads page as it is called
+
+### Fixed
+
+- **An episode could count as played in the middle and start from the beginning next time** (for example after closing Sailcast) – when the length given by the podcast was much shorter than the real file, or the player did not know the length
+- **With the screen locked, the next playlist episode often started only when you woke the phone** (or tapped the headset) – the phone fell asleep in the short gap between two episodes
+- An episode continued at its place (after a restart, or switched to from "Continue listening") no longer plays a moment of its beginning before jumping there
+- **Switching from one episode to another could start the new one from the beginning** instead of where you left off (the known issue of 1.4.1)
+- **Without Wi-Fi and "Ask" set, the question before a video or download did not appear** – instead an empty error page ("Page could not be loaded"), one more with every tap on Play (since 1.4)
+- Unsubscribing left the podcast's empty download folder behind
+- Archive: when the archive already had a copy of a downloaded episode, the app's own copy stayed behind unseen
+- Episode rows: download marking on New episodes with a download filter, the size of the download rings, long status lines
+
 ## 1.4.1 (2026-11-17)
 
 A small release after 1.4 – thanks for the feedback in the forum. A few things that make everyday use easier, and fixes from two code reviews.
@@ -25,6 +60,10 @@ A small release after 1.4 – thanks for the feedback in the forum. A few things
 - Archiving a video podcast: the Videos folder is created, and the archive import finds the videos
 - The player bar no longer covers choice and settings-like pages (sorting, filters, folder choice, confirmations)
 - Smaller things: day names around the change of the clock, rounding of the statistics tiles, sizes with a filter on the Downloads page, a "%" in a podcast title on the shared web page, "Unfold all"
+
+### Known issue
+
+- Switching from one episode to another can, rarely, start the new one from the beginning instead of where you left off (also in earlier versions). Jump back by hand on the episode page or the player bar; fixed in 1.5
 
 ## 1.4 (2026-11-15)
 
@@ -129,7 +168,7 @@ Two themes: video podcasts, and an app that is easier to use – a usability che
 
 ### Known issues in 1.3
 
-- While a video plays, changing to or from its episode page pauses picture and sound briefly: the picture is attached to or taken from the player, which loads the video again at the same position (since 257 after the page animation, so the screen no longer jerks).
+- While a video plays, changing to or from its episode page pauses picture and sound briefly: the picture is attached to or taken from the player, which loads the video again at the same position (after the page animation, so the screen no longer jerks).
 
 ### Also in 1.3
 
@@ -177,18 +216,17 @@ Two themes: video podcasts, and an app that is easier to use – a usability che
   screen in landscape (✕ ends it); the display stays on while a video
   plays, the episode image shows while it is paused
 - "Sound only" / "Video" switch on the picture
-- Feeds that offer an audio and a video version
-  (`podcast:alternateEnclosure`): choose per podcast ("Version") or with
+- Feeds that offer an audio and a video version: choose per podcast ("Version") or with
   the switch – the audio version is the one that really saves data;
   downloads stay audio
-- HLS video streams (`.m3u8`)
+- HLS video streams
 - Camera symbol on video episodes and video podcasts (list and grid),
   "Video podcast" on the podcast page and in "Add podcast"
 - Mobile data: "Stream videos without Wi-Fi" – ask (with the size), always
   or never (then the audio version, if there is one); video downloads
   always ask without Wi-Fi
 - Video files of "Downloads in the Music folder" and "Save in …" go to
-  `~/Videos/Podcasts/<podcast>` (new permission "Videos")
+  Videos/Podcasts in a folder per podcast (new permission "Videos")
 
 ### More
 
@@ -209,8 +247,7 @@ Two themes: video podcasts, and an app that is easier to use – a usability che
 
 ## 1.2 (2026-11-01)
 
-Released on GitHub (RPMs and source) on 1 Nov 2026 – the first version for
-OpenRepos and the Jolla Store (1.1 was only on GitHub).
+The first version on OpenRepos and in the Jolla Store.
 
 ### Discover (new)
 
@@ -262,7 +299,7 @@ OpenRepos and the Jolla Store (1.1 was only on GitHub).
   can be switched off in Settings → General)
 - Privacy: only languages, categories and search terms leave the phone;
   with "Recommendations from my subscriptions" the addresses of your 10
-  most listened podcasts are sent to fyyd (see PRIVACY.md)
+  most listened podcasts are sent to fyyd
 
 ### Podcasts
 
@@ -370,12 +407,12 @@ OpenRepos and the Jolla Store (1.1 was only on GitHub).
 - Design: playlist symbol and "↓ N" instead of words in lists, smaller ▶
   in rows, plain group headers, updated first-use hints; the shadow above
   the player bar fits light ambiences
-- Database schema 11 – after updating, builds before 1.2 cannot open the
+- New database version – after updating, versions before 1.2 cannot open the
   database any more (make a backup first if you might go back)
 
 ## 1.1 (2026-10-24)
 
-First packaged release (tag v1.1 on GitHub; submitted to the Jolla Store, not published there – the first published release is 1.2).
+First packaged release, on GitHub.
 
 - Sailcast in the sharing menu ("Add podcast"): a link or text shared from
   the browser or another app opens "Search / add podcast" with it (also
@@ -401,7 +438,7 @@ First packaged release (tag v1.1 on GitHub; submitted to the Jolla Store, not pu
   restore a backup from the phone or the Nextcloud (the state before is
   kept and can be restored again)
 - Season and episode numbers from the feed in the episode lists and on the
-  episode page; "Support the podcast" on the podcast page (podcast:funding)
+  episode page; "Support the podcast" on the podcast page (when the feed names a way)
 - gpodder.net: choose which devices share their subscriptions (check box
   per device, current sync group preset)
 - Setting a bookmark opens a small panel for its name and note (tap beside
@@ -434,7 +471,7 @@ First public release (source code on GitHub).
 - Downloads with resume, Wi-Fi only, automatic downloads, clean-up
 - Archive of whole podcasts into the Music folder, cloud archive address
   (rclone), import of archive folders
-- Sync with Nextcloud GPodder Sync (sign-in in the browser, Login Flow v2)
+- Sync with Nextcloud GPodder Sync (sign-in in the browser)
   and the gpodder.net API
 - Import/export: OPML, gpodder-sailfish database, database backup
 - Feeds with login (password in Sailfish Secrets), repair of broken feeds,

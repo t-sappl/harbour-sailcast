@@ -72,6 +72,10 @@ Rectangle {
     }
 
     function openEpisode() {
+        // (353) Not while the app goes to the background (edge swipe)
+        if (Qt.application.state !== Qt.ApplicationActive) {
+            return
+        }
         if (player.hasEpisode) {
             pageStack.push(Qt.resolvedUrl("pages/EpisodePage.qml"), { episodeId: player.episodeId })
         }

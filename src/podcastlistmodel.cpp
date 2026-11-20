@@ -79,9 +79,15 @@ void PodcastListModel::reload()
     }
     m_videoIds = core->database()->videoPodcasts();
     int fresh = 0;
+    int failed = 0;
     for (int i = 0; i < rows.size(); ++i) {
         if (rows.at(i).freshEpisodes) {
             ++fresh;
+        }
+        // (review 355) Not podcasts left out of "Update": their old error
+        // would stay (the folder header shows a manual folder with ⏸ anyway)
+        if (!rows.at(i).lastError.isEmpty() && !rows.at(i).manualUpdate && !rows.at(i).archived) {
+            ++failed;
         }
     }
     if (applyRows(rows)) {
@@ -90,6 +96,10 @@ void PodcastListModel::reload()
     if (fresh != m_freshCount) {
         m_freshCount = fresh;
         emit freshCountChanged();
+    }
+    if (failed != m_failedCount) {
+        m_failedCount = failed;
+        emit failedCountChanged();
     }
 }
 
@@ -161,6 +171,7 @@ QVariant PodcastListModel::data(const QModelIndex &index, int role) const
     case FreshRole: return p.freshEpisodes;
     case FirstRole: return m_firstIds.contains(p.id);
     case VideoRole: return m_videoIds.contains(p.id);
+    case StartedRole: return p.startedCount;
     default: return QVariant();
     }
 }
@@ -174,6 +185,7 @@ QHash<int, QByteArray> PodcastListModel::roleNames() const
     names.insert(CoverUrlRole, "coverUrl");
     names.insert(EpisodeCountRole, "episodeCount");
     names.insert(UnplayedRole, "unplayed");
+    names.insert(StartedRole, "started");
     names.insert(NewCountRole, "newCount");
     names.insert(DownloadedRole, "downloadedCount");
     names.insert(ArchivedRole, "archived");

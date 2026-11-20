@@ -17,8 +17,25 @@ Page {
     objectName: "htmlExportPage"
 
     property var folders: []
+    // (348) Podcasts left out (ids), kept in htmlExport.excluded
+    property var excluded: {
+        var text = core.setting("htmlExport.excluded", "")
+        var list = []
+        var parts = text.length > 0 ? text.split(",") : []
+        for (var i = 0; i < parts.length; i++) {
+            var id = parseInt(parts[i], 10)
+            if (id > 0) {
+                list.push(id)
+            }
+        }
+        return list
+    }
+    onExcludedChanged: {
+        core.setSetting("htmlExport.excluded", page.excluded.join(","))
+        previewTimer.restart()
+    }
     // Counted a moment after the page is shown (reads all episodes)
-    property var preview: ({ "podcasts": 0, "skipped": 0, "chapterEpisodes": 0, "chapterEpisodesAll": 0, "episodesAll": 0 })
+    property var preview: ({ "podcasts": 0, "skipped": 0, "excluded": 0, "chapterEpisodes": 0, "chapterEpisodesAll": 0, "episodesAll": 0 })
     property bool running: false
     property bool building: false
     property int buildDone: 0
@@ -34,7 +51,8 @@ Page {
             "episodeNotes": episodesBox.currentIndex > 0 && notesSwitch.checked,
             "chapters": episodesBox.currentIndex > 0 && chaptersSwitch.checked,
             "bookmarks": episodesBox.currentIndex > 0 && bookmarksSwitch.checked,
-            "statistics": statisticsBox.currentIndex
+            "statistics": statisticsBox.currentIndex,
+            "excluded": page.excluded
         }
     }
 
@@ -86,7 +104,7 @@ Page {
         id: previewTimer
         interval: 80
         running: true
-        onTriggered: page.preview = core.htmlExportPreview(page.folders)
+        onTriggered: page.preview = core.htmlExportPreview(page.folders, page.excluded)
     }
     // (330) A new folder choice: count again
     onFoldersChanged: previewTimer.restart()
@@ -132,7 +150,7 @@ Page {
         onHtmlExportFinished: {
             page.running = false
             page.building = false
-            page.preview = core.htmlExportPreview(page.folders)
+            page.preview = core.htmlExportPreview(page.folders, page.excluded)
             if (path.length === 0) {
                 return
             }
@@ -196,6 +214,21 @@ Page {
                 onClicked: {
                     var selectPage = pageStack.push(Qt.resolvedUrl("FolderSelectPage.qml"), { selected: page.folders })
                     selectPage.selectedChanged.connect(function() { page.folders = selectPage.selected })
+                }
+                PageArrow {}
+            }
+
+            // (348) Single podcasts of the chosen folders
+            ValueButton {
+                enabled: !page.running
+                label: qsTr("Podcasts")
+                value: page.preview.excluded > 0
+                       ? qsTr("%1 of %2").arg(page.preview.podcasts).arg(page.preview.podcasts + page.preview.excluded)
+                       : qsTr("All")
+                onClicked: {
+                    var choice = pageStack.push(Qt.resolvedUrl("HtmlExportPodcastsPage.qml"),
+                                                { folders: page.folders, excluded: page.excluded })
+                    choice.excludedChanged.connect(function() { page.excluded = choice.excluded })
                 }
                 PageArrow {}
             }

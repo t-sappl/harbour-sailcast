@@ -19,6 +19,8 @@ class PodcastListModel : public RowListModel<PodcastRow>
     // Podcasts with new episodes since last opened (70, marker on the
     // folder header)
     Q_PROPERTY(int freshCount READ freshCount NOTIFY freshCountChanged)
+    // (355) Podcasts whose last update failed ("!" on the folder header)
+    Q_PROPERTY(int failedCount READ failedCount NOTIFY failedCountChanged)
     // Only the podcasts of one folder (45): -1 all (default), 0 those
     // without a folder, N folder N
     Q_PROPERTY(int folderId READ folderId WRITE setFolderId NOTIFY folderIdChanged)
@@ -50,7 +52,8 @@ public:
         FolderIdRole,
         FreshRole,
         FirstRole,
-        VideoRole           // (247) video podcast
+        VideoRole,          // (247) video podcast
+        StartedRole         // (362) unplayed but started
     };
 
     explicit PodcastListModel(QObject *parent = nullptr);
@@ -59,6 +62,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     int count() const { return m_rows.size(); }
     int freshCount() const { return m_freshCount; }
+    int failedCount() const { return m_failedCount; }
     int folderId() const { return m_folderId; }
     void setFolderId(int folderId);
     int firstFolderId() const { return m_firstFolderId; }
@@ -94,6 +98,7 @@ signals:
     void firstIdsChanged();
     void sortedChanged();
     void freshCountChanged();
+    void failedCountChanged();
 
 private:
     void scheduleReload();
@@ -104,6 +109,7 @@ private:
     bool m_sorted = false;
     QSet<qint64> m_videoIds;    // (247) video podcasts, read with every reload
     int m_freshCount = 0;
+    int m_failedCount = 0;
 };
 
 // The folders for the Podcasts page (45), by their order; the last row is

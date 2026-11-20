@@ -26,7 +26,7 @@ advertising. It contacts only the following servers:
   search terms).
 - **fyyd (api.fyyd.de)** – on the Discover page: the language (most active
   podcasts), the category tree, and your "More of this" keywords (as search
-  terms). With "Recommendations from my subscriptions" (on by default,
+  terms). Only if you switch on "Recommendations from my subscriptions" (off by default since 1.5,
   switch in "My interests"): the feed addresses of your 10 most listened
   podcasts, to find similar ones and the public collections they are in.
   Your listening history itself, the categories you weight and your "Never"
@@ -40,6 +40,12 @@ advertising. It contacts only the following servers:
   phone; for each show listed, Podcast Index is asked by the show's feed
   address (its categories and language) – nothing about you.
 - **Your cloud archive address, if you set one** (e.g. a local rclone server).
+- **GitHub (api.github.com, github.com)** – only in the version from GitHub
+  (not in the Jolla Store version): at most once a day when Sailcast starts,
+  it asks for the newest release of Sailcast, to tell you about a new
+  version. GitHub sees your IP address and the app's user agent; nothing
+  else is sent. "Download" loads the package from GitHub. Switch it off with
+  "Check for updates" on the About page.
 
 Sharing: "Share" sends an episode's web address (optionally with the
 position) only to the app you choose in the Sailfish sharing menu – never
@@ -54,6 +60,19 @@ Sailfish Secrets, never in the database, its backups or exports. OPML exports co
 the full feed addresses, including private tokens of premium feeds – keep
 them private.
 
+Log: Sailcast keeps a short log of what the player and the updates did
+(About → "Show log"), only for finding errors. It stays on the phone and is
+never sent anywhere by the app – only you can copy, save or share it, and you
+see and can edit the exact text first. "Keep a log" (About) switches it off;
+the log is deleted then and nothing is written until you switch it on again
+(copies you saved or shared yourself are not affected). It can contain the names of podcasts
+and episodes and the web addresses of feeds; passwords and tokens in web
+addresses and e-mail addresses are masked. "Replace names" on that page turns
+the names, folders and addresses of your podcasts and episodes into numbers
+("Podcast #12", "Episode #345") and shortens other web addresses to
+their domain, as far as Sailcast can recognise them – you see the result
+and can still edit it before you share it.
+
 Nothing is sent to the developer.
 
-Contact: Thomas Sappl, thomas.sappl@gmail.com
+Contact: Thomas Sappl, sailcast@proton.me

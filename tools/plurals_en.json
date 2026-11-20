@@ -70,5 +70,12 @@
  "%n of them in podcasts not shown in New": "%n of them in a podcast not shown in New",
  "%n new episodes in them": "%n new episode in them",
  "%n unplayed episodes in them": "%n unplayed episode in them",
- "%n new": "%n new"
+ "%n new": "%n new",
+ "and %n more": "and %n more",
+ "%n podcasts not updated": "%n podcast not updated",
+ "(%n started)": "(%n started)",
+ "The podcasts, their episodes and bookmarks are removed, and %n downloaded episodes (%1) are deleted. To keep downloads, unsubscribe a podcast on its own first – there they can be moved to the archive.": "The podcasts, their episodes and bookmarks are removed, and %n downloaded episode (%1) is deleted. To keep downloads, unsubscribe a podcast on its own first – there they can be moved to the archive.",
+ "%n downloaded episodes (%1) will be deleted.": "%n downloaded episode (%1) will be deleted.",
+ "%n podcast(s)": "%n podcast",
+ "%n episode(s)": "%n episode"
 }

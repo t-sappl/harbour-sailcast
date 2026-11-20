@@ -184,7 +184,7 @@ Page {
                 value: page.choiceText(page.keepChoice)
                 onClicked: pageStack.push(Qt.resolvedUrl("PodcastChoiceDialog.qml"), {
                     title: qsTr("Never delete downloads"),
-                    hint: qsTr("On: played downloads of the podcast are kept – also with \"Delete played downloads\" on the downloads page. Off: as set above."),
+                    hint: qsTr("On: played downloads of the podcast are kept – also with \"Delete played\" on the downloads page. Off: as set above."),
                     settingName: "cleanupDays", onValue: "-1", offValue: "",
                     globalOn: false,
                     // (213) Sorted by download location: Music first

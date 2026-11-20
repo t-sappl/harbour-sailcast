@@ -217,7 +217,7 @@ private:
     Fyyd *m_fyyd;
     PodcastIndex *m_index;
     QString m_phoneLanguage;
-    bool m_useSubscriptions = true;     // default on (decision of 28 Oct, 133)
+    bool m_useSubscriptions = false;    // (348) opt-in, forum 17 Nov (was on, 133)
     int m_maxItems = 15;
 
     int m_pending = 0;

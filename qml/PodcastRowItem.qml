@@ -14,6 +14,7 @@ ListItem {
     property string title: ""
     property string coverUrl: ""
     property int unplayed: 0
+    property int started: 0     // (362) of the unplayed ones: started
     property int episodeCount: 0
     property real listenedSeconds: 0
     property int downloadedCount: 0
@@ -144,7 +145,13 @@ ListItem {
         Label {
             width: parent.width
             text: {
-                var parts = [qsTr("%n unplayed", "", row.unplayed), qsTr("%n episodes", "", row.episodeCount)]
+                // (362, Thomas 19 Nov) "unplayed" = not finished; how many of
+                // them are started is said with it
+                var unplayedText = qsTr("%n unplayed", "", row.unplayed)
+                if (row.started > 0) {
+                    unplayedText += " " + qsTr("(%n started)", "", row.started)
+                }
+                var parts = [unplayedText, qsTr("%n episodes", "", row.episodeCount)]
                 if (row.listenedSeconds >= 60) {
                     parts.push(qsTr("%1 listened").arg(TimeFormat.length(row.listenedSeconds, qsTr("%1 h %2 min"), qsTr("%1 min"))))
                 }

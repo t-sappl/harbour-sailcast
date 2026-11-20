@@ -116,6 +116,10 @@ Page {
     onStatusChanged: {
         if (status === PageStatus.Active) {
             oldestFirst = core.setting("podcast." + podcastId + ".oldestFirst", "0") === "1"
+            // (368) Back from an episode page: "(n started)" in the header
+            // follows what was played meanwhile (core.dataChanged does not
+            // come with a saved position)
+            page.podcast = core.podcast(page.podcastId)
         }
     }
 
@@ -294,7 +298,10 @@ Page {
                     spacing: Theme.paddingSmall
                     Label {
                         width: parent.width
-                        text: qsTr("%n unplayed", "", page.podcast.unplayed || 0) + " · "
+                        // (362) Started ones named as in the podcast list
+                        text: qsTr("%n unplayed", "", page.podcast.unplayed || 0)
+                              + ((page.podcast.started || 0) > 0 ? " " + qsTr("(%n started)", "", page.podcast.started) : "")
+                              + " · "
                               + qsTr("%n episodes", "", page.podcast.episodeCount || 0)
                         wrapMode: Text.Wrap
                         font.pixelSize: Theme.fontSizeSmall

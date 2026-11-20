@@ -52,6 +52,43 @@ Page {
         var term = searchText.trim()
         localResults = term.length >= 2 ? core.searchLocal(term, inDescriptions) : ({})
         localTerm = term.length >= 2 ? term : ""
+        openMenus = 0     // (review 348) the rows (and any open menu) are new
+    }
+
+    // (348) Context menus on the results. The episode menu reads the status
+    // live (statusRevision), so it is right after an action without
+    // rebuilding the list; the results themselves are read again after
+    // changes (unsubscribed, bookmark edited …) - not while a menu is open,
+    // and at the same scroll position.
+    property int statusRevision: 0
+    property int openMenus: 0
+    function statusOf(episodeId, revision) {
+        return core.episodeStatus(episodeId)
+    }
+    function refreshResults() {
+        if (localTerm.length === 0) {
+            return
+        }
+        if (openMenus > 0) {
+            refreshTimer.restart()
+            return
+        }
+        var y = list.contentY
+        search()
+        list.contentY = y
+    }
+    Timer {
+        id: refreshTimer
+        interval: 700
+        onTriggered: page.refreshResults()
+    }
+    Connections {
+        target: core
+        onQueueChanged: page.statusRevision++
+        onEpisodeChanged: page.statusRevision++
+        onDownloadsChanged: page.statusRevision++
+        onDataChanged: { page.statusRevision++; refreshTimer.restart() }
+        onBookmarksChanged: refreshTimer.restart()
     }
 
     // Searches once typing has paused (the own data answer at once)
@@ -100,17 +137,19 @@ Page {
             }
         }
 
-        // How this page works - while the field is empty
+        // How this page works - while the field is empty (353/354, Thomas
+        // 18 Nov: where it searches, neutral words)
         Label {
             visible: page.searchText.trim().length === 0
             x: Theme.horizontalPageMargin
             width: parent.width - 2 * Theme.horizontalPageMargin
             wrapMode: Text.Wrap
             font.pixelSize: Theme.fontSizeSmall
-            color: Theme.secondaryHighlightColor
-            text: page.inDescriptions
-                  ? qsTr("Finds your podcasts (title, author), episode titles and descriptions and bookmarks (name, note). New podcasts: \"Discover\".")
-                  : qsTr("Finds your podcasts (title, author), episode titles and bookmarks (name, note). New podcasts: \"Discover\".")
+            color: Theme.secondaryColor
+            text: (page.inDescriptions
+                   ? qsTr("Searches podcast names and authors, episode titles and descriptions, and the names and notes of bookmarks.")
+                   : qsTr("Searches podcast names and authors, episode titles and the names and notes of bookmarks. With \"Also in descriptions\" the episode descriptions too."))
+                  + "\n" + qsTr("The order of the words, spaces and umlaut spellings don't matter. New podcasts: \"Discover\".")
         }
     }
 
@@ -143,20 +182,37 @@ Page {
 
             Component {
                 id: sectionRow
-                SectionHeader {
-                    width: list.width
-                    text: rowItem.entry
+                // (357) The Loader forces its width on the item and Silica
+                // indents a SectionHeader on top of that (cut off on the
+                // right, 348/353): in an Item, with margin and width given
+                Item {
+                    height: sectionHeader.height
+                    SectionHeader {
+                        id: sectionHeader
+                        x: Theme.horizontalPageMargin
+                        width: parent.width - 2 * Theme.horizontalPageMargin
+                        text: rowItem.entry
+                    }
                 }
             }
 
             // Own podcast (85) -> podcast page
             Component {
                 id: podcastRow
-                BackgroundItem {
+                ListItem {
                     id: podcastItem
                     width: list.width
-                    height: Theme.itemSizeLarge
+                    contentHeight: Theme.itemSizeLarge
                     onClicked: pageStack.push(Qt.resolvedUrl("EpisodesPage.qml"), { podcastId: rowItem.entry.podcastId })
+                    onMenuOpenChanged: page.openMenus += menuOpen ? 1 : -1
+                    // (348) The same menu as on the Podcasts page
+                    menu: Component {
+                        PodcastMenu {
+                            podcastId: rowItem.entry.podcastId
+                            title: rowItem.entry.title
+                            unplayed: rowItem.entry.unplayed || 0
+                        }
+                    }
                     CoverImage {
                         id: podcastCover
                         x: Theme.horizontalPageMargin
@@ -196,11 +252,18 @@ Page {
             // Own episode (85) -> episode page
             Component {
                 id: episodeRow
-                BackgroundItem {
+                ListItem {
                     id: episodeItem
                     width: list.width
-                    height: Math.max(Theme.itemSizeLarge, episodeColumn.height + 2 * Theme.paddingMedium)
+                    contentHeight: Math.max(Theme.itemSizeLarge, episodeColumn.height + 2 * Theme.paddingMedium)
                     onClicked: pageStack.push(Qt.resolvedUrl("EpisodePage.qml"), { episodeId: rowItem.entry.episodeId })
+                    onMenuOpenChanged: page.openMenus += menuOpen ? 1 : -1
+                    // (348) The same menu as in every episode list
+                    menu: Component {
+                        EpisodeMenu {
+                            ep: page.statusOf(rowItem.entry.episodeId, page.statusRevision)
+                        }
+                    }
                     CoverImage {
                         id: episodeCover
                         x: Theme.horizontalPageMargin
@@ -260,11 +323,29 @@ Page {
             // Bookmark (85) -> plays from there, as on the bookmarks page
             Component {
                 id: bookmarkRow
-                BackgroundItem {
+                ListItem {
                     id: bookmarkItem
                     width: list.width
-                    height: Math.max(Theme.itemSizeMedium, bookmarkColumn.height + 2 * Theme.paddingMedium)
+                    contentHeight: Math.max(Theme.itemSizeMedium, bookmarkColumn.height + 2 * Theme.paddingMedium)
                     onClicked: appWindow.player.playFrom(rowItem.entry.episodeId, rowItem.entry.position)
+                    onMenuOpenChanged: page.openMenus += menuOpen ? 1 : -1
+                    // (348) As on the bookmarks page
+                    menu: Component {
+                        ContextMenu {
+                            MenuItem {
+                                text: qsTr("Open episode")
+                                onClicked: pageStack.push(Qt.resolvedUrl("EpisodePage.qml"), { episodeId: rowItem.entry.episodeId })
+                            }
+                            MenuItem {
+                                text: qsTr("Rename / note")
+                                onClicked: appWindow.editBookmark(rowItem.entry)
+                            }
+                            MenuItem {
+                                text: qsTr("Delete bookmark")
+                                onClicked: appWindow.remorseDeleteBookmark(rowItem.entry.bookmarkId)
+                            }
+                        }
+                    }
                     Column {
                         id: bookmarkColumn
                         x: Theme.horizontalPageMargin

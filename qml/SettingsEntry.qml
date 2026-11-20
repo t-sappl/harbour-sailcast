@@ -12,16 +12,39 @@ BackgroundItem {
     property alias title: titleLabel.text
     property alias summary: summaryLabel.text
     property url target
+    // (346) Theme icon name ("icon-m-sync"), empty: none. Shown when
+    // showIcon is set (SettingsPage: always, decided 17 Nov, 350)
+    property string icon: ""
+    property bool showIcon: false
+    // (350) Summary in the accent colour ("Sailcast 1.6 available")
+    property bool summaryHighlighted: false
 
     width: parent ? parent.width : Screen.width
     height: Math.max(Theme.itemSizeMedium, textColumn.height + 2 * Theme.paddingMedium)
     onClicked: if (target.toString() !== "") pageStack.push(target)
 
-    Column {
-        id: textColumn
+    Image {
+        id: iconImage
+        visible: root.showIcon && root.icon !== ""
         anchors {
             left: parent.left
             leftMargin: Theme.horizontalPageMargin
+            verticalCenter: parent.verticalCenter
+        }
+        width: Theme.iconSizeMedium
+        height: width
+        sourceSize.width: width
+        sourceSize.height: height
+        source: visible ? "image://theme/" + root.icon + "?"
+                          + (root.highlighted || root.summaryHighlighted ? Theme.highlightColor : Theme.secondaryColor)
+                        : ""
+    }
+
+    Column {
+        id: textColumn
+        anchors {
+            left: iconImage.visible ? iconImage.right : parent.left
+            leftMargin: iconImage.visible ? Theme.paddingLarge : Theme.horizontalPageMargin
             right: parent.right
             // (327, Gemini) Room for the arrow: text ran up to it
             rightMargin: Theme.horizontalPageMargin + Theme.paddingLarge * 2
@@ -43,7 +66,8 @@ BackgroundItem {
             maximumLineCount: 3
             elide: Text.ElideRight
             font.pixelSize: Theme.fontSizeExtraSmall
-            color: root.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor
+            color: root.summaryHighlighted ? Theme.highlightColor
+                 : (root.highlighted ? Theme.secondaryHighlightColor : Theme.secondaryColor)
         }
     }
 

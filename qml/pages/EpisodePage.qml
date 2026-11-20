@@ -19,6 +19,17 @@ Page {
     // Opened from the playlist page: playing starts the playlist context
     property bool fromPlaylist: false
     property var episode: core.episode(episodeId)
+    // (review 348) The chapter rows have a menu ("Bookmark chapter"): the
+    // list is replaced only when the chapters really changed, so a reload
+    // of the episode (after adding the bookmark) does not rebuild the rows
+    // while their menu closes
+    property var chapterList: []
+    onEpisodeChanged: {
+        var c = (episode && episode.chapters) ? episode.chapters : []
+        if (JSON.stringify(c) !== JSON.stringify(chapterList)) {
+            chapterList = c
+        }
+    }
 
     readonly property var player: appWindow.player
 
@@ -205,6 +216,16 @@ Page {
             bookmarkPanel.show(id, seconds)
         }
     }
+    // (348) Hold a chapter: bookmark at its start, named after it
+    function addChapterBookmark(seconds, title) {
+        var id = core.addBookmark(page.episodeId, Math.round(seconds))
+        if (id > 0) {
+            if ((title || "").length > 0) {
+                core.editBookmark(id, title, "")
+            }
+            bookmarkPanel.show(id, Math.round(seconds), title || "")
+        }
+    }
     // Time stamps such as "12:34" or "1:02:03" in the show notes become
     // links that jump there (53) - only in text, not inside tags or links,
     // and only within the episode's length
@@ -217,7 +238,11 @@ Page {
     readonly property bool showHints: _hintCount < 5
     property int _hintCount: parseInt(core.setting("hint.toolbar", "0"))
     Component.onCompleted: {
-        console.warn("EpisodePage opened with id " + episodeId)
+        // (365) Was console.warn for the crash hunt of 352 - not in the log any more
+        console.log("EpisodePage opened with id " + episodeId)
+        // (352) Was a second Component.onCompleted (348) - QML refuses a
+        // handler set twice and the whole page failed to load
+        chapterList = (episode && episode.chapters) ? episode.chapters : []
         sharePosition = shownPosition
         core.setSetting("hint.toolbar", "" + (_hintCount + 1))
         refreshUpNext()
@@ -982,13 +1007,26 @@ Page {
             // Chapters
             Repeater {
                 id: chapterRepeater
-                model: page.curTab === "chapters" ? (page.episode.chapters || []) : []
-                delegate: BackgroundItem {
+                model: page.curTab === "chapters" ? page.chapterList : []
+                delegate: ListItem {
                     readonly property bool current: page.isCurrent && index === page.player.chapterIndex
                     width: infoColumn.width
-                    height: Theme.itemSizeSmall
-                    highlighted: down || current
+                    contentHeight: Theme.itemSizeSmall
+                    highlighted: down || current || menuOpen
                     onClicked: page.player.playFrom(page.episodeId, modelData.start / 1000, page.fromPlaylist)
+                    // (348) "Bookmark chapter"
+                    menu: Component {
+                        ContextMenu {
+                            MenuItem {
+                                text: qsTr("Bookmark chapter")
+                                onClicked: page.addChapterBookmark(modelData.start / 1000, modelData.title)
+                            }
+                            MenuItem {
+                                text: qsTr("Play from here")
+                                onClicked: page.player.playFrom(page.episodeId, modelData.start / 1000, page.fromPlaylist)
+                            }
+                        }
+                    }
                     Label {
                         id: chapterTime
                         x: Theme.horizontalPageMargin
