@@ -8,6 +8,7 @@
 #include <QDBusConnection>
 #include <QDateTime>
 #include <QLocale>
+#include <QVector>
 
 #include <algorithm>
 
