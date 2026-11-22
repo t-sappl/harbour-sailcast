@@ -71,11 +71,8 @@ int main(int argc, char *argv[])
     // race between the name and the objects. With ExecDBus a share also
     // starts the app.
     // The Sailplay SDK objects too, before the name: a car that starts
-    // Sailcast over D-Bus opens its session as soon as the name appears.
-    // Not in the Jolla Store build (needs a Sailjail profile, see the spec).
-#ifndef SAILCAST_STORE
+    // Sailcast over D-Bus opens its session as soon as the name appears
     sailplay.start();
-#endif
     QDBusConnection bus = QDBusConnection::sessionBus();
     if (!bus.registerService(QStringLiteral("harbour-sailcast.harbour-sailcast"))) {
         qWarning() << "D-Bus name not registered:" << bus.lastError().message();

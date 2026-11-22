@@ -55,19 +55,9 @@ changelog.files = CHANGELOG.md CHANGELOG.de.md
 changelog.path = /usr/share/$${TARGET}
 INSTALLS += changelog
 
-# Sailplay: Sailjail lets Sailcast answer the car's SDK client (signals to
-# org.sailplay.Client.*). Not in the Jolla Store build, which has no
-# Sailplay support (SAILCAST_STORE, see src/harbour-sailcast.cpp).
-!CONFIG(store) {
-    sailjailprofile.files = rpm/harbour-sailcast.profile
-    sailjailprofile.path = /etc/sailjail/permissions
-    INSTALLS += sailjailprofile
-}
-
 # Listed only so that Qt Creator shows them in the project tree.
 # Installation is handled by CONFIG += sailfishapp (the whole qml/ folder).
 OTHER_FILES += rpm/harbour-sailcast.spec \
-    rpm/harbour-sailcast.profile \
     sailplay-sdk/README.md \
     podcastindex.pri.example \
     harbour-sailcast.desktop \

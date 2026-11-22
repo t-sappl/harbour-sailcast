@@ -21,8 +21,7 @@ X-Maemo-Object-Path=/ui
 X-Maemo-Method=harbour_sailcast.ui.openUrl
 # Sailplay (wireless CarPlay / Android Auto, SDK v1): the car screen lists
 # Sailcast as a music app with browsable episodes (src/sailplaybridge.h).
-# The service is the D-Bus name above; the spec removes these lines in the
-# Jolla Store build.
+# The service is the D-Bus name above.
 X-Sailplay-ApiVersion=1
 X-Sailplay-Service=harbour-sailcast.harbour-sailcast
 X-Sailplay-ObjectPath=/org/sailplay/v1/App
