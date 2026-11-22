@@ -6273,6 +6273,83 @@ New folder: pull down</source>
     </message>
 </context>
 <context>
+    <name>SailplayBridge</name>
+    <message>
+        <source>Continue listening</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Podcasts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Nothing found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sailcast is starting</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No episode started</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No new episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The playlist is empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%n unplayed</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>No podcasts subscribed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No episodes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Podcast</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Episode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Played</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 min left</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 min</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SearchPage</name>
     <message numerus="yes">
         <location filename="../qml/pages/SearchPage.qml" line="1193"/>

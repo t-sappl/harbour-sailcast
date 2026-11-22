@@ -16,6 +16,7 @@
 #include "imagecache.h"
 #include "networkaccess.h"
 #include "podcastlistmodel.h"
+#include "sailplaybridge.h"
 #include "secretstore.h"
 
 int main(int argc, char *argv[])
@@ -45,6 +46,11 @@ int main(int argc, char *argv[])
     // Database and workers of the core library (see appcore.h); must exist
     // before the first list model is created
     AppCore core;
+    // Sailcast in the car with Sailplay (see sailplaybridge.h); its lists
+    // follow the core's change signals
+    SailplayBridge sailplay(core.database());
+    QObject::connect(&core, &AppCore::dataChanged, &sailplay, &SailplayBridge::catalogChanged);
+    QObject::connect(&core, &AppCore::queueChanged, &sailplay, &SailplayBridge::catalogChanged);
 
     QScopedPointer<QQuickView> view(SailfishApp::createView());
 
@@ -54,6 +60,7 @@ int main(int argc, char *argv[])
     view->rootContext()->setContextProperty(QStringLiteral("secretStore"), &secretStore);
     view->rootContext()->setContextProperty(QStringLiteral("covers"), &covers);
     view->rootContext()->setContextProperty(QStringLiteral("core"), &core);
+    view->rootContext()->setContextProperty(QStringLiteral("sailplay"), &sailplay);
 
     view->setSource(SailfishApp::pathTo(QStringLiteral("qml/harbour-sailcast.qml")));
 
@@ -63,6 +70,12 @@ int main(int argc, char *argv[])
     // (/share/podcast) - as the Sailfish.Share documentation asks, to avoid a
     // race between the name and the objects. With ExecDBus a share also
     // starts the app.
+    // The Sailplay SDK objects too, before the name: a car that starts
+    // Sailcast over D-Bus opens its session as soon as the name appears.
+    // Not in the Jolla Store build (needs a Sailjail profile, see the spec).
+#ifndef SAILCAST_STORE
+    sailplay.start();
+#endif
     QDBusConnection bus = QDBusConnection::sessionBus();
     if (!bus.registerService(QStringLiteral("harbour-sailcast.harbour-sailcast"))) {
         qWarning() << "D-Bus name not registered:" << bus.lastError().message();

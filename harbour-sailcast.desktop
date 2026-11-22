@@ -19,6 +19,15 @@ MimeType=x-scheme-handler/podcast;x-scheme-handler/pcast;x-scheme-handler/itpc;
 X-Maemo-Service=harbour-sailcast.harbour-sailcast
 X-Maemo-Object-Path=/ui
 X-Maemo-Method=harbour_sailcast.ui.openUrl
+# Sailplay (wireless CarPlay / Android Auto, SDK v1): the car screen lists
+# Sailcast as a music app with browsable episodes (src/sailplaybridge.h).
+# The service is the D-Bus name above; the spec removes these lines in the
+# Jolla Store build.
+X-Sailplay-ApiVersion=1
+X-Sailplay-Service=harbour-sailcast.harbour-sailcast
+X-Sailplay-ObjectPath=/org/sailplay/v1/App
+X-Sailplay-Presentation=template
+X-Sailplay-Capabilities=media;content;
 
 [X-Share Method podcast]
 Description=Add podcast

@@ -5102,6 +5102,84 @@ Neuer Ordner: nach unten ziehen</translation>
     </message>
 </context>
 <context>
+    <name>SailplayBridge</name>
+    <message>
+        <source>Continue listening</source>
+        <translation>Weiterhören</translation>
+    </message>
+    <message>
+        <source>New episodes</source>
+        <translation>Neue Folgen</translation>
+    </message>
+    <message>
+        <source>Playlist</source>
+        <translation>Playlist</translation>
+    </message>
+    <message>
+        <source>Podcasts</source>
+        <translation>Podcasts</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suche</translation>
+    </message>
+    <message>
+        <source>Nothing found</source>
+        <translation>Nichts gefunden</translation>
+    </message>
+    <message>
+        <source>Sailcast is starting</source>
+        <translation>Sailcast startet</translation>
+    </message>
+    <message>
+        <source>No episode started</source>
+        <translation>Keine Folge angefangen</translation>
+    </message>
+    <message>
+        <source>No new episodes</source>
+        <translation>Keine neuen Folgen</translation>
+    </message>
+    <message>
+        <source>The playlist is empty</source>
+        <translation>Die Playlist ist leer</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n unplayed</source>
+        <translation>
+            <numerusform>%n ungehört</numerusform>
+            <numerusform>%n ungehört</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>No podcasts subscribed</source>
+        <translation>Keine Podcasts abonniert</translation>
+    </message>
+    <message>
+        <source>No episodes</source>
+        <translation>Keine Folgen</translation>
+    </message>
+    <message>
+        <source>Podcast</source>
+        <translation>Podcast</translation>
+    </message>
+    <message>
+        <source>Episode</source>
+        <translation>Folge</translation>
+    </message>
+    <message>
+        <source>Played</source>
+        <translation>Gehört</translation>
+    </message>
+    <message>
+        <source>%1 min left</source>
+        <translation>noch %1 min</translation>
+    </message>
+    <message>
+        <source>%1 min</source>
+        <translation>%1 min</translation>
+    </message>
+</context>
+<context>
     <name>SearchPage</name>
     <message>
         <source>without %1</source>
