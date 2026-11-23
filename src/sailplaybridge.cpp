@@ -2,6 +2,7 @@
 #include "sailplaybridge.h"
 
 #include "database.h"
+#include "imagecache.h"
 #include "sailplaycontent.h"
 #include "sailplayprovider.h"
 
@@ -75,12 +76,17 @@ bool SailplayBridge::start()
                                       this);
     const auto browse = [this](qulonglong invocation, const QVariantMap &parameters, bool search) {
         QString error;
-        const QVariantMap page = query(parameters, search, &error);
+        QVariantMap presentation;
+        const QVariantMap page = query(parameters, search, &error, &presentation);
         if (page.isEmpty()) {
             m_provider->fail(invocation, QStringLiteral("NotFound"), error);
             return;
         }
-        m_provider->complete(invocation, QVariantMap{{QStringLiteral("content"), page}});
+        QVariantMap result{{QStringLiteral("content"), page}};
+        if (!presentation.isEmpty()) {
+            result.insert(QStringLiteral("presentation"), presentation);
+        }
+        m_provider->complete(invocation, result);
     };
     m_provider->setActionHandler(QStringLiteral("content.browse"),
         [browse](qulonglong invocation, const QVariantMap &parameters) { browse(invocation, parameters, false); });
@@ -136,7 +142,8 @@ QVariantMap SailplayBridge::state() const
     media.insert(QStringLiteral("title"), bounded(title));
     media.insert(QStringLiteral("podcast"), bounded(podcast));
     media.insert(QStringLiteral("playing"), m_playing);
-    return QVariantMap{{QStringLiteral("media"), media}, {QStringLiteral("content"), root()}};
+    return QVariantMap{{QStringLiteral("media"), media}, {QStringLiteral("content"), root()},
+                       {QStringLiteral("contentPresentation"), rootPresentation()}};
 }
 
 void SailplayBridge::publish()
@@ -160,7 +167,14 @@ QVariantMap SailplayBridge::root() const
     return page;
 }
 
-QVariantMap SailplayBridge::query(const QVariantMap &parameters, bool search, QString *error) const
+QVariantMap SailplayBridge::rootPresentation() const
+{
+    // Continue listening, New episodes, Playlist and Podcasts as tabs
+    return SailplayContent::presentation(QStringLiteral("list"), true);
+}
+
+QVariantMap SailplayBridge::query(const QVariantMap &parameters, bool search, QString *error,
+                                  QVariantMap *presentation) const
 {
     if (!SailplayContent::validQuery(parameters, search)) {
         if (error) *error = QStringLiteral("Invalid query");
@@ -172,10 +186,12 @@ QVariantMap SailplayBridge::query(const QVariantMap &parameters, bool search, QS
 
     QString title;
     QString message;
+    QString layout = QStringLiteral("list");
+    Hints hints;
     QVariantList all;
     if (search) {
         title = tr("Search");
-        all = searchItems(parameters.value(QStringLiteral("query")).toString());
+        all = searchItems(parameters.value(QStringLiteral("query")).toString(), &hints);
         if (all.isEmpty()) {
             message = tr("Nothing found");
         }
@@ -184,7 +200,7 @@ QVariantMap SailplayBridge::query(const QVariantMap &parameters, bool search, QS
         title = QStringLiteral("Sailcast");
     } else {
         bool found = false;
-        all = folderItems(id, &title, &message, &found);
+        all = folderItems(id, &title, &message, &found, &layout, &hints);
         if (!found) {
             if (error) *error = QStringLiteral("Content folder is unavailable");
             return QVariantMap();
@@ -209,10 +225,25 @@ QVariantMap SailplayBridge::query(const QVariantMap &parameters, bool search, QS
         if (error) *error = QStringLiteral("Content page could not be built");
         return QVariantMap();
     }
+    if (presentation) {
+        // Hints for the rows of this reply only
+        *presentation = (!search && id == RootId) ? rootPresentation() : SailplayContent::presentation(layout);
+        for (const QVariant &v : items) {
+            const QString rowId = v.toMap().value(QStringLiteral("id")).toString();
+            const QVariantMap hint = hints.value(rowId);
+            const QString image = hint.value(QStringLiteral("image")).toString();
+            const QString playback = hint.value(QStringLiteral("playback")).toString();
+            // An address the car cannot use costs the image, not the status
+            if (!SailplayContent::hint(*presentation, rowId, image, playback)) {
+                SailplayContent::hint(*presentation, rowId, QString(), playback);
+            }
+        }
+    }
     return page;
 }
 
-QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QString *message, bool *found) const
+QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QString *message, bool *found,
+                                         QString *layout, Hints *hints) const
 {
     QVariantList items;
     *found = true;
@@ -223,13 +254,13 @@ QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QStr
     if (id == ContinueId) {
         *title = tr("Continue listening");
         for (const EpisodeRow &e : m_database->episodes(-1, MaxRows, Database::InProgress)) {
-            items << episodeItem(e, false, true);
+            items << episodeItem(e, false, true, hints);
         }
         if (items.isEmpty()) *message = tr("No episode started");
     } else if (id == NewId) {
         *title = tr("New episodes");
         for (const EpisodeRow &e : m_database->episodes(-1, MaxRows, Database::HomeNew)) {
-            items << episodeItem(e, false, true);
+            items << episodeItem(e, false, true, hints);
         }
         if (items.isEmpty()) *message = tr("No new episodes");
     } else if (id == PlaylistId) {
@@ -237,25 +268,23 @@ QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QStr
         for (qint64 episodeId : m_database->queueIds()) {
             const EpisodeRow e = m_database->episode(episodeId);
             if (e.id) {
-                items << episodeItem(e, true, true);
+                items << episodeItem(e, true, true, hints);
             }
             if (items.size() >= MaxRows) break;
         }
         if (items.isEmpty()) *message = tr("The playlist is empty");
     } else if (id == PodcastsId) {
         *title = tr("Podcasts");
+        // Podcasts on the left, the chosen one's episodes on the right
+        *layout = QStringLiteral("split");
         QList<PodcastRow> podcasts = m_database->podcasts();
         std::sort(podcasts.begin(), podcasts.end(), [](const PodcastRow &a, const PodcastRow &b) {
             return Database::comparePodcastTitles(a.title, b.title) < 0;
         });
         for (const PodcastRow &p : podcasts) {
             if (p.provisional) continue;
-            QVariantMap item = SailplayContent::item(PodcastPrefix + QString::number(p.id),
-                                                     bounded(p.title.isEmpty() ? p.url : p.title));
-            if (p.unplayedCount > 0) {
-                item.insert(QStringLiteral("subtitle"), tr("%n unplayed", nullptr, p.unplayedCount));
-            }
-            items << item;
+            items << podcastItem(p, p.unplayedCount > 0 ? tr("%n unplayed", nullptr, p.unplayedCount) : QString(),
+                                 hints);
         }
         if (items.isEmpty()) *message = tr("No podcasts subscribed");
     } else if (id.startsWith(PodcastPrefix)) {
@@ -268,7 +297,7 @@ QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QStr
         }
         *title = p.title;
         for (const EpisodeRow &e : m_database->episodes(p.id, MaxRows, Database::AllEpisodes)) {
-            items << episodeItem(e, false, false);
+            items << episodeItem(e, false, false, hints);
         }
         if (items.isEmpty()) *message = tr("No episodes");
     } else {
@@ -277,7 +306,7 @@ QVariantList SailplayBridge::folderItems(const QString &id, QString *title, QStr
     return items;
 }
 
-QVariantList SailplayBridge::searchItems(const QString &query) const
+QVariantList SailplayBridge::searchItems(const QString &query, Hints *hints) const
 {
     QVariantList items;
     if (!m_database) {
@@ -291,18 +320,53 @@ QVariantList SailplayBridge::searchItems(const QString &query) const
     });
     for (const PodcastRow &p : podcasts) {
         if (p.provisional || !Database::matchesSearch(QStringList() << p.title << p.author, term, 0)) continue;
-        QVariantMap item = SailplayContent::item(PodcastPrefix + QString::number(p.id), bounded(p.title));
-        item.insert(QStringLiteral("subtitle"), tr("Podcast"));
-        items << item;
+        items << podcastItem(p, tr("Podcast"), hints);
         if (items.size() >= 20) break;
     }
     for (const EpisodeRow &e : m_database->searchEpisodes(query, MaxSearchRows)) {
-        items << episodeItem(e, false, true);
+        items << episodeItem(e, false, true, hints);
     }
     return items;
 }
 
-QVariantMap SailplayBridge::episodeItem(const EpisodeRow &e, bool fromPlaylist, bool showPodcast) const
+QString SailplayBridge::imageFor(const QString &remote)
+{
+    // The scaled local copy of the image cache when there is one (the car
+    // screen reads it as the same user, outside Sailcast's sandbox), else
+    // the address itself: the cache fetches it meanwhile for the next time
+    if (remote.isEmpty()) {
+        return QString();
+    }
+    ImageCache *cache = ImageCache::instance();
+    const QString local = cache ? cache->url(remote) : QString();
+    return local.isEmpty() ? remote : local;
+}
+
+QString SailplayBridge::playbackOf(const EpisodeRow &e) const
+{
+    if (e.id == m_episodeId && m_playing) {
+        return QStringLiteral("playing");
+    }
+    if (e.played) {
+        return QStringLiteral("finished");
+    }
+    return e.inProgress() ? QStringLiteral("started") : QStringLiteral("unplayed");
+}
+
+QVariantMap SailplayBridge::podcastItem(const PodcastRow &p, const QString &subtitle, Hints *hints) const
+{
+    const QString id = PodcastPrefix + QString::number(p.id);
+    QVariantMap item = SailplayContent::item(id, bounded(p.title.isEmpty() ? p.url : p.title));
+    if (!subtitle.isEmpty()) {
+        item.insert(QStringLiteral("subtitle"), bounded(subtitle));
+    }
+    if (hints) {
+        hints->insert(id, QVariantMap{{QStringLiteral("image"), imageFor(p.coverUrl)}});
+    }
+    return item;
+}
+
+QVariantMap SailplayBridge::episodeItem(const EpisodeRow &e, bool fromPlaylist, bool showPodcast, Hints *hints) const
 {
     QVariantMap parameters;
     parameters.insert(QStringLiteral("episodeId"), int(e.id));
@@ -325,5 +389,10 @@ QVariantMap SailplayBridge::episodeItem(const EpisodeRow &e, bool fromPlaylist, 
         parts << tr("%1 min").arg(minutes(e.duration));
     }
     item.insert(QStringLiteral("subtitle"), bounded(parts.join(QStringLiteral(" · "))));
+    if (hints) {
+        hints->insert(item.value(QStringLiteral("id")).toString(),
+                      QVariantMap{{QStringLiteral("image"), imageFor(e.displayImageUrl)},
+                                  {QStringLiteral("playback"), playbackOf(e)}});
+    }
     return item;
 }

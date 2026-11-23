@@ -20,6 +20,14 @@ loads with `Q_INIT_RESOURCE`) are Sailcast's own (Sailplay's
 
 The SDK is licensed GPL-3.0-or-later, like Sailcast (see `../LICENSE`).
 
+On the branch `sailplay-presentation`, `sailplaycontent.h/.cpp` come
+instead from the proposed Sailplay change that adds presentation hints
+(images, playback status, tabs and split pages), commit
+`149a7100887490b59faea54b8e8d49dce6ac8f92` of the branch
+`content-presentation` of https://github.com/solboki/harbour-sailplay. They
+only add functions; until Sailplay ships them, the car screen ignores the
+hints and shows the plain lists.
+
 To update: copy the same files from a newer Sailplay checkout and change
 the commit above. The contract is versioned (`org.sailplay.App1`,
 `Session1`, `Content1`); a new major version would get new interface names.
