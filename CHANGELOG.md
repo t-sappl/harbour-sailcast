@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- **Car screen (Sailplay):** with Sailplay (wireless CarPlay for Sailfish OS), Sailcast offers its episodes on the car screen – browse and play them there, and the car can start Sailcast. The Jolla Store build leaves this out
+- **Progress bar on remote controls:** the episode length and position are given to MPRIS, and Seek/SetPosition move within the episode – the progress bar of the car screen (and other remote controls) works
+
 ## 1.5 (2026-11-20)
 
 From now on Sailcast tells you about new versions itself – so fixes reach you quickly, even while OpenRepos is down. Plus a number of wishes from the forum, and fixes for the player. Thanks for all the feedback!
