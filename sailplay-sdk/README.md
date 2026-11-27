@@ -5,8 +5,15 @@ These files let Sailcast appear in the car with
 CarPlay / Android Auto for Sailfish OS): a browsable list of episodes on the
 car screen, playback through Sailcast's existing MPRIS player.
 
-They are copied **unchanged** from Sailplay at commit
-`e29d1bf7d62b7689fab35667e97a76a4d9e246be` (21 Nov 2026):
+They are copied from Sailplay at commit
+`e29d1bf7d62b7689fab35667e97a76a4d9e246be` (21 Nov 2026), with one change
+(branch `sailplay-broadcast`): `SailplayProvider::sendSignal` broadcasts its
+signals instead of addressing them to the car's client name. The Sailjail
+D-Bus proxy (xdg-dbus-proxy) lets a sandboxed app broadcast, but drops
+signals addressed to another name unless an extra profile in
+`/etc/sailjail/permissions` allows them - a file the Jolla Store does not
+accept. Sailplay's client matches on sender, path and interface, so it needs
+no change:
 
 | Here | In Sailplay |
 |---|---|

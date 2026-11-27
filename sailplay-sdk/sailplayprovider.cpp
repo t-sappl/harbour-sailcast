@@ -352,7 +352,13 @@ bool SailplayProvider::handleMessage(const QDBusMessage &message, const QDBusCon
 void SailplayProvider::sendSignal(const QString &path, const Session &session, const QString &interface,
                                  const QString &member, const QVariantList &arguments)
 {
-    QDBusMessage signal = QDBusMessage::createTargetedSignal(session.owner, path, interface, member);
+    // Sailcast: broadcast, not addressed to session.owner. The Sailjail D-Bus
+    // proxy drops addressed signals unless a profile in /etc/sailjail/permissions
+    // allows them (not possible in the Jolla Store); broadcasts always pass.
+    // Each session has its own object path, and clients match on sender,
+    // path and interface, so they receive the same signals as before.
+    Q_UNUSED(session)
+    QDBusMessage signal = QDBusMessage::createSignal(path, interface, member);
     signal.setArguments(arguments);
     m_bus.send(signal);
 }
