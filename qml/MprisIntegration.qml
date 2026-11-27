@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick 2.6
+import QtQml 2.2
 import Amber.Mpris 1.0
 
 // Lock screen, multitasking view and headset controls (MPRIS), as in
@@ -13,6 +14,7 @@ import Amber.Mpris 1.0
 // the next playlist episode, else the latest one in progress / chapter start,
 // previous chapter, without chapters the usual skip back.
 MprisPlayer {
+    id: mpris
     serviceName: "harbour-sailcast"
     identity: "Sailcast"
     desktopEntry: "harbour-sailcast"
@@ -22,7 +24,10 @@ MprisPlayer {
     canPause: appWindow.player.hasEpisode
     canGoNext: appWindow.player.hasEpisode
     canGoPrevious: appWindow.player.hasEpisode
-    canSeek: false
+    // Seeking for remote controls such as Sailplay's car screen, which
+    // draws its progress bar from Position and the length (as in Audiobook
+    // and Hutspot)
+    canSeek: appWindow.player.hasEpisode && appWindow.player.duration > 0
     canQuit: false
     canRaise: false
 
@@ -38,6 +43,46 @@ MprisPlayer {
                     : appWindow.player.title
     metaData.contributingArtist: appWindow.player.hasEpisode ? [appWindow.player.podcastTitle] : []
     metaData.artUrl: appWindow.mprisArtUrl
+    // Length in milliseconds (Amber converts for D-Bus)
+    metaData.duration: appWindow.player.hasEpisode ? appWindow.player.duration * 1000 : 0
+
+    // Position in milliseconds, read on demand (no signal every second)
+    onPositionRequested: position = Math.max(0, appWindow.player.positionMs)
+    onSeekRequested: _seekTo(appWindow.player.positionMs + offset)
+    onSetPositionRequested: _seekTo(position)
+    function _seekTo(ms) {
+        if (!appWindow.player.hasEpisode) {
+            return
+        }
+        var target = Math.max(0, Math.min(ms, appWindow.player.duration * 1000))
+        appWindow.player.seek(Math.floor(target / 1000))
+        _lastPosition = target
+        _lastPositionTime = Date.now()
+        mpris.seeked(target)
+    }
+
+    // MPRIS asks to announce jumps (chapter, skip, a jump on the phone), so
+    // that a remote control does not keep counting from the old place
+    property real _lastPosition: 0
+    property real _lastPositionTime: 0
+    // As a property, not a child: MprisPlayer takes no child objects
+    property Connections _jumps: Connections {
+        target: appWindow.player
+        onPositionMsChanged: {
+            var now = Date.now()
+            var pos = appWindow.player.positionMs
+            var expected = mpris._lastPosition
+                    + (appWindow.player.playing ? (now - mpris._lastPositionTime) * appWindow.player.rate : 0)
+            if (mpris._lastPositionTime > 0 && Math.abs(pos - expected) > 3000) {
+                mpris.seeked(pos)
+            }
+            mpris._lastPosition = pos
+            mpris._lastPositionTime = now
+        }
+        onEpisodeIdChanged: {
+            mpris._lastPositionTime = 0
+        }
+    }
 
     onPlayRequested: appWindow.player.resume()
     onPauseRequested: appWindow.player.pause()

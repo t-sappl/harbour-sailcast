@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="/sailplay-sdk/interfaces">
+    <file alias="org.sailplay.App1.xml">interfaces/org.sailplay.App1.xml</file>
+    <file alias="org.sailplay.Session1.xml">interfaces/org.sailplay.Session1.xml</file>
+    <file alias="org.sailplay.Navigation1.xml">interfaces/org.sailplay.Navigation1.xml</file>
+    <file alias="org.sailplay.Content1.xml">interfaces/org.sailplay.Content1.xml</file>
+  </qresource>
+</RCC>

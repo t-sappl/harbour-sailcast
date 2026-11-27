@@ -257,6 +257,27 @@ ApplicationWindow {
         function openUrl(urls) { appWindow.openPodcastLinks(urls) }
     }
 
+    // Sailplay (car screen, see src/sailplaybridge.h): an episode chosen in
+    // the car plays here; the car's player itself goes through MPRIS
+    Connections {
+        target: sailplay
+        onPlayRequested: {
+            // Choosing the episode that is playing does not pause it
+            if (episodeId === playerController.episodeId && playerController.playing) {
+                return
+            }
+            playerController.playOrToggle(episodeId, fromPlaylist)
+        }
+    }
+    Connections {
+        target: playerController
+        onEpisodeIdChanged: appWindow._sailplayPlayback()
+        onPlayingChanged: appWindow._sailplayPlayback()
+    }
+    function _sailplayPlayback() {
+        sailplay.setPlayback(playerController.episodeId, playerController.playing)
+    }
+
     // podcast://host/feed -> https://host/feed; pcast://https://host/feed
     // and podcast:https://host/feed -> https://host/feed
     function podcastLinkAddress(link) {
