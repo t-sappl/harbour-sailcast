@@ -4,7 +4,7 @@
 
 ### Neu
 
-- **Autobildschirm (Sailplay):** mit Sailplay (kabelloses CarPlay für Sailfish OS) bietet Sailcast seine Episoden auf dem Bildschirm des Autos an – dort durchsuchen und abspielen, und das Auto kann Sailcast starten. Die Jolla-Store-Version lässt das weg
+- **Autobildschirm (Sailplay):** mit Sailplay (kabelloses CarPlay für Sailfish OS) bietet Sailcast seine Episoden auf dem Bildschirm des Autos an – dort durchsuchen und abspielen, und das Auto kann Sailcast starten. Auch in der Jolla-Store-Version: Sailcast braucht dafür kein zusätzliches Sandbox-Profil
 - **Fortschrittsbalken bei Fernbedienungen:** Länge und Position der Episode gehen an MPRIS, Seek/SetPosition springen in der Episode – der Fortschrittsbalken des Autobildschirms (und anderer Fernbedienungen) funktioniert
 
 ## 1.5 (2026-11-20)

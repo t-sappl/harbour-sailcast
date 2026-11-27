@@ -4,7 +4,7 @@
 
 ### New
 
-- **Car screen (Sailplay):** with Sailplay (wireless CarPlay for Sailfish OS), Sailcast offers its episodes on the car screen – browse and play them there, and the car can start Sailcast. The Jolla Store build leaves this out
+- **Car screen (Sailplay):** with Sailplay (wireless CarPlay for Sailfish OS), Sailcast offers its episodes on the car screen – browse and play them there, and the car can start Sailcast. The Jolla Store version has it too: Sailcast needs no extra sandbox profile for it
 - **Progress bar on remote controls:** the episode length and position are given to MPRIS, and Seek/SetPosition move within the episode – the progress bar of the car screen (and other remote controls) works
 
 ## 1.5 (2026-11-20)
